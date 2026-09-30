@@ -1,61 +1,96 @@
 import { cache } from "react";
 
+import { TicketStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 
 /**
- * Mengambil data detail lowongan berdasarkan slug.
- * Di-memoize per-request menggunakan React.cache() sehingga panggilan
- * dari generateMetadata() dan Page Component tidak memicu query ganda.
+ * Mengambil data cabang outlet berdasarkan Clerk Organization ID.
+ * Di-memoize per-request menggunakan React.cache() untuk mencegah query ganda.
  */
-export const getJobBySlug = cache(async (slug: string) => {
-  const job = await prisma.job.findUnique({
-    where: { slug },
+export const getOutletByOrgId = cache(async (clerkOrgId: string) => {
+  return await prisma.outlet.findUnique({
+    where: { clerkOrgId },
+  });
+});
+
+/**
+ * Mengambil daftar seluruh paket layanan cuci aktif untuk cabang outlet tertentu.
+ */
+export const getActiveServicePackages = cache(async (outletId: string) => {
+  return await prisma.servicePackage.findMany({
+    where: { outletId, isActive: true },
+    orderBy: [{ vehicleCategory: "asc" }, { price: "asc" }],
+  });
+});
+
+/**
+ * Mengambil daftar staf pencuci aktif untuk Layar Cuci / klaim tiket.
+ */
+export const getActiveWashers = cache(async (outletId: string) => {
+  return await prisma.employee.findMany({
+    where: { outletId, isActive: true, role: "WASHER" },
+    select: {
+      id: true,
+      fullName: true,
+      role: true,
+      commissionType: true,
+      commissionRate: true,
+    },
+    orderBy: { fullName: "asc" },
+  });
+});
+
+/**
+ * Mengambil master produk ritel aktif untuk upsell kasir.
+ */
+export const getActiveRetailProducts = cache(async (outletId: string) => {
+  return await prisma.retailProduct.findMany({
+    where: { outletId, isActive: true },
+    orderBy: { name: "asc" },
+  });
+});
+
+/**
+ * Mengambil daftar bahan habis pakai / operasional untuk monitoring stok.
+ */
+export const getOperationalSupplies = cache(async (outletId: string) => {
+  return await prisma.operationalSupply.findMany({
+    where: { outletId },
+    orderBy: { name: "asc" },
+  });
+});
+
+/**
+ * Mengambil antrean tiket aktif (QUEUED, WASHING, DRYING, READY) untuk papan Kanban.
+ */
+export const getActiveQueueTickets = cache(async (outletId: string) => {
+  return await prisma.washTicket.findMany({
+    where: {
+      outletId,
+      status: {
+        in: [
+          TicketStatus.QUEUED,
+          TicketStatus.WASHING,
+          TicketStatus.DRYING,
+          TicketStatus.READY,
+        ],
+      },
+    },
     include: {
-      company: {
+      servicePackage: true,
+      customer: true,
+      vehicle: true,
+      washers: {
         include: {
-          verification: {
-            select: { nib: true, legalName: true, status: true },
-          },
+          washer: true,
         },
       },
-      location: true,
-      category: true,
-      skills: {
+      retailItems: {
         include: {
-          skill: true,
+          product: true,
         },
       },
     },
-  });
-
-  // SEC-08: Masking nomor NIB agar tidak dapat disalin / discrape secara massal oleh kompetitor / bot
-  if (job?.company?.verification?.nib) {
-    const rawNib = job.company.verification.nib;
-    if (rawNib.length > 7) {
-      job.company.verification.nib = `${rawNib.slice(0, 4)}******${rawNib.slice(-3)}`;
-    }
-  }
-
-  return job;
-});
-
-/**
- * Mengambil daftar seluruh 10 Kabupaten/Kota NTB.
- * Di-memoize per-request untuk mencegah duplikasi query master data di layout & subkomponen.
- */
-export const getLocations = cache(async () => {
-  return await prisma.location.findMany({
-    orderBy: { orderIndex: "asc" },
-  });
-});
-
-/**
- * Mengambil daftar kategori pekerjaan aktif di NTB.
- * Di-memoize per-request menggunakan React.cache().
- */
-export const getJobCategories = cache(async () => {
-  return await prisma.jobCategory.findMany({
-    where: { isActive: true },
-    orderBy: { orderIndex: "asc" },
+    orderBy: { queuedAt: "asc" },
   });
 });

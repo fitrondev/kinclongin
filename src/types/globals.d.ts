@@ -1,20 +1,29 @@
 export {};
 
-// Definisi Role yang didukung di KerjaNTB
+// Definisi Role yang didukung di Kinclongin POS
 export type Roles =
+  | "owner"
+  | "manager"
+  | "cashier"
+  | "washer"
   | "admin"
   | "superadmin"
-  | "moderator"
-  | "company"
-  | "individual"
-  | "SUPERADMIN"
-  | "COMPANY"
-  | "INDIVIDUAL";
+  | "org:owner"
+  | "org:admin"
+  | "org:manager"
+  | "org:cashier"
+  | "OWNER"
+  | "MANAGER"
+  | "CASHIER"
+  | "WASHER";
 
 declare global {
   interface CustomJwtSessionClaims {
-    metadata: {
+    metadata?: {
       role?: Roles;
     };
+    org_id?: string;
+    org_role?: string;
+    org_slug?: string;
   }
 }

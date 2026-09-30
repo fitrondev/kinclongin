@@ -4,15 +4,19 @@ import type { WebhookEvent } from "@clerk/nextjs/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 
 import {
+  deactivateClerkOrganizationInDatabase,
   deactivateClerkUserInDatabase,
+  removeOrganizationMembershipFromDatabase,
+  syncClerkOrganizationToDatabase,
   syncClerkUserToDatabase,
+  syncOrganizationMembershipToDatabase,
 } from "@/lib/auth/clerk-sync";
 
 export async function GET() {
   return NextResponse.json({
     status: "ok",
     message:
-      "KerjaNTB Clerk Webhook endpoint is active. POST webhook requests with valid Svix signatures to this route.",
+      "Kinclongin Clerk Webhook endpoint is active. POST webhook requests with valid Svix signatures to this route.",
   });
 }
 
@@ -47,10 +51,11 @@ export async function POST(req: NextRequest) {
   }
 
   const eventType = evt.type;
-  console.log(`[Webhook] Processing event: ${eventType} (ID: ${evt.data.id})`);
+  console.log(`[Webhook] Processing event: ${eventType}`);
 
   try {
     switch (eventType) {
+      // 1. User Management Events
       case "user.created":
       case "user.updated": {
         await syncClerkUserToDatabase(evt.data);
@@ -62,6 +67,31 @@ export async function POST(req: NextRequest) {
         }
         break;
       }
+
+      // 2. Organization (Outlet) Management Events
+      case "organization.created":
+      case "organization.updated": {
+        await syncClerkOrganizationToDatabase(evt.data);
+        break;
+      }
+      case "organization.deleted": {
+        if (evt.data.id) {
+          await deactivateClerkOrganizationInDatabase(evt.data.id);
+        }
+        break;
+      }
+
+      // 3. Organization Membership (Staff Assignment & Role) Events
+      case "organizationMembership.created":
+      case "organizationMembership.updated": {
+        await syncOrganizationMembershipToDatabase(evt.data);
+        break;
+      }
+      case "organizationMembership.deleted": {
+        await removeOrganizationMembershipFromDatabase(evt.data);
+        break;
+      }
+
       default: {
         console.log(`[Webhook] Received unhandled event type: ${eventType}`);
         break;

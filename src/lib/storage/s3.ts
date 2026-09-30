@@ -42,9 +42,10 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 /**
- * URL Logo Resmi KerjaNTB di SumoPod Storage
+ * URL Logo Resmi Kinclongin di SumoPod Storage
  */
-export const KERJANTB_LOGO_URL = "/api/storage/file/Logo/logo.webp";
+export const KINCLONGIN_LOGO_URL = "/api/storage/file/logos/logo.webp";
+export const KERJANTB_LOGO_URL = KINCLONGIN_LOGO_URL; // Alias kompatibilitas
 
 /**
  * Helper untuk mendapatkan URL publik berkas (Avatar, Logo, Cover Blog)

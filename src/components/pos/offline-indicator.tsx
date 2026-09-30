@@ -1,0 +1,87 @@
+"use client";
+
+import { useEffect } from "react";
+
+import { CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { useNetworkStatus } from "@/lib/offline/sync-manager";
+
+export function OfflineIndicator() {
+  const { isOnline, pendingCount, isSyncing, triggerSync } = useNetworkStatus();
+
+  // Register PWA Service Worker
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((registration) => {
+            console.log(
+              "Kinclongin SW registered with scope:",
+              registration.scope
+            );
+          })
+          .catch((err) => {
+            console.warn("Kinclongin SW registration failed:", err);
+          });
+      });
+    }
+  }, []);
+
+  if (isOnline && pendingCount === 0) {
+    return null;
+  }
+
+  return (
+    <aside
+      aria-label="Status koneksi jaringan"
+      className={`flex items-center justify-between border-b px-4 py-2 text-xs font-semibold transition-colors ${
+        !isOnline
+          ? "border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300"
+          : "border-blue-500/30 bg-blue-500/15 text-blue-800 dark:text-blue-300"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {!isOnline ? (
+          <>
+            <WifiOff className="h-4 w-4 animate-pulse text-amber-600" />
+            <span>
+              Mode Luring Aktif &bull; Koneksi internet terputus. Input
+              transaksi tetap berjalan dan disimpan aman di memori lokal
+              peramban.
+            </span>
+          </>
+        ) : (
+          <>
+            <Wifi className="h-4 w-4 text-blue-600" />
+            <span>
+              Koneksi pulih &bull; Ditemukan {pendingCount} transaksi offline
+              yang siap dikirim ke cloud.
+            </span>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {pendingCount > 0 && (
+          <span className="bg-background/80 rounded border px-2 py-0.5 text-[11px] font-bold">
+            {pendingCount} antrean tertunda
+          </span>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!isOnline || isSyncing}
+          onClick={triggerSync}
+          className="bg-background hover:bg-muted h-7 gap-1.5 text-xs font-bold shadow-xs"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`}
+          />
+          <span>{isSyncing ? "Menyinkronkan..." : "Sinkronkan"}</span>
+        </Button>
+      </div>
+    </aside>
+  );
+}

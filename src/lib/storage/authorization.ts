@@ -4,10 +4,11 @@ export interface StorageAuthUser {
   id: string;
   clerkId: string;
   role: string;
+  outletId?: string | null;
 }
 
 /**
- * Memverifikasi apakah pengguna memiliki otorisasi sah untuk mengakses berkas privat di SumoPod Storage (SEC-02).
+ * Memverifikasi apakah pengguna memiliki otorisasi sah untuk mengakses berkas di SumoPod Storage (SEC-02).
  */
 export async function canAccessStorageFile(
   user: StorageAuthUser,
@@ -21,71 +22,51 @@ export async function canAccessStorageFile(
   const prefix = segments[0];
   const ownerId = segments[1];
 
-  // Berkas non-privat (public) dapat diakses bebas
-  if (prefix !== "resumes" && prefix !== "verifications") {
+  // Berkas non-privat (foto inspeksi kendaraan, logo, produk, avatar) dapat diakses
+  if (prefix !== "payments") {
     return true;
   }
 
-  // Superadmin memiliki hak akses menyeluruh untuk moderasi & audit
-  if (user.role === "SUPERADMIN") {
+  // Owner / Admin memiliki hak akses menyeluruh
+  if (user.role === "OWNER" || user.role === "SUPERADMIN") {
     return true;
   }
 
-  // 1. Dokumen CV / Resume privat
-  if (prefix === "resumes") {
-    // Pemilik langsung dokumen CV
+  // Dokumen Bukti Pembayaran (payments)
+  if (prefix === "payments") {
+    // Pengunggah langsung
     if (user.id === ownerId || user.clerkId === ownerId) {
       return true;
     }
 
-    // Cek apakah user memiliki record Resume dengan file ini
-    const ownResume = await prisma.resume.findFirst({
-      where: {
-        userId: user.id,
-        fileUrl: { contains: cleanKey },
-      },
-      select: { id: true },
-    });
-    if (ownResume) {
+    // Kasir atau staf pada cabang outlet bersangkutan
+    if (user.outletId && user.outletId === ownerId) {
       return true;
     }
 
-    // Cek apakah user adalah Employer yang menerima lamaran kerja dari pelamar ini
-    const application = await prisma.application.findFirst({
+    // Cek apakah payment record tercatat di DB untuk outlet user
+    const payment = await prisma.payment.findFirst({
       where: {
-        OR: [
-          { userId: ownerId },
-          { user: { clerkId: ownerId } },
-          { customResumeUrl: { contains: cleanKey } },
-          { resume: { fileUrl: { contains: cleanKey } } },
-        ],
-        job: {
-          company: {
-            userId: user.id,
-          },
-        },
+        proofImageUrl: { contains: cleanKey },
+        outletId: user.outletId ?? undefined,
       },
       select: { id: true },
     });
 
-    return !!application;
-  }
+    if (payment) {
+      return true;
+    }
 
-  // 2. Dokumen NIB / Legalitas Perusahaan privat
-  if (prefix === "verifications") {
-    // Cek apakah user adalah pemilik perusahaan bersangkutan
-    const company = await prisma.company.findFirst({
+    // Cek bukti transfer langganan SaaS outlet
+    const subPayment = await prisma.tenantSubscriptionPayment.findFirst({
       where: {
-        OR: [
-          { id: ownerId },
-          { verification: { documentUrl: { contains: cleanKey } } },
-        ],
-        userId: user.id,
+        proofImageUrl: { contains: cleanKey },
+        outletId: user.outletId ?? undefined,
       },
       select: { id: true },
     });
 
-    return !!company;
+    return !!subPayment;
   }
 
   return false;
@@ -106,23 +87,18 @@ export async function canModifyStorageFile(
   const prefix = segments[0];
   const ownerId = segments[1];
 
-  if (user.role === "SUPERADMIN") {
+  if (user.role === "OWNER" || user.role === "SUPERADMIN") {
     return true;
   }
 
-  if (prefix === "resumes" || prefix === "avatars") {
+  // Avatar milik sendiri
+  if (prefix === "avatars") {
     return user.id === ownerId || user.clerkId === ownerId;
   }
 
-  if (prefix === "verifications" || prefix === "logos") {
-    const company = await prisma.company.findFirst({
-      where: {
-        id: ownerId,
-        userId: user.id,
-      },
-      select: { id: true },
-    });
-    return !!company;
+  // Aset outlet (logo, produk, inspeksi)
+  if (prefix === "logos" || prefix === "products" || prefix === "inspections") {
+    return user.outletId === ownerId;
   }
 
   return false;

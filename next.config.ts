@@ -22,6 +22,66 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  output: "standalone",
+  async redirects() {
+    return [
+      {
+        source: "/kiosk",
+        destination: "/layar-cuci",
+        permanent: true,
+      },
+      {
+        source: "/kiosk/:path*",
+        destination: "/layar-cuci",
+        permanent: true,
+      },
+      {
+        source: "/panel-cuci",
+        destination: "/layar-cuci",
+        permanent: true,
+      },
+      {
+        source: "/pos/queue",
+        destination: "/pos/antrean",
+        permanent: true,
+      },
+      {
+        source: "/pos/new",
+        destination: "/pos/daftar-baru",
+        permanent: true,
+      },
+      {
+        source: "/pos/checkout/:id",
+        destination: "/pos/bayar/:id",
+        permanent: true,
+      },
+      {
+        source: "/track/:ticketId",
+        destination: "/lacak/:ticketId",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/inventory",
+        destination: "/dashboard/stok",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/analytics/payroll",
+        destination: "/dashboard/komisi",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/customers",
+        destination: "/dashboard/pelanggan",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/settings/subscription",
+        destination: "/dashboard/pengaturan/langganan",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
@@ -57,7 +117,8 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value:
+              "camera=(self), microphone=(), geolocation=(), bluetooth=(self)",
           },
         ],
       },

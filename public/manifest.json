@@ -1,0 +1,42 @@
+{
+  "name": "Kinclongin — Smart POS & Car Wash Management",
+  "short_name": "Kinclongin",
+  "description": "Sistem POS & Manajemen Operasional Cuci Mobil, Motor & Auto-Detailing Multi-Cabang",
+  "start_url": "/pos/queue",
+  "display": "standalone",
+  "background_color": "#0B0F19",
+  "theme_color": "#1447E6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Antrean Cuci",
+      "url": "/pos/queue",
+      "description": "Buka papan antrean Kanban live"
+    },
+    {
+      "name": "Daftar Kendaraan",
+      "url": "/pos/new",
+      "description": "Registrasi kendaraan masuk"
+    },
+    {
+      "name": "Kiosk Washer",
+      "url": "/kiosk/washer",
+      "description": "Layar tablet tukang cuci"
+    }
+  ]
+}

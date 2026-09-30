@@ -16,13 +16,13 @@ const presignSchema = z.object({
   fileType: z.string().min(1, "Tipe MIME file wajib diisi."),
   fileSize: z.number().positive("Ukuran file harus lebih dari 0."),
   category: z.enum([
-    "RESUME",
+    "INSPECTION",
+    "PAYMENT_PROOF",
     "LOGO",
+    "PRODUCT",
     "AVATAR",
-    "VERIFICATION",
-    "BLOG",
   ] as const),
-  companyId: z.string().optional(),
+  outletId: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -39,10 +39,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // SEC-04: Rate limiting proteksi presign flooding (max 20 req/min)
+    // Rate limiting proteksi presign flooding (max 30 req/min)
     const rateCheck = checkRateLimit(`presign_api:${user.id}`, {
       intervalMs: 60_000,
-      maxRequests: 20,
+      maxRequests: 30,
     });
     if (!rateCheck.success) {
       return NextResponse.json(
@@ -69,10 +69,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const { fileName, fileType, fileSize, category, companyId } = parsed.data;
+    const { fileName, fileType, fileSize, category, outletId } = parsed.data;
 
     const validation = validateFileConstraints(
-      category,
+      category as UploadCategory,
       fileSize,
       fileType,
       fileName
@@ -84,57 +84,49 @@ export async function POST(req: Request) {
       );
     }
 
-    // SEC-03: Validasi relasi kepemilikan perusahaan untuk mencegah IDOR
     let ownerId = user.id;
-    if (category === "LOGO" || category === "VERIFICATION") {
-      const targetCompanyId = companyId || user.company?.id;
-      if (!targetCompanyId) {
+
+    if (
+      category === "LOGO" ||
+      category === "PRODUCT" ||
+      category === "INSPECTION"
+    ) {
+      const targetOutletId = outletId || user.outletId;
+      if (!targetOutletId) {
         return NextResponse.json(
           {
             success: false,
-            error: "ID Perusahaan wajib disertakan untuk kategori ini.",
+            error: "ID Cabang Outlet wajib disertakan untuk kategori ini.",
           },
           { status: 400 }
         );
       }
 
-      if (user.role !== "SUPERADMIN") {
-        const ownedCompany = await prisma.company.findFirst({
-          where: { id: targetCompanyId, userId: user.id },
+      if (user.role !== "OWNER") {
+        const outlet = await prisma.outlet.findFirst({
+          where: { id: targetOutletId },
           select: { id: true },
         });
 
-        if (!ownedCompany) {
+        if (!outlet) {
           return NextResponse.json(
             {
               success: false,
-              error:
-                "Akses ditolak. Anda tidak memiliki hak akses atas perusahaan ini.",
+              error: "Akses ditolak atau Cabang Outlet tidak ditemukan.",
             },
             { status: 403 }
           );
         }
       }
 
-      ownerId = targetCompanyId;
-    } else if (category === "BLOG") {
-      if (user.role !== "SUPERADMIN") {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Hanya Superadmin yang berhak mengunggah aset blog.",
-          },
-          { status: 403 }
-        );
-      }
-      ownerId = "public";
+      ownerId = targetOutletId;
     }
 
     const presigned = await getPresignedUploadUrl({
       fileName,
       fileType,
       fileSize,
-      category,
+      category: category as UploadCategory,
       ownerId,
     });
 

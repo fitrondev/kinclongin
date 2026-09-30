@@ -13,7 +13,7 @@ export function useStorageUpload() {
   const upload = async (
     file: File,
     category: UploadCategory,
-    companyId?: string
+    outletId?: string
   ): Promise<DirectUploadResult | null> => {
     setIsUploading(true);
     setProgress(0);
@@ -23,7 +23,7 @@ export function useStorageUpload() {
       const result = await uploadFileToStorage({
         file,
         category,
-        companyId,
+        outletId,
         onProgress: (p) => setProgress(p),
       });
 

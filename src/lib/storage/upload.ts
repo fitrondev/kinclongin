@@ -7,47 +7,48 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
 
-import { S3_BUCKET_NAME, S3_PUBLIC_URL, s3Client } from "./s3";
+import { S3_BUCKET_NAME, s3Client } from "./s3";
 
-// Aturan Ukuran Maksimal, Ekstensi & MIME Type yang Diizinkan (SEC-06 Hardening)
+// Aturan Ukuran Maksimal, Ekstensi & MIME Type yang Diizinkan untuk Kinclongin POS
 export const UPLOAD_CONSTRAINTS = {
-  RESUME: {
-    maxSize: 5 * 1024 * 1024, // 5MB
+  INSPECTION: {
+    maxSize: 10 * 1024 * 1024, // 10MB untuk foto kondisi kendaraan sebelum cuci
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    allowedExtensions: ["jpg", "jpeg", "png", "webp"],
+    prefix: "inspections",
+    isPrivate: false,
+  },
+  PAYMENT_PROOF: {
+    maxSize: 5 * 1024 * 1024, // 5MB untuk bukti transfer langganan SaaS atau kasir
     allowedMimeTypes: [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
       "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ],
-    allowedExtensions: ["pdf", "doc", "docx"],
-    prefix: "resumes",
+    allowedExtensions: ["jpg", "jpeg", "png", "webp", "pdf"],
+    prefix: "payments",
     isPrivate: true,
   },
   LOGO: {
-    maxSize: 2 * 1024 * 1024, // 2MB
+    maxSize: 2 * 1024 * 1024, // 2MB untuk logo cabang outlet
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
     allowedExtensions: ["jpg", "jpeg", "png", "webp"],
     prefix: "logos",
     isPrivate: false,
   },
+  PRODUCT: {
+    maxSize: 5 * 1024 * 1024, // 5MB untuk foto produk ritel & aksesoris
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    allowedExtensions: ["jpg", "jpeg", "png", "webp"],
+    prefix: "products",
+    isPrivate: false,
+  },
   AVATAR: {
-    maxSize: 2 * 1024 * 1024, // 2MB
+    maxSize: 2 * 1024 * 1024, // 2MB untuk foto profil staf
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
     allowedExtensions: ["jpg", "jpeg", "png", "webp"],
     prefix: "avatars",
-    isPrivate: false,
-  },
-  VERIFICATION: {
-    maxSize: 10 * 1024 * 1024, // 10MB
-    allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png"],
-    allowedExtensions: ["pdf", "jpg", "jpeg", "png"],
-    prefix: "verifications",
-    isPrivate: true,
-  },
-  BLOG: {
-    maxSize: 5 * 1024 * 1024, // 5MB
-    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-    allowedExtensions: ["jpg", "jpeg", "png", "webp"],
-    prefix: "blog",
     isPrivate: false,
   },
 } as const;
@@ -59,7 +60,7 @@ export interface PresignedUploadParams {
   fileType: string;
   fileSize: number;
   category: UploadCategory;
-  ownerId: string; // userId atau companyId
+  ownerId: string; // outletId atau userId
 }
 
 export interface PresignedUploadResult {
@@ -231,7 +232,7 @@ export async function getPresignedUploadUrl({
 }
 
 /**
- * Menghasilkan Presigned GET URL untuk membaca atau mengunduh berkas privat (CV / NIB)
+ * Menghasilkan Presigned GET URL untuk membaca atau mengunduh berkas privat
  * URL default berlaku selama 15 menit (900 detik)
  */
 export async function getPresignedDownloadUrl(

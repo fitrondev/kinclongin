@@ -1,621 +1,1009 @@
 import {
-  ApplicationMethod,
-  EducationLevel,
-  ExperienceLevel,
-  JobType,
+  CommissionType,
+  MovementType,
+  PaymentMethod,
+  PaymentStatus,
+  TicketStatus,
   UserRole,
-  VerificationStatus,
-  WorkplaceType,
+  UserStatus,
+  VehicleCategory,
+  WhatsAppDeliveryStatus,
 } from "../src/generated/prisma/client";
 import { prisma } from "../src/lib/db/prisma";
 
-const LOCATIONS_NTB = [
-  { name: "Kota Mataram", slug: "kota-mataram", type: "KOTA", orderIndex: 1 },
-  {
-    name: "Kabupaten Lombok Barat",
-    slug: "lombok-barat",
-    type: "KABUPATEN",
-    orderIndex: 2,
-  },
-  {
-    name: "Kabupaten Lombok Tengah",
-    slug: "lombok-tengah",
-    type: "KABUPATEN",
-    orderIndex: 3,
-  },
-  {
-    name: "Kabupaten Lombok Timur",
-    slug: "lombok-timur",
-    type: "KABUPATEN",
-    orderIndex: 4,
-  },
-  {
-    name: "Kabupaten Lombok Utara",
-    slug: "lombok-utara",
-    type: "KABUPATEN",
-    orderIndex: 5,
-  },
-  {
-    name: "Kabupaten Sumbawa",
-    slug: "sumbawa",
-    type: "KABUPATEN",
-    orderIndex: 6,
-  },
-  {
-    name: "Kabupaten Sumbawa Barat",
-    slug: "sumbawa-barat",
-    type: "KABUPATEN",
-    orderIndex: 7,
-  },
-  { name: "Kabupaten Dompu", slug: "dompu", type: "KABUPATEN", orderIndex: 8 },
-  { name: "Kabupaten Bima", slug: "bima", type: "KABUPATEN", orderIndex: 9 },
-  { name: "Kota Bima", slug: "kota-bima", type: "KOTA", orderIndex: 10 },
-];
-
-const JOB_CATEGORIES = [
-  {
-    name: "Pariwisata & Perhotelan",
-    slug: "pariwisata-perhotelan",
-    icon: "Hotel",
-    orderIndex: 1,
-  },
-  {
-    name: "Teknologi Informasi & IT",
-    slug: "teknologi-informasi",
-    icon: "Code2",
-    orderIndex: 2,
-  },
-  {
-    name: "Pertambangan & Energi",
-    slug: "pertambangan-energi",
-    icon: "Pickaxe",
-    orderIndex: 3,
-  },
-  {
-    name: "Pertanian & Perkebunan",
-    slug: "pertanian-perkebunan",
-    icon: "Wheat",
-    orderIndex: 4,
-  },
-  {
-    name: "Kelautan & Perikanan",
-    slug: "kelautan-perikanan",
-    icon: "Fish",
-    orderIndex: 5,
-  },
-  {
-    name: "Konstruksi & Properti",
-    slug: "konstruksi-properti",
-    icon: "HardHat",
-    orderIndex: 6,
-  },
-  {
-    name: "Pendidikan & Pelatihan",
-    slug: "pendidikan-pelatihan",
-    icon: "GraduationCap",
-    orderIndex: 7,
-  },
-  {
-    name: "Kesehatan & Farmasi",
-    slug: "kesehatan-farmasi",
-    icon: "HeartPulse",
-    orderIndex: 8,
-  },
-  {
-    name: "Keuangan & Perbankan",
-    slug: "keuangan-perbankan",
-    icon: "BadgeDollarSign",
-    orderIndex: 9,
-  },
-  {
-    name: "Penjualan & Retail",
-    slug: "penjualan-retail",
-    icon: "ShoppingBag",
-    orderIndex: 10,
-  },
-  {
-    name: "Administrasi & HR",
-    slug: "administrasi-hr",
-    icon: "Briefcase",
-    orderIndex: 11,
-  },
-  {
-    name: "Logistik & Transportasi",
-    slug: "logistik-transportasi",
-    icon: "Truck",
-    orderIndex: 12,
-  },
-];
-
 async function main() {
-  console.log("==> Memulai seeding data KerjaNTB...");
+  console.log("🧼 =========================================================");
+  console.log("🧼 MEMULAI SEEDING DATA LENGKAP KINCLONGIN POS & MEMBERSHIP");
+  console.log("🧼 =========================================================");
 
-  // 1. Seed 10 Wilayah NTB
-  const locationMap = new Map<string, string>();
-  for (const loc of LOCATIONS_NTB) {
-    const record = await prisma.location.upsert({
-      where: { slug: loc.slug },
-      update: { name: loc.name, type: loc.type, orderIndex: loc.orderIndex },
-      create: loc,
-    });
-    locationMap.set(loc.slug, record.id);
-  }
-  console.log("✓ 10 Wilayah Kabupaten/Kota NTB berhasil disiapkan.");
+  // 1. Bersihkan tabel lama agar seeding bersih dan idenpoten
+  console.log("\n🧹 1. Membersihkan data lama...");
+  await prisma.whatsAppLog.deleteMany();
+  await prisma.customerLoyaltyLog.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.ticketRetailItem.deleteMany();
+  await prisma.ticketWasher.deleteMany();
+  await prisma.washTicket.deleteMany();
+  await prisma.stockMovement.deleteMany();
+  await prisma.operationalSupply.deleteMany();
+  await prisma.retailProduct.deleteMany();
+  await prisma.servicePackage.deleteMany();
+  await prisma.vehicle.deleteMany();
+  await prisma.customer.deleteMany();
+  await prisma.employee.deleteMany();
+  await prisma.tenantSubscriptionPayment.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.outlet.deleteMany();
 
-  // 2. Seed 12 Kategori Lowongan
-  const categoryMap = new Map<string, string>();
-  for (const cat of JOB_CATEGORIES) {
-    const record = await prisma.jobCategory.upsert({
-      where: { slug: cat.slug },
-      update: {
-        name: cat.name,
-        icon: cat.icon,
-        orderIndex: cat.orderIndex,
-        isActive: true,
-      },
-      create: cat,
-    });
-    categoryMap.set(cat.slug, record.id);
-  }
-  console.log("✓ 12 Kategori Lowongan Kerja berhasil disiapkan.");
+  // 2. Buat Cabang Outlet (Multi-Tenant Demo)
+  console.log("\n🏢 2. Membuat Cabang Outlet Demo...");
+  const outletMataram = await prisma.outlet.create({
+    data: {
+      clerkOrgId: "org_demo_mataram_001",
+      name: "Kinclongin Cabang Pusat Mataram",
+      slug: "kinclongin-pusat-mataram",
+      address: "Jl. Pejanggik No. 88, Cakranegara, Kota Mataram, NTB",
+      phone: "081912345678",
+      logoUrl:
+        "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=400&q=80",
+      subscriptionStatus: "ACTIVE",
+      subscriptionExpiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // Aktif 6 bulan ke depan
+      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    },
+  });
 
-  // 3. Seed Demo Users & Companies
-  console.log("==> Menyiapkan Akun Demo Perusahaan NTB...");
+  const outletRembiga = await prisma.outlet.create({
+    data: {
+      clerkOrgId: "org_demo_rembiga_002",
+      name: "Kinclongin Express Rembiga",
+      slug: "kinclongin-express-rembiga",
+      address: "Jl. Dr. Wahidin No. 45, Rembiga, Kota Mataram, NTB",
+      phone: "081987654321",
+      logoUrl:
+        "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?w=400&q=80",
+      subscriptionStatus: "ACTIVE",
+      subscriptionExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // Aktif 3 bulan ke depan
+      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    },
+  });
 
-  const companiesData = [
+  // 3. Catat Riwayat Langganan SaaS Cabang (Rp 50.000 / Bulan)
+  console.log("💳 3. Membuat Riwayat Pembayaran Langganan SaaS Cabang...");
+  await prisma.tenantSubscriptionPayment.create({
+    data: {
+      outletId: outletMataram.id,
+      amount: 300000, // 6 bulan paket langganan
+      durationMonths: 6,
+      paymentMethod: "QRIS",
+      proofImageUrl:
+        "https://images.unsplash.com/photo-1556742049-0a67c5574f73?w=600&q=80",
+      status: "APPROVED",
+      submittedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      verifiedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000 + 3600000),
+      verifiedById: "user_superadmin_001",
+    },
+  });
+
+  // 4. Buat Pengguna Utama Cabang (Owner, Manajer, Kasir)
+  console.log("👤 4. Membuat Akun Pengguna Cabang...");
+  const ownerUser = await prisma.user.create({
+    data: {
+      clerkId: "user_owner_demo_001",
+      email: "owner@kinclongin.com",
+      fullName: "Pak H. Ridwan (Owner Cabang)",
+      role: UserRole.OWNER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  const managerUser = await prisma.user.create({
+    data: {
+      clerkId: "user_manager_demo_002",
+      email: "danu.operasional@kinclongin.com",
+      fullName: "Danu Prakoso (Manajer Operasional)",
+      role: UserRole.MANAGER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  const cashierMorning = await prisma.user.create({
+    data: {
+      clerkId: "user_cashier_demo_001",
+      email: "kasir.mataram@kinclongin.com",
+      fullName: "Siti Rahma (Kasir Shift Pagi)",
+      role: UserRole.CASHIER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  const cashierAfternoon = await prisma.user.create({
+    data: {
+      clerkId: "user_cashier_demo_002",
+      email: "kasir.sore@kinclongin.com",
+      fullName: "Putri Anggraeni (Kasir Shift Sore)",
+      role: UserRole.CASHIER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  // 5. Buat Karyawan Washer Cuci (dengan PIN Kiosk Tablet)
+  console.log("🧽 5. Membuat Data Pekerja Washer & PIN Kiosk Tablet...");
+  const washer1 = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      fullName: "Agus Santoso",
+      phone: "087765432101",
+      pinCode: "1234", // PIN Login Tablet Kiosk
+      role: UserRole.WASHER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 12000,
+      isActive: true,
+    },
+  });
+
+  const washer2 = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      fullName: "Budi Pratama",
+      phone: "087765432102",
+      pinCode: "5678",
+      role: UserRole.WASHER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 12000,
+      isActive: true,
+    },
+  });
+
+  const washer3 = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      fullName: "Rian Hidayat",
+      phone: "087765432103",
+      pinCode: "9999",
+      role: UserRole.WASHER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 12000,
+      isActive: true,
+    },
+  });
+
+  const washer4 = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      fullName: "Ilham Saputra",
+      phone: "087765432104",
+      pinCode: "2026",
+      role: UserRole.WASHER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 12000,
+      isActive: true,
+    },
+  });
+
+  // 6. Buat Master Paket Layanan Cuci (Lengkap untuk Semua Kategori)
+  console.log("📋 6. Membuat Master Paket Layanan Cuci...");
+  const servicesData = [
+    // Motor Kecil
     {
-      clerkId: "demo_clerk_amman",
-      email: "recruitment@amman.co.id",
-      companyName: "PT Amman Mineral Nusa Tenggara",
-      slug: "pt-amman-mineral-nusa-tenggara",
-      industry: "Pertambangan & Energi",
-      companySize: "1000+ Karyawan",
-      locationSlug: "sumbawa-barat",
-      address: "Batu Hijau, Sekongkang, Kabupaten Sumbawa Barat, NTB",
-      website: "https://www.amman.co.id",
-      phone: "+62 372 63531",
-      description:
-        "PT Amman Mineral Nusa Tenggara adalah perusahaan pertambangan tembaga dan emas terkemuka di Indonesia yang mengoperasikan tambang Batu Hijau di Kabupaten Sumbawa Barat, NTB.",
-      nib: "9120301290481",
-      legalName: "PT Amman Mineral Nusa Tenggara",
+      name: "Cuci Salju Motor Kecil",
+      description: "Cuci bodi salju, kolong, velg, dan semir ban kering",
+      vehicleCategory: VehicleCategory.MOTOR_KECIL,
+      price: 15000,
+      estimatedMinutes: 20,
+      defaultCommission: 5000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
     {
-      clerkId: "demo_clerk_katamaran",
-      email: "hrd@katamaranresort.com",
-      companyName: "Katamaran Hotel & Resort",
-      slug: "katamaran-hotel-and-resort",
-      industry: "Pariwisata & Perhotelan",
-      companySize: "100-250 Karyawan",
-      locationSlug: "lombok-barat",
-      address: "Jl. Raya Mangsit, Senggigi, Kabupaten Lombok Barat, NTB",
-      website: "https://www.katamaranresort.com",
-      phone: "+62 370 6197000",
-      description:
-        "Katamaran Hotel & Resort Senggigi adalah resor bintang 5 di pesisir barat Pulau Lombok yang menyajikan panorama matahari terbenam Gunung Agung dan fasilitas hospitality kelas dunia.",
-      nib: "8120003847291",
-      legalName: "PT Katamaran Mangsit International",
+      name: "Cuci Komplit + Semir Bodi Motor Kecil",
+      description: "Cuci salju, poles bodi mengkilap, dan semir ban wet look",
+      vehicleCategory: VehicleCategory.MOTOR_KECIL,
+      price: 25000,
+      estimatedMinutes: 30,
+      defaultCommission: 8000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
-    {
-      clerkId: "demo_clerk_bankntb",
-      email: "karir@bankntbsyariah.co.id",
-      companyName: "PT Bank NTB Syariah",
-      slug: "pt-bank-ntb-syariah",
-      industry: "Keuangan & Perbankan",
-      companySize: "500-1000 Karyawan",
-      locationSlug: "kota-mataram",
-      address: "Jl. Pejanggik No. 30, Kota Mataram, NTB",
-      website: "https://www.bankntbsyariah.co.id",
-      phone: "+62 370 633342",
-      description:
-        "PT Bank NTB Syariah adalah Badan Usaha Milik Daerah (BUMD) perbankan syariah terpercaya milik masyarakat Nusa Tenggara Barat dengan jaringan cabang di 10 Kabupaten/Kota se-NTB.",
-      nib: "0220108374921",
-      legalName: "PT Bank Pembangunan Daerah Nusa Tenggara Barat Syariah",
-    },
-    {
-      clerkId: "demo_clerk_sasaktech",
-      email: "talent@sasaktech.id",
-      companyName: "PT Sasak Digital Nusantara",
-      slug: "pt-sasak-digital-nusantara",
-      industry: "Teknologi Informasi & IT",
-      companySize: "20-50 Karyawan",
-      locationSlug: "kota-mataram",
-      address: "Komplek Graha Gomong Asri, Mataram, NTB",
-      website: "https://sasaktech.id",
-      phone: "+62 819 0789 1234",
-      description:
-        "Software studio dan digital agency yang fokus membangun produk software modern, web platform, dan otomasi cerdas untuk instansi pemerintah dan UMKM di Kawasan Timur Indonesia.",
-      nib: "2810309482710",
-      legalName: "PT Sasak Digital Nusantara",
-    },
-    {
-      clerkId: "demo_clerk_jagungdompu",
-      email: "hr@agrodompu.co.id",
-      companyName: "PT Agro Sentra Dompu",
-      slug: "pt-agro-sentra-dompu",
-      industry: "Pertanian & Perkebunan",
-      companySize: "50-100 Karyawan",
-      locationSlug: "dompu",
-      address: "Kawasan Agribisnis Terpadu, Manggelewa, Kab. Dompu, NTB",
-      website: "https://agrodompu.co.id",
-      phone: "+62 373 21980",
-      description:
-        "Pelopor modernisasi rantai pasok jagung dan komoditas pangan unggulan di Pulau Sumbawa yang memberdayakan ribuan petani lokal Dompu dan Bima.",
-      nib: "1920394857102",
-      legalName: "PT Agro Sentra Dompu Sejahtera",
-    },
-  ];
 
-  const companyMap = new Map<string, { companyId: string; userId: string }>();
-
-  for (const c of companiesData) {
-    const user = await prisma.user.upsert({
-      where: { email: c.email },
-      update: { role: UserRole.COMPANY },
-      create: {
-        clerkId: c.clerkId,
-        email: c.email,
-        role: UserRole.COMPANY,
-      },
-    });
-
-    const locationId = locationMap.get(c.locationSlug);
-
-    const company = await prisma.company.upsert({
-      where: { slug: c.slug },
-      update: {
-        name: c.companyName,
-        industry: c.industry,
-        companySize: c.companySize,
-        locationId,
-        address: c.address,
-        website: c.website,
-        phone: c.phone,
-        description: c.description,
-        isVerified: true,
-      },
-      create: {
-        userId: user.id,
-        name: c.companyName,
-        slug: c.slug,
-        industry: c.industry,
-        companySize: c.companySize,
-        locationId,
-        address: c.address,
-        website: c.website,
-        phone: c.phone,
-        description: c.description,
-        isVerified: true,
-      },
-    });
-
-    // Verification record
-    await prisma.companyVerification.upsert({
-      where: { companyId: company.id },
-      update: {
-        legalName: c.legalName,
-        nib: c.nib,
-        status: VerificationStatus.APPROVED,
-      },
-      create: {
-        companyId: company.id,
-        legalName: c.legalName,
-        nib: c.nib,
-        address: c.address,
-        phone: c.phone,
-        email: c.email,
-        website: c.website,
-        documentUrl: `https://storage.sumopod.id/docs/${c.slug}-nib.pdf`,
-        status: VerificationStatus.APPROVED,
-      },
-    });
-
-    companyMap.set(c.slug, { companyId: company.id, userId: user.id });
-  }
-  console.log("✓ 5 Perusahaan Demo & Verifikasi NIB berhasil dibuat.");
-
-  // 4. Seed Lowongan Kerja Aktif
-  console.log("==> Menyiapkan Lowongan Kerja Realistis NTB...");
-
-  const jobsData = [
+    // Motor Besar
     {
-      companySlug: "pt-amman-mineral-nusa-tenggara",
-      categorySlug: "pertambangan-energi",
-      locationSlug: "sumbawa-barat",
-      title: "Mining Operations Superintendent",
-      slug: "mining-operations-superintendent-amman-sumbawa-barat",
-      type: JobType.FULL_TIME,
-      workplace: WorkplaceType.ONSITE,
-      salaryMin: 22000000,
-      salaryMax: 35000000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D4_S1,
-      experience: ExperienceLevel.FIVE_PLUS_YEARS,
+      name: "Cuci Salju Motor Besar (NMax/PCX)",
       description:
-        "Memimpin operasional penambangan open-pit di site Batu Hijau dengan standar keselamatan kerja pertambangan kelas dunia dan efisiensi optimal.",
-      responsibilities:
-        "- Mengawasi armada alat berat dan target produksi batuan/bijih harian.\n- Memastikan kepatuhan ketat terhadap Good Mining Practice dan K3L (Keselamatan & Kesehatan Kerja Tambang).\n- Mengoordinasikan shift tim operasi tambang dan berkolaborasi dengan divisi Mine Geology and Planning.",
-      requirements:
-        "- S1 Teknik Pertambangan / Geologi dari universitas terakreditasi.\n- Pengalaman minimal 5 tahun di posisi supervisi operasional tambang open pit.\n- Memiliki Sertifikat Pengawas Operasional Madya (POM) dari Kementerian ESDM.\n- Bersedia ditempatkan dengan sistem roster 4:2 di Site Batu Hijau, Sumbawa Barat.",
-      benefits:
-        "Akomodasi camp eksekutif, asuransi kesehatan swasta keluarga, bonus performa tahunan, tiket penerbangan roster gratis.",
-      skills: ["Mine Operations", "K3L Tambang", "Open Pit", "POM ESDM"],
+        "Cuci bodi jumbo, sela mesin, kolong belakang, dan semir ban",
+      vehicleCategory: VehicleCategory.MOTOR_BESAR,
+      price: 20000,
+      estimatedMinutes: 25,
+      defaultCommission: 7000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
     {
-      companySlug: "katamaran-hotel-and-resort",
-      categorySlug: "pariwisata-perhotelan",
-      locationSlug: "lombok-barat",
-      title: "Front Office Supervisor",
-      slug: "front-office-supervisor-katamaran-senggigi",
-      type: JobType.FULL_TIME,
-      workplace: WorkplaceType.ONSITE,
-      salaryMin: 4500000,
-      salaryMax: 6500000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D3,
-      experience: ExperienceLevel.ONE_TO_THREE_YEARS,
+      name: "Cuci Komplit + Detailing Rantai Motor Besar",
+      description: "Cuci bodi salju, degreaser rantai & gear, plus semir bodi",
+      vehicleCategory: VehicleCategory.MOTOR_BESAR,
+      price: 35000,
+      estimatedMinutes: 40,
+      defaultCommission: 12000,
+      commissionType: CommissionType.FIXED_NOMINAL,
+    },
+
+    // Motor Moge
+    {
+      name: "Cuci Premium Moge (250cc+)",
       description:
-        "Bertanggung jawab atas kelancaran operasional meja depan dan kepuasan tamu internasional maupun domestik di resor tepi pantai Senggigi.",
-      responsibilities:
-        "- Mengawasi proses check-in dan check-out tamu VIP dan tamu reguler.\n- Menangani pertanyaan, reservasi khusus, dan masukan tamu dengan respon cepat dan ramah.\n- Melatih staf front desk baru sesuai SOP hotel bintang 5.",
-      requirements:
-        "- Diploma Perhotelan / Pariwisata / Bahasa Asing.\n- Pengalaman minimal 2 tahun di Front Office hotel bintang 4/5.\n- Fasih berbahasa Inggris lisan dan tulisan.\n- Berpenampilan rapi, ramah, dan berorientasi pada keramahan khas Lombok.",
-      benefits:
-        "Gaji pokok, service charge kompetitif, BPJS Ketenagakerjaan & Kesehatan, makan harian staf.",
-      skills: [
-        "Customer Service",
-        "Opera PMS",
-        "English Fluency",
-        "Hospitality",
-      ],
+        "Cuci detail teliti, sela mesin V-Twin/In-Line, semir & wax bodi",
+      vehicleCategory: VehicleCategory.MOTOR_MOGE,
+      price: 50000,
+      estimatedMinutes: 45,
+      defaultCommission: 18000,
+      commissionType: CommissionType.FIXED_NOMINAL,
+    },
+
+    // Mobil Kecil
+    {
+      name: "Cuci Salju + Vacuum Mobil Kecil (Agya/Brio)",
+      description:
+        "Cuci bodi salju aktif, vacuum kabin, bersihkan karpet, semir ban",
+      vehicleCategory: VehicleCategory.MOBIL_KECIL,
+      price: 40000,
+      estimatedMinutes: 35,
+      defaultCommission: 12000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
     {
-      companySlug: "katamaran-hotel-and-resort",
-      categorySlug: "pariwisata-perhotelan",
-      locationSlug: "lombok-utara",
-      title: "Executive Sous Chef",
-      slug: "executive-sous-chef-lombok-utara",
-      type: JobType.FULL_TIME,
-      workplace: WorkplaceType.ONSITE,
-      salaryMin: 8000000,
-      salaryMax: 12000000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D3,
-      experience: ExperienceLevel.THREE_TO_FIVE_YEARS,
+      name: "Cuci Komplit + Wax Proteksi Mobil Kecil",
       description:
-        "Membantu Executive Chef dalam memimpin dapur utama resor, mengkreasikan menu Nusantara & Western modern dengan cita rasa lokal Lombok.",
-      responsibilities:
-        "- Mengontrol kualitas masakan, food cost, dan higienitas dapur (HACCP).\n- Mengembangkan menu musiman berbasis bahan laut segar tangkapan nelayan lokal NTB.\n- Mengatur jadwal shift dan mentoring tim chef junior.",
-      requirements:
-        "- Minimal D3 Manajemen Tata Boga / Seni Kuliner.\n- Pengalaman minimal 3 tahun sebagai Sous Chef di resor bintang 4 atau 5.\n- Menguasai teknik Western & Authentic Indonesian Cuisine.\n- Memiliki sertifikasi HACCP menjadi nilai tambah utama.",
-      benefits:
-        "Service charge bulanan, tunjangan tempat tinggal di sekitar Senggigi/Lombok Utara, seragam & laundry.",
-      skills: ["Culinary Art", "HACCP", "Food Costing", "Kitchen Management"],
+        "Cuci hidrolik, vacuum detail, wax bodi anti jamur, parfum kabin",
+      vehicleCategory: VehicleCategory.MOBIL_KECIL,
+      price: 65000,
+      estimatedMinutes: 50,
+      defaultCommission: 20000,
+      commissionType: CommissionType.FIXED_NOMINAL,
+    },
+
+    // Mobil Sedang
+    {
+      name: "Cuci Salju + Vacuum Mobil Sedang (Avanza/Xpander)",
+      description: "Cuci hidrolik kolong, vacuum jok & karpet, semir ban",
+      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
+      price: 50000,
+      estimatedMinutes: 40,
+      defaultCommission: 15000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
     {
-      companySlug: "pt-sasak-digital-nusantara",
-      categorySlug: "teknologi-informasi",
-      locationSlug: "kota-mataram",
-      title: "Fullstack Web Developer (Next.js & TypeScript)",
-      slug: "fullstack-developer-nextjs-typescript-mataram",
-      type: JobType.FULL_TIME,
-      workplace: WorkplaceType.HYBRID,
-      salaryMin: 6000000,
-      salaryMax: 10000000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D4_S1,
-      experience: ExperienceLevel.ONE_TO_THREE_YEARS,
+      name: "Cuci Komplit + Wax Mobil Sedang",
       description:
-        "Membangun dan mengembangkan platform aplikasi web modern berskala besar untuk klien korporasi dan pemerintah daerah di NTB.",
-      responsibilities:
-        "- Mengembangkan antarmuka responsif dengan Next.js App Router, React 19, dan Tailwind CSS.\n- Merancang REST & tRPC API dengan Node.js/Bun, Prisma, dan PostgreSQL/MySQL.\n- Melakukan code review, testing, dan kolaborasi dalam metodologi agile sprint.",
-      requirements:
-        "- Berpengalaman minimal 2 tahun menggunakan TypeScript, React / Next.js, dan database SQL.\n- Memahami prinsip arsitektur Server Components, RESTful design, dan Git flow.\n- Berdomisili atau bersedia kerja secara hybrid di Kota Mataram, Lombok.\n- Terbuka untuk Fresh Graduate dengan portofolio proyek yang kuat.",
-      benefits:
-        "Fleksibilitas hybrid working (3 hari kantor, 2 hari remote), anggaran pelatihan / sertifikasi, tunjangan perangkat laptop.",
-      skills: ["TypeScript", "Next.js", "React", "Prisma", "Tailwind CSS"],
+        "Cuci hidrolik, semir kolong, vacuum, poles bodi wax, dan semir ban",
+      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
+      price: 75000,
+      estimatedMinutes: 60,
+      defaultCommission: 25000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
     {
-      companySlug: "pt-bank-ntb-syariah",
-      categorySlug: "keuangan-perbankan",
-      locationSlug: "kota-mataram",
-      title: "Customer Service & Teller Operasional",
-      slug: "customer-service-teller-bank-ntb-syariah-mataram",
-      type: JobType.CONTRACT,
-      workplace: WorkplaceType.ONSITE,
-      salaryMin: 3500000,
-      salaryMax: 4500000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D4_S1,
-      experience: ExperienceLevel.FRESH_GRADUATE,
+      name: "Fogging Disinfektan Interior Mobil",
+      description: "Pengasapan antibakteri aroma kopi / lemon interior kabin",
+      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
+      price: 35000,
+      estimatedMinutes: 15,
+      defaultCommission: 10000,
+      commissionType: CommissionType.FIXED_NOMINAL,
+    },
+
+    // Mobil Besar
+    {
+      name: "Cuci Salju + Vacuum Mobil Besar (Pajero/Fortuner)",
       description:
-        "Menjadi garda terdepan pelayanan transaksi dan konsultasi produk keuangan syariah kepada nasabah Bank NTB Syariah Cabang Utama Mataram.",
-      responsibilities:
-        "- Melayani transaksi tunai dan non-tunai nasabah secara akurat dan tepat waktu.\n- Memberikan edukasi produk simpanan dan pembiayaan syariah.\n- Menjaga kepatuhan terhadap regulasi perbankan OJK dan Dewan Syariah Nasional.",
-      requirements:
-        "- Lulusan D3/S1 semua jurusan dengan IPK minimal 3.00.\n- Berusia maksimal 25 tahun (Fresh Graduate dipersilakan melamar).\n- Memiliki integritas tinggi, ketelitian angka, dan kemampuan komunikasi yang ramah.\n- Bersedia ditempatkan di wilayah Kantor Cabang Mataram.",
-      benefits:
-        "Gaji sesuai UMP NTB + insentif kehadiran, seragam dinas, BPJS Ketenagakerjaan & Kesehatan, jenjang karir pegawai tetap.",
-      skills: [
-        "Perbankan Syariah",
-        "Customer Service",
-        "Komunikasi",
-        "Cash Handling",
-      ],
+        "Cuci hidrolik kolong besar, semir ban tebal, vacuum kabin 3 baris",
+      vehicleCategory: VehicleCategory.MOBIL_BESAR,
+      price: 60000,
+      estimatedMinutes: 50,
+      defaultCommission: 18000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
     {
-      companySlug: "pt-agro-sentra-dompu",
-      categorySlug: "pertanian-perkebunan",
-      locationSlug: "dompu",
-      title: "Agronomist / Field Officer Jagung Hibrida",
-      slug: "agronomist-field-officer-dompu-sumbawa",
-      type: JobType.FULL_TIME,
-      workplace: WorkplaceType.ONSITE,
-      salaryMin: 5000000,
-      salaryMax: 7500000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D4_S1,
-      experience: ExperienceLevel.ONE_TO_THREE_YEARS,
+      name: "Cuci Hidrolik + Semir Kolong + Wax Mobil Besar",
       description:
-        "Mendampingi kelompok tani binaan di sentra perkebunan jagung Dompu dalam penerapan teknik budidaya modern dan pencegahan hama.",
-      responsibilities:
-        "- Memberikan penyuluhan penggunaan bibit unggul, pemupukan berimbang, dan manajemen air.\n- Melakukan monitoring kualitas tanah dan estimasi tonase hasil panen periodik.\n- Mengelola data demplot riset lapangan bersama tim R&D.",
-      requirements:
-        "- S1 Agronomi / Agroteknologi / Ilmu Tanah / Hama & Penyakit Tumbuhan.\n- Memiliki SIM C dan menyukai mobilitas tinggi di wilayah pedesaan Kabupaten Dompu.\n- Memahami karakteristik komoditas jagung kering pipil.\n- Diutamakan putra daerah Dompu atau Bima.",
-      benefits:
-        "Kendaraan dinas operasional motor trail, tempat tinggal mess lapangan, tunjangan pulsa & kuota data.",
-      skills: [
-        "Agronomi",
-        "Budidaya Jagung",
-        "Penyuluhan Tani",
-        "Soil Management",
-      ],
+        "Cuci lengkap kolong, poles wax kilap anti air (daun talas), interior",
+      vehicleCategory: VehicleCategory.MOBIL_BESAR,
+      price: 90000,
+      estimatedMinutes: 70,
+      defaultCommission: 30000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
+
+    // Kendaraan Lain
     {
-      companySlug: "katamaran-hotel-and-resort",
-      categorySlug: "pariwisata-perhotelan",
-      locationSlug: "lombok-tengah",
-      title: "Tour Coordinator & Guest Relations Specialist",
-      slug: "tour-coordinator-guest-relations-mandalika",
-      type: JobType.CONTRACT,
-      workplace: WorkplaceType.ONSITE,
-      salaryMin: 4000000,
-      salaryMax: 6000000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D3,
-      experience: ExperienceLevel.ONE_TO_THREE_YEARS,
-      description:
-        "Merancang paket eksplorasi wisata budaya Lombok dan Sirkuit Internasional Mandalika bagi wisatawan nusantara maupun mancanegara.",
-      responsibilities:
-        "- Menyusun jadwal itinerary tur private (Desa Sade, Pantai Kuta Mandalika, Bukit Merese).\n- Berkoordinasi dengan pemandu lokal, sopir, dan mitra vendor atraksi wisata NTB.\n- Memastikan keselamatan dan kepuasan pengalaman berlibur setiap tamu.",
-      requirements:
-        "- D3/S1 Pariwisata / Sastra Inggris / Hubungan Masyarakat.\n- Menguasai wawasan mendalam tentang sejarah, budaya Sasak, dan destinasi wisata Lombok.\n- Lancar berkomunikasi dalam Bahasa Inggris (kemampuan bahasa asing lain seperti Mandarin/Jerman nilai plus).",
-      benefits:
-        "Komisi paket tur, makan siang harian, asuransi kecelakaan kerja.",
-      skills: [
-        "Tour Planning",
-        "Customer Relations",
-        "English",
-        "Sasak Culture Knowledge",
-      ],
-    },
-    {
-      companySlug: "pt-sasak-digital-nusantara",
-      categorySlug: "konstruksi-properti",
-      locationSlug: "lombok-timur",
-      title: "Site Supervisor Konstruksi Bangunan Publik",
-      slug: "site-supervisor-konstruksi-lombok-timur",
-      type: JobType.FULL_TIME,
-      workplace: WorkplaceType.ONSITE,
-      salaryMin: 7000000,
-      salaryMax: 11000000,
-      isSalaryDisclosed: true,
-      education: EducationLevel.D4_S1,
-      experience: ExperienceLevel.THREE_TO_FIVE_YEARS,
-      description:
-        "Mengawasi implementasi gambar kerja arsitektur dan struktur pada proyek revitalisasi fasilitas publik di Kabupaten Lombok Timur.",
-      responsibilities:
-        "- Memastikan metode kerja kontraktor sesuai spesifikasi teknis dan RAB.\n- Memeriksa mutu material beton, baja, dan finishing di lapangan.\n- Membuat laporan progress mingguan (kurva S) dan memimpin toolbox safety meeting.",
-      requirements:
-        "- S1 Teknik Sipil / Arsitektur.\n- Pengalaman minimal 3 tahun sebagai Pelaksana / Site Supervisor proyek gedung atau infrastruktur.\n- Menguasai AutoCAD dan interpretasi gambar kerja struktur.\n- Memiliki SKA / SKK Konstruksi muda menjadi nilai tambah.",
-      benefits: "Gaji pokok, tunjangan proyek lapangan, asuransi BPJS lengkap.",
-      skills: [
-        "Site Supervision",
-        "AutoCAD",
-        "Manajemen Proyek",
-        "K3 Konstruksi",
-      ],
+      name: "Cuci Eksterior Pick-up / Mobil Box",
+      description: "Cuci bersih bodi luar, bak kargo, dan semir roda",
+      vehicleCategory: VehicleCategory.KENDARAAN_LAIN,
+      price: 50000,
+      estimatedMinutes: 40,
+      defaultCommission: 15000,
+      commissionType: CommissionType.FIXED_NOMINAL,
     },
   ];
 
-  for (const j of jobsData) {
-    const comp = companyMap.get(j.companySlug);
-    if (!comp) continue;
-
-    const locId = locationMap.get(j.locationSlug);
-    const catId = categoryMap.get(j.categorySlug);
-    if (!locId || !catId) continue;
-
-    const job = await prisma.job.upsert({
-      where: { slug: j.slug },
-      update: {
-        title: j.title,
-        type: j.type,
-        workplace: j.workplace,
-        salaryMin: j.salaryMin,
-        salaryMax: j.salaryMax,
-        isSalaryDisclosed: j.isSalaryDisclosed,
-        education: j.education,
-        experience: j.experience,
-        description: j.description,
-        responsibilities: j.responsibilities,
-        requirements: j.requirements,
-        benefits: j.benefits,
-        status: "PUBLISHED",
-        locationId: locId,
-        categoryId: catId,
-        companyId: comp.companyId,
-        creatorId: comp.userId,
-        applicationMethod: ApplicationMethod.KERJANTB,
+  const createdServices = [];
+  for (const s of servicesData) {
+    const created = await prisma.servicePackage.create({
+      data: {
+        ...s,
+        outletId: outletMataram.id,
       },
-      create: {
-        title: j.title,
-        slug: j.slug,
-        type: j.type,
-        workplace: j.workplace,
-        salaryMin: j.salaryMin,
-        salaryMax: j.salaryMax,
-        isSalaryDisclosed: j.isSalaryDisclosed,
-        education: j.education,
-        experience: j.experience,
-        description: j.description,
-        responsibilities: j.responsibilities,
-        requirements: j.requirements,
-        benefits: j.benefits,
-        status: "PUBLISHED",
-        locationId: locId,
-        categoryId: catId,
-        companyId: comp.companyId,
-        creatorId: comp.userId,
-        applicationMethod: ApplicationMethod.KERJANTB,
+    });
+    createdServices.push(created);
+  }
+
+  // 7. Buat Master Produk Ritel & Minuman
+  console.log("☕ 7. Membuat Master Produk Ritel Toko Kasir...");
+  const retailProductsData = [
+    {
+      sku: "RTL-001",
+      name: "Kopi Gula Aren Dingin 250ml",
+      category: "Minuman",
+      costPrice: 6000,
+      sellingPrice: 12000,
+      stock: 50,
+      minStockAlert: 10,
+      imageUrl:
+        "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=300&q=80",
+    },
+    {
+      sku: "RTL-002",
+      name: "Air Mineral Dingin 600ml",
+      category: "Minuman",
+      costPrice: 2500,
+      sellingPrice: 5000,
+      stock: 100,
+      minStockAlert: 20,
+      imageUrl:
+        "https://images.unsplash.com/photo-1560023907-5f339617ea30?w=300&q=80",
+    },
+    {
+      sku: "RTL-003",
+      name: "Parfum Mobil Aroma Kopi (Kaleng)",
+      category: "Aksesoris",
+      costPrice: 18000,
+      sellingPrice: 35000,
+      stock: 25,
+      minStockAlert: 5,
+      imageUrl:
+        "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?w=300&q=80",
+    },
+    {
+      sku: "RTL-004",
+      name: "Kain Lap Microfiber Tebal 40x40cm",
+      category: "Aksesoris",
+      costPrice: 7000,
+      sellingPrice: 15000,
+      stock: 40,
+      minStockAlert: 8,
+      imageUrl:
+        "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=300&q=80",
+    },
+    {
+      sku: "RTL-005",
+      name: "Keripik Singkong Balado Renyah",
+      category: "Makanan",
+      costPrice: 4000,
+      sellingPrice: 8000,
+      stock: 30,
+      minStockAlert: 5,
+      imageUrl:
+        "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&q=80",
+    },
+  ];
+
+  const createdRetail = [];
+  for (const p of retailProductsData) {
+    const created = await prisma.retailProduct.create({
+      data: {
+        ...p,
+        outletId: outletMataram.id,
+      },
+    });
+    createdRetail.push(created);
+
+    await prisma.stockMovement.create({
+      data: {
+        outletId: outletMataram.id,
+        retailProductId: created.id,
+        movementType: MovementType.IN_RESTOCK,
+        quantity: p.stock,
+        balanceAfter: p.stock,
+        referenceNote: "Inisialisasi Stok Awal Toko",
+      },
+    });
+  }
+
+  // 8. Buat Master Bahan Baku Operasional Cuci
+  console.log("🧪 8. Membuat Master Bahan Baku Operasional Cuci...");
+  const operationalSuppliesData = [
+    {
+      sku: "OPS-001",
+      name: "Shampo Salju Konsentrat (Touchless Pink)",
+      unit: "Liter",
+      stock: 150,
+      minStockAlert: 20,
+      usagePerCarWash: 0.1, // 100ml per mobil
+      usagePerMotorWash: 0.04, // 40ml per motor
+    },
+    {
+      sku: "OPS-002",
+      name: "Silicone Emulsion Semir Ban Wet Look",
+      unit: "Liter",
+      stock: 50,
+      minStockAlert: 10,
+      usagePerCarWash: 0.05,
+      usagePerMotorWash: 0.02,
+    },
+    {
+      sku: "OPS-003",
+      name: "Degreaser Pembersih Velg & Kolong",
+      unit: "Liter",
+      stock: 35,
+      minStockAlert: 5,
+      usagePerCarWash: 0.08,
+      usagePerMotorWash: 0.03,
+    },
+    {
+      sku: "OPS-004",
+      name: "Interior Dressing Protectant (Matte Finish)",
+      unit: "Liter",
+      stock: 20,
+      minStockAlert: 5,
+      usagePerCarWash: 0.03,
+      usagePerMotorWash: 0.01,
+    },
+  ];
+
+  for (const s of operationalSuppliesData) {
+    const created = await prisma.operationalSupply.create({
+      data: {
+        ...s,
+        outletId: outletMataram.id,
       },
     });
 
-    // Seed skills for this job
-    for (const skillName of j.skills) {
-      const skillSlug = skillName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-
-      const skill = await prisma.skill.upsert({
-        where: { slug: skillSlug },
-        update: { name: skillName },
-        create: { name: skillName, slug: skillSlug },
-      });
-
-      await prisma.jobSkill.upsert({
-        where: {
-          jobId_skillId: {
-            jobId: job.id,
-            skillId: skill.id,
-          },
-        },
-        update: {},
-        create: {
-          jobId: job.id,
-          skillId: skill.id,
-        },
-      });
-    }
+    await prisma.stockMovement.create({
+      data: {
+        outletId: outletMataram.id,
+        operationalSupplyId: created.id,
+        movementType: MovementType.IN_RESTOCK,
+        quantity: s.stock,
+        balanceAfter: s.stock,
+        referenceNote: "Inisialisasi Stok Bahan Baku Awal",
+      },
+    });
   }
 
-  console.log("✓ 8 Lowongan Kerja NTB Realistis berhasil disiapkan.");
-  console.log("==> Seeding seluruh data KerjaNTB sukses!");
+  // 9. DATA MASTER MEMBER PELANGGAN & KENDARAAN TERKUNCI (CONTOH NYATA LOYALITAS)
+  console.log("\n🚗 9. Membuat Data Member Pelanggan & Kendaraan Terkunci...");
+
+  // Pelanggan 1: Ibu Linda Permata - CONTOH SIAP KLAIM PROMO CUCI 10x GRATIS 1x
+  // Plat DR 1001 AB sudah 10 kali kunjungan!
+  const customer1 = await prisma.customer.create({
+    data: {
+      phone: "085233445566",
+      fullName: "Ibu Linda Permata",
+      notes:
+        "Pelanggan setia. Mobil Brio merah selalu minta semir ban wet look.",
+      loyaltyPoints: 50,
+      totalVisits: 10,
+    },
+  });
+
+  const vehicle1 = await prisma.vehicle.create({
+    data: {
+      licensePlate: "DR 1001 AB",
+      category: VehicleCategory.MOBIL_KECIL,
+      brand: "Honda",
+      model: "Brio RS",
+      color: "Merah Rallye",
+      customerId: customer1.id,
+      totalVisits: 10, // KUNJUNGAN KE-10: BERHAK CUCI 10X GRATIS 1X!
+    },
+  });
+
+  // Pelanggan 2: Hendra Wijaya - CONTOH SISA 1x LAGI MENUJU CUCI GRATIS KE-10
+  // Plat DR 1888 XY sudah 9 kali kunjungan!
+  const customer2 = await prisma.customer.create({
+    data: {
+      phone: "081234567890",
+      fullName: "Hendra Wijaya",
+      notes: "VIP Member, minta velg dipoles ekstra bersih.",
+      loyaltyPoints: 35,
+      totalVisits: 9,
+    },
+  });
+
+  const vehicle2 = await prisma.vehicle.create({
+    data: {
+      licensePlate: "DR 1888 XY",
+      category: VehicleCategory.MOBIL_SEDANG,
+      brand: "Mitsubishi",
+      model: "Xpander Cross",
+      color: "Hitam Metalik",
+      customerId: customer2.id,
+      totalVisits: 9, // Kunjungan ke-9 (Sisa 1x lagi menuju Cuci Gratis ke-10!)
+    },
+  });
+
+  // Pelanggan 3: Budi Setiawan - CONTOH 1 PELANGGAN DENGAN 2 KENDARAAN (KUNJUNGAN TERPISAH AMAN)
+  // Menunjukkan bahwa kunjungan Fortuner (5x) dan XMAX (2x) tidak dicampur aduk!
+  const customer3 = await prisma.customer.create({
+    data: {
+      phone: "087812345678",
+      fullName: "Budi Setiawan",
+      notes:
+        "Punya mobil Fortuner dan motor XMAX. Poin loyalitas terakumulasi di akun WA.",
+      loyaltyPoints: 42,
+      totalVisits: 7, // 5 kunjungan mobil + 2 kunjungan motor
+    },
+  });
+
+  const vehicle3Mobil = await prisma.vehicle.create({
+    data: {
+      licensePlate: "DR 7777 WQ",
+      category: VehicleCategory.MOBIL_BESAR,
+      brand: "Toyota",
+      model: "Fortuner GR Sport",
+      color: "Putih Mutiara",
+      customerId: customer3.id,
+      totalVisits: 5, // Kunjungan mobil: 5x
+    },
+  });
+
+  const vehicle3Motor = await prisma.vehicle.create({
+    data: {
+      licensePlate: "DR 3333 AZ",
+      category: VehicleCategory.MOTOR_BESAR,
+      brand: "Yamaha",
+      model: "XMAX 250",
+      color: "Matte Dark Blue",
+      customerId: customer3.id,
+      totalVisits: 2, // Kunjungan motor: 2x
+    },
+  });
+
+  // Pelanggan 4: dr. Farhan Malik - CONTOH MEMBER VIP SALDO POIN BANYAK
+  const customer4 = await prisma.customer.create({
+    data: {
+      phone: "081999888777",
+      fullName: "dr. Farhan Malik, Sp.A",
+      notes: "Suka ambil cuci komplit wax + fogging interior.",
+      loyaltyPoints: 85, // Banyak poin, siap tukar poin untuk diskon
+      totalVisits: 8,
+    },
+  });
+
+  const vehicle4 = await prisma.vehicle.create({
+    data: {
+      licensePlate: "DR 88 EV",
+      category: VehicleCategory.MOBIL_SEDANG,
+      brand: "Hyundai",
+      model: "Ioniq 5 Electric",
+      color: "Gravity Gold",
+      customerId: customer4.id,
+      totalVisits: 8,
+    },
+  });
+
+  // Pelanggan 5: Dedi Kurniawan - Motor NMax
+  const customer5 = await prisma.customer.create({
+    data: {
+      phone: "081998877665",
+      fullName: "Dedi Kurniawan",
+      notes: "Suka cuci salju sambil ngopi dingin.",
+      loyaltyPoints: 15,
+      totalVisits: 3,
+    },
+  });
+
+  const vehicle5 = await prisma.vehicle.create({
+    data: {
+      licensePlate: "DR 5432 KL",
+      category: VehicleCategory.MOTOR_BESAR,
+      brand: "Yamaha",
+      model: "NMax 155 Connected",
+      color: "Abu-Abu Doff",
+      customerId: customer5.id,
+      totalVisits: 3,
+    },
+  });
+
+  // Pelanggan 6: Ahmad Zaki - Member Baru Walk-in
+  const customer6 = await prisma.customer.create({
+    data: {
+      phone: "082145678901",
+      fullName: "Ahmad Zaki",
+      notes: "Walk-in pertama kali.",
+      loyaltyPoints: 5,
+      totalVisits: 1,
+    },
+  });
+
+  const vehicle6 = await prisma.vehicle.create({
+    data: {
+      licensePlate: "DR 1234 BZ",
+      category: VehicleCategory.MOBIL_SEDANG,
+      brand: "Toyota",
+      model: "Innova Zenix",
+      color: "Silver Metallic",
+      customerId: customer6.id,
+      totalVisits: 1,
+    },
+  });
+
+  // 10. Buat Log Loyalitas Masa Lalu (CustomerLoyaltyLog)
+  console.log("📜 10. Membuat Riwayat Mutasi Poin Loyalitas & Reward...");
+  await prisma.customerLoyaltyLog.createMany({
+    data: [
+      {
+        customerId: customer1.id,
+        pointsChanged: 4,
+        balanceAfter: 46,
+        description: "Poin transaksi cuci Brio RS (#KNC-20260915-012)",
+        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      },
+      {
+        customerId: customer1.id,
+        pointsChanged: 4,
+        balanceAfter: 50,
+        description: "Poin transaksi cuci Brio RS (#KNC-20260925-008)",
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+      {
+        customerId: customer2.id,
+        pointsChanged: 5,
+        balanceAfter: 35,
+        description: "Poin transaksi cuci Xpander (#KNC-20260928-004)",
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      },
+      {
+        customerId: customer4.id,
+        pointsChanged: 11,
+        balanceAfter: 85,
+        description:
+          "Poin transaksi cuci Ioniq 5 + Fogging (#KNC-20260920-001)",
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+    ],
+  });
+
+  // 11. BUAT TIKET ANTREAN KANBAN LIVE (SEMUA STATUS: QUEUED, WASHING, DRYING, READY, COMPLETED)
+  console.log("🎫 11. Membuat Tiket Antrean Kanban Live (Semua Status)...");
+
+  const serviceMobilSedang = createdServices.find(
+    (s) => s.name === "Cuci Salju + Vacuum Mobil Sedang (Avanza/Xpander)"
+  )!;
+  const serviceMotorBesar = createdServices.find(
+    (s) => s.name === "Cuci Salju Motor Besar (NMax/PCX)"
+  )!;
+  const serviceMobilKecil = createdServices.find(
+    (s) => s.name === "Cuci Salju + Vacuum Mobil Kecil (Agya/Brio)"
+  )!;
+  const serviceMobilBesar = createdServices.find(
+    (s) => s.name === "Cuci Salju + Vacuum Mobil Besar (Pajero/Fortuner)"
+  )!;
+  const serviceMobilKomplit = createdServices.find(
+    (s) => s.name === "Cuci Komplit + Wax Mobil Sedang"
+  )!;
+
+  // TIKET 1: Status READY (Brio Merah Linda - SIAP KLAIM CUCI 10X GRATIS DI KASIR!)
+  const ticketReady = await prisma.washTicket.create({
+    data: {
+      ticketNumber: "KNC-20261001-001",
+      outletId: outletMataram.id,
+      createdById: cashierMorning.id,
+      customerId: customer1.id,
+      vehicleId: vehicle1.id,
+      licensePlate: vehicle1.licensePlate,
+      vehicleCategory: vehicle1.category,
+      servicePackageId: serviceMobilKecil.id,
+      servicePrice: serviceMobilKecil.price,
+      status: TicketStatus.READY, // SUDAH SELESAI, SIAP DI KASIR
+      initialNotes: "Kondisi mulus, minta semir ban wet look.",
+      washingStartedAt: new Date(Date.now() - 45 * 60 * 1000),
+      dryingStartedAt: new Date(Date.now() - 20 * 60 * 1000),
+      readyAt: new Date(Date.now() - 5 * 60 * 1000),
+      subtotalServices: serviceMobilKecil.price,
+      subtotalRetail: 0,
+      totalAmount: serviceMobilKecil.price,
+      paymentStatus: PaymentStatus.UNPAID,
+    },
+  });
+
+  await prisma.ticketWasher.create({
+    data: {
+      ticketId: ticketReady.id,
+      employeeId: washer1.id,
+      commissionAmount: serviceMobilKecil.defaultCommission,
+    },
+  });
+
+  // TIKET 2: Status DRYING (Motor NMax Dedi - Sedang Dikeringkan & Poles Rantai)
+  const ticketDrying = await prisma.washTicket.create({
+    data: {
+      ticketNumber: "KNC-20261001-002",
+      outletId: outletMataram.id,
+      createdById: cashierMorning.id,
+      customerId: customer5.id,
+      vehicleId: vehicle5.id,
+      licensePlate: vehicle5.licensePlate,
+      vehicleCategory: vehicle5.category,
+      servicePackageId: serviceMotorBesar.id,
+      servicePrice: serviceMotorBesar.price,
+      status: TicketStatus.DRYING,
+      initialNotes: "Sela radiator agak berdebu.",
+      washingStartedAt: new Date(Date.now() - 30 * 60 * 1000),
+      dryingStartedAt: new Date(Date.now() - 8 * 60 * 1000),
+      subtotalServices: serviceMotorBesar.price,
+      subtotalRetail: 12000, // Ada beli kopi dingin
+      totalAmount: Number(serviceMotorBesar.price) + 12000,
+      paymentStatus: PaymentStatus.UNPAID,
+    },
+  });
+
+  await prisma.ticketWasher.create({
+    data: {
+      ticketId: ticketDrying.id,
+      employeeId: washer3.id,
+      commissionAmount: serviceMotorBesar.defaultCommission,
+    },
+  });
+
+  await prisma.ticketRetailItem.create({
+    data: {
+      ticketId: ticketDrying.id,
+      retailProductId: createdRetail[0].id, // Kopi Dingin
+      quantity: 1,
+      unitPrice: 12000,
+      subtotal: 12000,
+    },
+  });
+
+  // TIKET 3: Status WASHING (Mobil Xpander Hendra - Sedang Dicuci Hidrolik Salju)
+  const ticketWashing = await prisma.washTicket.create({
+    data: {
+      ticketNumber: "KNC-20261001-003",
+      outletId: outletMataram.id,
+      createdById: cashierMorning.id,
+      customerId: customer2.id,
+      vehicleId: vehicle2.id,
+      licensePlate: vehicle2.licensePlate,
+      vehicleCategory: vehicle2.category,
+      servicePackageId: serviceMobilSedang.id,
+      servicePrice: serviceMobilSedang.price,
+      status: TicketStatus.WASHING,
+      initialNotes: "Kolong banyak tanah merah sehabis dari Lombok Timur.",
+      washingStartedAt: new Date(Date.now() - 15 * 60 * 1000),
+      subtotalServices: serviceMobilSedang.price,
+      subtotalRetail: 0,
+      totalAmount: serviceMobilSedang.price,
+      paymentStatus: PaymentStatus.UNPAID,
+    },
+  });
+
+  await prisma.ticketWasher.create({
+    data: {
+      ticketId: ticketWashing.id,
+      employeeId: washer2.id,
+      commissionAmount: serviceMobilSedang.defaultCommission,
+    },
+  });
+
+  // TIKET 4: Status QUEUED (Fortuner Budi - Baru Masuk Antrean)
+  await prisma.washTicket.create({
+    data: {
+      ticketNumber: "KNC-20261001-004",
+      outletId: outletMataram.id,
+      createdById: cashierMorning.id,
+      customerId: customer3.id,
+      vehicleId: vehicle3Mobil.id,
+      licensePlate: vehicle3Mobil.licensePlate,
+      vehicleCategory: vehicle3Mobil.category,
+      servicePackageId: serviceMobilBesar.id,
+      servicePrice: serviceMobilBesar.price,
+      status: TicketStatus.QUEUED,
+      initialNotes: "Mobil tinggi, gunakan tangga cuci atap.",
+      subtotalServices: serviceMobilBesar.price,
+      subtotalRetail: 0,
+      totalAmount: serviceMobilBesar.price,
+      paymentStatus: PaymentStatus.UNPAID,
+    },
+  });
+
+  // 12. TIKET SELESAI (COMPLETED) & PEMBAYARAN SUKSES HARI INI
+  console.log("💰 12. Membuat Riwayat Transaksi Selesai & Pembayaran Kasir...");
+
+  // Transaksi Selesai 1: Ioniq 5 dr. Farhan (Lunas QRIS Rp 110.000)
+  const ticketCompleted1 = await prisma.washTicket.create({
+    data: {
+      ticketNumber: "KNC-20261001-000A",
+      outletId: outletMataram.id,
+      createdById: cashierMorning.id,
+      customerId: customer4.id,
+      vehicleId: vehicle4.id,
+      licensePlate: vehicle4.licensePlate,
+      vehicleCategory: vehicle4.category,
+      servicePackageId: serviceMobilKomplit.id,
+      servicePrice: serviceMobilKomplit.price,
+      status: TicketStatus.COMPLETED,
+      initialNotes: "Wax bodi mengkilap anti air.",
+      washingStartedAt: new Date(Date.now() - 120 * 60 * 1000),
+      dryingStartedAt: new Date(Date.now() - 75 * 60 * 1000),
+      readyAt: new Date(Date.now() - 35 * 60 * 1000),
+      completedAt: new Date(Date.now() - 25 * 60 * 1000),
+      subtotalServices: serviceMobilKomplit.price, // 75.000
+      subtotalRetail: 35000, // Parfum Mobil
+      totalAmount: 110000,
+      paidAmount: 110000,
+      paymentStatus: PaymentStatus.PAID,
+    },
+  });
+
+  await prisma.ticketWasher.create({
+    data: {
+      ticketId: ticketCompleted1.id,
+      employeeId: washer4.id,
+      commissionAmount: serviceMobilKomplit.defaultCommission,
+      isPaidToWasher: false,
+    },
+  });
+
+  await prisma.ticketRetailItem.create({
+    data: {
+      ticketId: ticketCompleted1.id,
+      retailProductId: createdRetail[2].id, // Parfum Mobil
+      quantity: 1,
+      unitPrice: 35000,
+      subtotal: 35000,
+    },
+  });
+
+  await prisma.payment.create({
+    data: {
+      ticketId: ticketCompleted1.id,
+      outletId: outletMataram.id,
+      cashierId: cashierMorning.id,
+      method: PaymentMethod.QRIS,
+      status: PaymentStatus.PAID,
+      totalAmount: 110000,
+      referenceNumber: "QRIS-NMID-99281729102",
+      paidAt: new Date(Date.now() - 25 * 60 * 1000),
+    },
+  });
+
+  // Transaksi Selesai 2: Innova Zenix Ahmad Zaki (Lunas Tunai CASH Rp 50.000)
+  const ticketCompleted2 = await prisma.washTicket.create({
+    data: {
+      ticketNumber: "KNC-20261001-000B",
+      outletId: outletMataram.id,
+      createdById: cashierMorning.id,
+      customerId: customer6.id,
+      vehicleId: vehicle6.id,
+      licensePlate: vehicle6.licensePlate,
+      vehicleCategory: vehicle6.category,
+      servicePackageId: serviceMobilSedang.id,
+      servicePrice: serviceMobilSedang.price,
+      status: TicketStatus.COMPLETED,
+      initialNotes: "Walk-in baru.",
+      washingStartedAt: new Date(Date.now() - 90 * 60 * 1000),
+      dryingStartedAt: new Date(Date.now() - 50 * 60 * 1000),
+      readyAt: new Date(Date.now() - 20 * 60 * 1000),
+      completedAt: new Date(Date.now() - 15 * 60 * 1000),
+      subtotalServices: serviceMobilSedang.price,
+      subtotalRetail: 0,
+      totalAmount: serviceMobilSedang.price,
+      paidAmount: serviceMobilSedang.price,
+      paymentStatus: PaymentStatus.PAID,
+    },
+  });
+
+  await prisma.ticketWasher.create({
+    data: {
+      ticketId: ticketCompleted2.id,
+      employeeId: washer1.id,
+      commissionAmount: serviceMobilSedang.defaultCommission,
+      isPaidToWasher: false,
+    },
+  });
+
+  await prisma.payment.create({
+    data: {
+      ticketId: ticketCompleted2.id,
+      outletId: outletMataram.id,
+      cashierId: cashierMorning.id,
+      method: PaymentMethod.CASH,
+      status: PaymentStatus.PAID,
+      totalAmount: 50000,
+      cashGiven: 100000,
+      changeGiven: 50000,
+      paidAt: new Date(Date.now() - 15 * 60 * 1000),
+    },
+  });
+
+  // 13. Log WhatsApp dan Audit Log
+  console.log("📲 13. Membuat Log Notifikasi WhatsApp & Audit Trail...");
+  await prisma.whatsAppLog.create({
+    data: {
+      ticketId: ticketReady.id,
+      recipientPhone: customer1.phone,
+      messageType: "STATUS_READY",
+      status: WhatsAppDeliveryStatus.SENT,
+      sentAt: new Date(Date.now() - 5 * 60 * 1000),
+    },
+  });
+
+  await prisma.whatsAppLog.create({
+    data: {
+      ticketId: ticketCompleted1.id,
+      recipientPhone: customer4.phone,
+      messageType: "RECEIPT",
+      status: WhatsAppDeliveryStatus.DELIVERED,
+      sentAt: new Date(Date.now() - 24 * 60 * 1000),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      outletId: outletMataram.id,
+      actorId: cashierMorning.id,
+      actorRole: "CASHIER",
+      action: "TICKET_CREATED",
+      entityType: "WashTicket",
+      entityId: ticketReady.id,
+      metadata: {
+        ticketNumber: ticketReady.ticketNumber,
+        plate: ticketReady.licensePlate,
+      },
+    },
+  });
+
+  console.log("\n=========================================================");
+  console.log("🎉 SEEDING KINCLONGIN BERHASIL 100%!");
+  console.log("=========================================================");
+  console.log(`
+  📊 Ringkasan Data Master yang Dibuat:
+  ---------------------------------------------------------
+  1. Cabang Outlet     : 2 Cabang (${outletMataram.name}, ${outletRembiga.name})
+  2. Akun Pengguna     : 4 User (Owner, Manajer, 2 Kasir Shift)
+  3. Karyawan Washer   : 4 Pekerja Cuci dengan PIN Kiosk:
+                         - Agus Santoso  (PIN: 1234)
+                         - Budi Pratama  (PIN: 5678)
+                         - Rian Hidayat  (PIN: 9999)
+                         - Ilham Saputra (PIN: 2026)
+  4. Paket Layanan     : ${createdServices.length} Paket Cuci (Motor & Mobil)
+  5. Produk Ritel      : ${createdRetail.length} Item Ritel Toko & Minuman
+  6. Bahan Baku Cuci   : ${operationalSuppliesData.length} Jenis Formula Shampo/Semir
+  7. Member Pelanggan  : 6 Pelanggan & 7 Kendaraan Terkunci:
+                         • Ibu Linda Permata (DR 1001 AB) -> KUNJUNGAN KE-10 (SIAP CUCI GRATIS!)
+                         • Hendra Wijaya (DR 1888 XY)     -> Kunjungan ke-9 (Sisa 1x lagi!)
+                         • Budi Setiawan (Multi-Kendaraan)-> Fortuner (5x), XMAX (2x) Terkunci Aman
+                         • dr. Farhan Malik (DR 88 EV)    -> Saldo 85 Poin Loyalitas
+                         • Dedi Kurniawan (DR 5432 KL)    -> Motor NMax (3x Kunjungan)
+                         • Ahmad Zaki (DR 1234 BZ)        -> Member Baru Walk-in (1x)
+  8. Tiket Antrean POS : 4 Tiket Berjalan di Kanban:
+                         - READY    : Plat DR 1001 AB (Siap Klaim Promo Cuci 10x di Kasir)
+                         - DRYING   : Plat DR 5432 KL (NMax sedang dilap)
+                         - WASHING  : Plat DR 1888 XY (Xpander di pit basah)
+                         - QUEUED   : Plat DR 7777 WQ (Fortuner di antrean masuk)
+  9. Transaksi Lunas   : 2 Tiket Selesai (QRIS Rp 110rb & CASH Rp 50rb)
+  10. Riwayat Langganan: 1 Langganan SaaS Cabang (Rp 300.000 / 6 Bulan Approved)
+  ---------------------------------------------------------
+  `);
 }
 
 main()
   .catch((e) => {
-    console.error("Gagal melakukan seeding:", e);
+    console.error("❌ Terjadi kesalahan fatal saat seeding:", e);
     process.exit(1);
   })
   .finally(async () => {

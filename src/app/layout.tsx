@@ -20,11 +20,16 @@ const defaultBaseUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(defaultBaseUrl),
   title: {
-    default: "New Project — Next.js Starter",
-    template: "%s | New Project",
+    default: "Kinclongin — POS & Operasional Cuci Mobil & Motor",
+    template: "%s | Kinclongin",
   },
   description:
-    "A modern Next.js 16 fullstack starter template with Clerk Auth, Prisma ORM, Tailwind CSS v4, and shadcn/ui.",
+    "Sistem POS pintar dan manajemen operasional pencucian mobil, motor & auto-detailing multi-cabang.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

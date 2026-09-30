@@ -4,7 +4,7 @@ import { UploadCategory } from "@/lib/storage/upload";
 export interface DirectUploadOptions {
   file: File;
   category: UploadCategory;
-  companyId?: string;
+  outletId?: string;
   onProgress?: (percent: number) => void;
 }
 
@@ -21,7 +21,7 @@ export interface DirectUploadResult {
 export async function uploadFileToStorage({
   file,
   category,
-  companyId,
+  outletId,
   onProgress,
 }: DirectUploadOptions): Promise<DirectUploadResult> {
   // 1. Minta Presigned URL dari Server Action
@@ -30,7 +30,7 @@ export async function uploadFileToStorage({
     fileType: file.type || "application/octet-stream",
     fileSize: file.size,
     category,
-    companyId,
+    outletId,
   });
 
   if (!response.success || !response.data) {
@@ -89,7 +89,6 @@ export async function uploadFileToStorage({
   return {
     storageKey,
     fileUrl: computedFileUrl,
-    // publicUrl diisi computedFileUrl agar form client yang mengecek res.publicUrl tetap berhasil
     publicUrl: publicUrl || computedFileUrl,
     isPrivate,
   };
