@@ -1,0 +1,529 @@
+// This is your Prisma schema file for KerjaNTB (MySQL on SumoPod)
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+
+enum UserRole {
+  SUPERADMIN
+  COMPANY
+  INDIVIDUAL
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum WorkplaceType {
+  ONSITE
+  HYBRID
+  REMOTE
+}
+
+enum EducationLevel {
+  NONE
+  SMA_SMK
+  D1
+  D2
+  D3
+  D4_S1
+  S2
+  S3
+}
+
+enum ExperienceLevel {
+  FRESH_GRADUATE
+  LESS_THAN_1_YEAR
+  ONE_TO_THREE_YEARS
+  THREE_TO_FIVE_YEARS
+  FIVE_PLUS_YEARS
+}
+
+enum ApplicationMethod {
+  KERJANTB
+  EMAIL
+  EXTERNAL_URL
+}
+
+enum JobStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+  PAUSED
+  EXPIRED
+  CLOSED
+  REMOVED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  REVIEWING
+  SHORTLISTED
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ReportReason {
+  FRAUD
+  FAKE_JOB
+  REQUESTING_MONEY
+  MISLEADING_INFORMATION
+  SPAM
+  ILLEGAL_CONTENT
+  DISCRIMINATION
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTION_TAKEN
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// -------------------------------------------------------------
+// USER & PROFILE
+// -------------------------------------------------------------
+
+model User {
+  id            String      @id @default(cuid())
+  clerkId       String      @unique
+  email         String      @unique
+  role          UserRole    @default(INDIVIDUAL)
+  status        UserStatus  @default(ACTIVE)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relasi
+  profile       Profile?
+  company       Company?
+  resumes       Resume[]
+  applications  Application[]
+  savedJobs     SavedJob[]
+  createdJobs   Job[]              @relation("JobCreator")
+  reportsFiled  Report[]           @relation("UserReports")
+  notifications Notification[]
+  blogPosts     BlogPost[]
+  auditLogs     AuditLog[]         @relation("ActorAuditLogs")
+
+  @@index([role])
+  @@index([status])
+}
+
+model Profile {
+  id            String          @id @default(cuid())
+  userId        String          @unique
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName      String
+  avatarUrl     String?
+  phone         String?
+  bio           String?         @db.Text
+  dateOfBirth   DateTime?
+  gender        String?
+  locationId    String?
+  location      Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  address       String?
+  website       String?
+  linkedIn      String?
+  github        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([locationId])
+}
+
+// -------------------------------------------------------------
+// COMPANY & VERIFICATION
+// -------------------------------------------------------------
+
+model Company {
+  id            String          @id @default(cuid())
+  userId        String          @unique
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String          @unique
+  logoUrl       String?
+  description   String?         @db.LongText
+  industry      String?
+  companySize   String?
+  foundedYear   Int?
+  address       String?
+  locationId    String?
+  location      Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  phone         String?
+  email         String?
+  website       String?
+  linkedIn      String?
+  instagram     String?
+  isVerified    Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relasi
+  verification  CompanyVerification?
+  jobs          Job[]
+
+  @@index([name])
+  @@index([isVerified])
+  @@index([locationId])
+}
+
+model CompanyVerification {
+  id              String              @id @default(cuid())
+  companyId       String              @unique
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  legalName       String
+  nib             String              // Nomor Induk Berusaha (13 digit)
+  taxId           String?             // NPWP
+  address         String              @db.Text
+  phone           String
+  email           String
+  website         String?
+  documentUrl     String              // SumoPod S3 Private Document URL
+  status          VerificationStatus  @default(PENDING)
+  rejectionReason String?             @db.Text
+  reviewedByAdminId String?
+  reviewedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// JOB, CATEGORY & LOCATION (NTB)
+// -------------------------------------------------------------
+
+model Location {
+  id            String      @id @default(cuid())
+  name          String      @unique // e.g. "Kota Mataram", "Lombok Barat"
+  slug          String      @unique // e.g. "kota-mataram", "lombok-barat"
+  type          String      // "KOTA" atau "KABUPATEN"
+  province      String      @default("Nusa Tenggara Barat")
+  orderIndex    Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relasi
+  profiles      Profile[]
+  companies     Company[]
+  jobs          Job[]
+}
+
+model JobCategory {
+  id            String      @id @default(cuid())
+  name          String      @unique // e.g. "Teknologi & IT", "Hospitality & Pariwisata"
+  slug          String      @unique // e.g. "teknologi-it", "hospitality-pariwisata"
+  icon          String?     // Nama icon Lucide
+  description   String?     @db.Text
+  orderIndex    Int         @default(0)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relasi
+  jobs          Job[]
+
+  @@index([isActive])
+}
+
+model Job {
+  id                    String            @id @default(cuid())
+  creatorId             String
+  creator               User              @relation("JobCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  companyId             String?
+  company               Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  categoryId            String
+  category              JobCategory       @relation(fields: [categoryId], references: [id])
+  locationId            String
+  location              Location          @relation(fields: [locationId], references: [id])
+
+  title                 String
+  slug                  String            @unique
+  type                  JobType           @default(FULL_TIME)
+  workplace             WorkplaceType     @default(ONSITE)
+
+  salaryMin             Decimal?          @db.Decimal(12, 2)
+  salaryMax             Decimal?          @db.Decimal(12, 2)
+  isSalaryDisclosed     Boolean           @default(true)
+
+  description           String            @db.LongText
+  responsibilities      String            @db.LongText
+  requirements          String            @db.LongText
+  benefits              String?           @db.Text
+
+  education             EducationLevel    @default(NONE)
+  experience            ExperienceLevel   @default(FRESH_GRADUATE)
+  isFreshGraduate       Boolean           @default(false)
+
+  applicationMethod     ApplicationMethod @default(KERJANTB)
+  applicationEmail      String?
+  externalUrl           String?
+  deadline              DateTime?
+
+  status                JobStatus         @default(PENDING_REVIEW)
+  rejectionReason       String?           @db.Text
+  reviewedByAdminId     String?
+  reviewedAt            DateTime?
+
+  viewsCount            Int               @default(0)
+  appliesCount          Int               @default(0)
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relasi
+  skills                JobSkill[]
+  applications          Application[]
+  savedJobs             SavedJob[]
+  reports               Report[]
+
+  // Composite Indexes untuk optimasi search query MySQL
+  @@index([status, locationId, categoryId])
+  @@index([status, type, workplace])
+  @@index([status, createdAt])
+  @@index([companyId])
+  @@index([creatorId])
+  @@index([salaryMin, salaryMax])
+}
+
+model Skill {
+  id            String      @id @default(cuid())
+  name          String      @unique
+  slug          String      @unique
+  createdAt     DateTime    @default(now())
+
+  // Relasi
+  jobs          JobSkill[]
+}
+
+model JobSkill {
+  id            String      @id @default(cuid())
+  jobId         String
+  job           Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skillId       String
+  skill         Skill       @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, skillId])
+  @@index([skillId])
+}
+
+// -------------------------------------------------------------
+// APPLICATION & RESUME SYSTEM
+// -------------------------------------------------------------
+
+model Resume {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String          // e.g. "CV Fullstack Developer"
+  fileUrl       String?         // URL berkas di SumoPod S3 Private
+  summary       String?         @db.Text
+  isDefault     Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relasi
+  educations    Education[]
+  experiences   Experience[]
+  applications  Application[]
+
+  @@index([userId])
+}
+
+model Education {
+  id            String          @id @default(cuid())
+  resumeId      String
+  resume        Resume          @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  institution   String          // Nama Sekolah / Kampus (e.g. Universitas Mataram)
+  degree        String          // e.g. S1
+  fieldOfStudy  String          // e.g. Teknik Informatika
+  startDate     DateTime
+  endDate       DateTime?
+  isCurrent     Boolean         @default(false)
+  grade         String?         // IPK
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([resumeId])
+}
+
+model Experience {
+  id            String          @id @default(cuid())
+  resumeId      String
+  resume        Resume          @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  companyName   String
+  position      String
+  location      String?
+  startDate     DateTime
+  endDate       DateTime?
+  isCurrent     Boolean         @default(false)
+  description   String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([resumeId])
+}
+
+model Application {
+  id              String            @id @default(cuid())
+  jobId           String
+  job             Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId        String?
+  resume          Resume?           @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  coverLetter     String?           @db.Text
+  customResumeUrl String?           // Optional upload langsung saat apply
+  status          ApplicationStatus @default(APPLIED)
+  rejectionReason String?           @db.Text
+  interviewDate   DateTime?
+  notes           String?           @db.Text // Catatan internal perusahaan
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([jobId, userId]) // 1 user hanya bisa melamar 1x per lowongan
+  @@index([userId])
+  @@index([jobId, status])
+}
+
+model SavedJob {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId         String
+  job           Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
+}
+
+// -------------------------------------------------------------
+// TRUST, SAFETY & REPORTS
+// -------------------------------------------------------------
+
+model Report {
+  id              String        @id @default(cuid())
+  jobId           String
+  job             Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reporterId      String
+  reporter        User          @relation("UserReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  reason          ReportReason
+  description     String        @db.Text
+  status          ReportStatus  @default(PENDING)
+  actionNotes     String?       @db.Text
+  resolvedByAdminId String?
+  resolvedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([jobId])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// CMS, BLOG & SETTINGS
+// -------------------------------------------------------------
+
+model BlogPost {
+  id              String        @id @default(cuid())
+  authorId        String
+  author          User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title           String
+  slug            String        @unique
+  excerpt         String        @db.Text
+  content         String        @db.LongText
+  coverImageUrl   String?
+  category        String
+  status          PostStatus    @default(DRAFT)
+  seoTitle        String?
+  seoDescription  String?       @db.Text
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([slug])
+}
+
+model FAQ {
+  id            String        @id @default(cuid())
+  question      String
+  answer        String        @db.Text
+  category      String        @default("Umum")
+  orderIndex    Int           @default(0)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([category, isActive])
+}
+
+model Notification {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  message       String        @db.Text
+  type          String        // e.g. "APPLICATION_STATUS", "JOB_APPROVED", "VERIFICATION"
+  isRead        Boolean       @default(false)
+  linkUrl       String?
+  createdAt     DateTime      @default(now())
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id            String        @id @default(cuid())
+  actorId       String
+  actor         User          @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: Cascade)
+  actorRole     String
+  action        String        // e.g. "JOB_APPROVE", "COMPANY_VERIFY", "USER_SUSPEND"
+  entityType    String        // "Job", "Company", "User", "Report"
+  entityId      String
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime      @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

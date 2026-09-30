@@ -1,0 +1,10 @@
+.next
+node_modules
+dist
+build
+.agents
+.claude
+bun.lock
+package-lock.json
+public
+src/generated
