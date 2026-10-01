@@ -13,11 +13,24 @@ export const metadata: Metadata = {
     "Pantau antrean cuci mobil & motor real-time dari cuci basah, pengeringan, hingga siap bayar.",
 };
 
-export default async function POSAntreanPage() {
+interface POSAntreanPageProps {
+  searchParams?: Promise<{
+    tab?: string;
+    [key: string]: string | string[] | undefined;
+  }>;
+}
+
+export default async function POSAntreanPage({
+  searchParams,
+}: POSAntreanPageProps) {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/sign-in");
   }
+
+  const queryParams = searchParams ? await searchParams : undefined;
+  const initialTab =
+    typeof queryParams?.tab === "string" ? queryParams.tab : undefined;
 
   let outletId = user.outletId;
   if (!outletId) {
@@ -89,7 +102,11 @@ export default async function POSAntreanPage() {
         </p>
       </div>
 
-      <KanbanBoard initialTickets={tickets} outletId={outletId} />
+      <KanbanBoard
+        initialTickets={tickets}
+        outletId={outletId}
+        initialTab={initialTab}
+      />
     </div>
   );
 }

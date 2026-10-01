@@ -90,9 +90,13 @@ export function CreateMemberDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="h-9 gap-1.5 font-bold shadow-xs">
+        <Button
+          size="sm"
+          className="h-9 gap-1.5 px-2.5 font-bold shadow-xs sm:px-3"
+        >
           <UserPlus className="h-4 w-4" />
-          <span>Tambah Staf</span>
+          <span className="hidden sm:inline">Tambah Staf</span>
+          <span className="text-xs sm:hidden">Staf</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">

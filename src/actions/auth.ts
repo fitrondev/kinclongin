@@ -76,8 +76,6 @@ export async function registerOwnerAction(
       counter++;
     }
 
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 hari uji coba
-
     // Buat User dan Outlet dalam transaksi database terisolasi
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -97,9 +95,6 @@ export async function registerOwnerAction(
           address: outletAddress,
           phone: outletPhone,
           ownerId: user.id,
-          subscriptionStatus: "TRIAL",
-          trialEndsAt,
-          subscriptionExpiresAt: trialEndsAt,
           isActive: true,
         },
       });

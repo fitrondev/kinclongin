@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Coins,
   CreditCard,
+  Crown,
   Gift,
   Loader2,
   Minus,
@@ -107,6 +108,7 @@ export function CheckoutView({
   const [referenceNumber, setReferenceNumber] = useState("");
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [redeemPoints, setRedeemPoints] = useState<number>(0);
+  const [registerMembershipNow, setRegisterMembershipNow] = useState(false);
 
   // Modal struk setelah sukses bayar
   const [receiptDialogData, setReceiptDialogData] =
@@ -145,9 +147,10 @@ export function CheckoutView({
 
   const pointsDiscount = Math.floor(redeemPoints / 10) * 1000;
   const effectiveDiscount = discountAmount + pointsDiscount;
+  const membershipFee = registerMembershipNow ? 50000 : 0;
   const grandTotal = Math.max(
     0,
-    servicePrice + retailTotal - effectiveDiscount
+    servicePrice + retailTotal + membershipFee - effectiveDiscount
   );
 
   const changeGiven =
@@ -211,6 +214,7 @@ export function CheckoutView({
         retailItems: itemsPayload,
         discountAmount,
         redeemPoints,
+        registerMembership: registerMembershipNow,
       });
 
       if (!res.success || !res.data) {
@@ -230,6 +234,15 @@ export function CheckoutView({
           subtotal: prod.sellingPrice * qty,
         };
       });
+
+      if (registerMembershipNow) {
+        itemsForReceipt.push({
+          name: "Pendaftaran Member Resmi (1 Tahun)",
+          qty: 1,
+          price: 50000,
+          subtotal: 50000,
+        });
+      }
 
       const washerNames = ticket.washers
         ?.map((w) => w.washer.fullName)
@@ -497,6 +510,53 @@ export function CheckoutView({
             </div>
           </div>
 
+          {/* Upsell Pendaftaran Member di Checkout (Rp 50.000) */}
+          {ticket.customer && (
+            <Card
+              className={`border transition-all ${
+                registerMembershipNow
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-xs"
+                  : "border-border/80 bg-muted/20"
+              }`}
+            >
+              <CardContent className="flex items-center justify-between gap-3 p-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-black shadow-xs">
+                    <Crown className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-foreground text-xs font-black">
+                        Daftar Member Kinclongin
+                      </span>
+                      <Badge className="h-4 bg-amber-500 px-1.5 text-[10px] font-black text-black">
+                        Rp 50.000
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground mt-0.5 text-[11px]">
+                      WhatsApp {ticket.customer.phone} &bull; Poin akumulatif
+                      tiap transaksi &bull; Hak promo Cuci 10x Gratis 1x
+                    </p>
+                  </div>
+                </div>
+
+                <label className="flex shrink-0 cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={registerMembershipNow}
+                    onChange={(e) => setRegisterMembershipNow(e.target.checked)}
+                    className="h-4 w-4 rounded border-amber-400 text-amber-600 accent-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-foreground text-xs font-bold">
+                    {registerMembershipNow
+                      ? "✓ Terpilih (+Rp 50rb)"
+                      : "Daftar (+Rp 50rb)"}
+                  </span>
+                </label>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Opsi Redeem Poin Loyalty Pelanggan */}
           {ticket.customer && ticket.customer.loyaltyPoints >= 10 && (
             <Card className="border-amber-500/30 bg-amber-500/5">
@@ -565,6 +625,15 @@ export function CheckoutView({
                     </span>
                   </div>
                 )}
+                {registerMembershipNow && (
+                  <div className="flex justify-between font-semibold text-amber-600 dark:text-amber-400">
+                    <span className="flex items-center gap-1">
+                      <Crown className="h-3.5 w-3.5" /> Pendaftaran Member (1
+                      Thn)
+                    </span>
+                    <span>+{formatRupiah(50000)}</span>
+                  </div>
+                )}
                 {effectiveDiscount > 0 && (
                   <div className="flex justify-between font-semibold text-emerald-600">
                     <span>Potongan Diskon / Poin</span>
@@ -582,6 +651,22 @@ export function CheckoutView({
                   {formatRupiah(grandTotal)}
                 </span>
               </div>
+
+              {/* Akumulasi Poin Badge */}
+              {ticket.customer && (
+                <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />{" "}
+                    Poin diperoleh transaksi ini:
+                  </span>
+                  <strong className="font-bold">
+                    +
+                    {Math.floor((servicePrice + retailTotal) / 1000) +
+                      (registerMembershipNow ? 50 : 0)}{" "}
+                    Poin
+                  </strong>
+                </div>
+              )}
 
               {/* Pilihan Metode Bayar */}
               <div className="space-y-2">

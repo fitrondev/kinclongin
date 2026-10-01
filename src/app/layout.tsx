@@ -24,8 +24,8 @@ export const metadata: Metadata = {
     "Sistem POS pintar dan manajemen operasional pencucian mobil, motor & auto-detailing multi-cabang.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logoipsum.svg",
+    apple: "/logoipsum.svg",
   },
 };
 

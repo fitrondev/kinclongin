@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -137,8 +138,14 @@ export function TrackingView({ initialData }: { initialData: TrackingData }) {
         {/* Header Outlet */}
         <header className="bg-card flex items-center justify-between rounded-2xl border p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded-xl font-black shadow-sm">
-              <Sparkles className="h-5 w-5" />
+            <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl p-1.5 shadow-sm">
+              <Image
+                src="/logoipsum.svg"
+                alt="Kinclongin Logo"
+                width={32}
+                height={32}
+                className="h-7 w-7 object-contain"
+              />
             </div>
             <div>
               <h1 className="text-base font-extrabold tracking-tight">

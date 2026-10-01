@@ -44,8 +44,14 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
         {/* Top Header Logo */}
         <div className="relative z-10">
           <div className="flex items-center gap-3">
-            <div className="bg-primary shadow-primary/40 flex h-11 w-11 items-center justify-center rounded-xl shadow-lg ring-2 ring-white/20">
-              <Sparkles className="text-primary-foreground h-6 w-6" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 p-2 shadow-lg ring-2 ring-white/20 backdrop-blur-md">
+              <Image
+                src="/logoipsum.svg"
+                alt="Kinclongin Logo"
+                width={36}
+                height={36}
+                className="h-8 w-8 object-contain"
+              />
             </div>
             <div>
               <span className="font-mono text-2xl font-black tracking-tight text-white uppercase">
@@ -133,8 +139,14 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
         <div className="flex items-center justify-between">
           {/* Logo khusus tampilan mobile */}
           <div className="flex items-center gap-2 lg:hidden">
-            <div className="bg-primary flex h-9 w-9 items-center justify-center rounded-lg shadow-sm">
-              <Sparkles className="text-primary-foreground h-5 w-5" />
+            <div className="bg-primary/10 flex h-9 w-9 items-center justify-center rounded-lg p-1.5 shadow-sm">
+              <Image
+                src="/logoipsum.svg"
+                alt="Kinclongin Logo"
+                width={28}
+                height={28}
+                className="h-6 w-6 object-contain"
+              />
             </div>
             <span className="text-foreground font-mono text-xl font-black tracking-tight uppercase">
               Kinclongin

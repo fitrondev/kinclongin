@@ -325,7 +325,7 @@ export default async function DashboardPage() {
       {/* Visualisasi Grafik: 2 Kolom Baris 1 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Tren Omset 7 Hari (8 Kolom) */}
-        <Card className="bg-card border shadow-xs lg:col-span-8">
+        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-8">
           <CardHeader className="p-5 pb-2">
             <div className="flex items-center justify-between">
               <div>
@@ -340,13 +340,13 @@ export default async function DashboardPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-5 pt-2">
+          <CardContent className="min-w-0 p-5 pt-2">
             <RevenueTrendChart data={metrics.sevenDaysTrend} />
           </CardContent>
         </Card>
 
         {/* Komposisi Omset: Jasa vs Ritel (4 Kolom) */}
-        <Card className="bg-card border shadow-xs lg:col-span-4">
+        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-4">
           <CardHeader className="p-5 pb-2">
             <CardTitle className="text-base font-extrabold">
               Komposisi Pendapatan
@@ -355,7 +355,7 @@ export default async function DashboardPage() {
               Perbandingan omset jasa cuci vs barang ritel.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-5 pt-0">
+          <CardContent className="min-w-0 p-5 pt-0">
             <RevenueCompositionChart data={metrics.revenueComposition} />
           </CardContent>
         </Card>
@@ -364,7 +364,7 @@ export default async function DashboardPage() {
       {/* Visualisasi Grafik Baris 2: Jam Sibuk & Kategori Kendaraan */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Jam Sibuk Peak Hours (7 Kolom) */}
-        <Card className="bg-card border shadow-xs lg:col-span-7">
+        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-7">
           <CardHeader className="p-5 pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-extrabold">
               <Clock className="text-primary h-4 w-4" />
@@ -374,13 +374,13 @@ export default async function DashboardPage() {
               Distribusi kedatangan kendaraan untuk optimasi jadwal kerja staf.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-5 pt-2">
+          <CardContent className="min-w-0 p-5 pt-2">
             <PeakHoursChart data={metrics.peakHours} />
           </CardContent>
         </Card>
 
         {/* Distribusi Kategori Kendaraan (5 Kolom) */}
-        <Card className="bg-card border shadow-xs lg:col-span-5">
+        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-5">
           <CardHeader className="p-5 pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-extrabold">
               <Car className="h-4 w-4 text-purple-600" />
@@ -390,7 +390,7 @@ export default async function DashboardPage() {
               Perbandingan motor vs tipe mobil di outlet.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-5 pt-2">
+          <CardContent className="min-w-0 p-5 pt-2">
             <VehicleCategoryChart data={metrics.vehicleCategories} />
           </CardContent>
         </Card>

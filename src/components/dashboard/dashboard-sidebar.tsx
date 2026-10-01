@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
   Boxes,
   CreditCard,
+  Crown,
   Droplets,
   ExternalLink,
   Gift,
@@ -65,8 +67,14 @@ export function DashboardSidebar({
       {/* 1. Header: Branding & Multi-Tenant Organization Switcher */}
       <SidebarHeader className="border-b p-3 sm:p-4">
         <div className="flex items-center gap-3">
-          <div className="bg-primary text-primary-foreground shadow-primary/30 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md">
-            <Sparkles className="h-5 w-5" />
+          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl p-1.5 shadow-sm">
+            <Image
+              src="/logoipsum.svg"
+              alt="Kinclongin Logo"
+              width={32}
+              height={32}
+              className="h-7 w-7 object-contain"
+            />
           </div>
           <div className="flex min-w-0 flex-1 flex-col group-data-[collapsible=icon]:hidden">
             <div className="flex items-center gap-1.5">
@@ -294,49 +302,24 @@ export function DashboardSidebar({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Langganan Cabang Rp 50.000 */}
+              {/* Langganan Member Pelanggan */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname.startsWith(
-                    "/dashboard/pengaturan/langganan"
-                  )}
-                  tooltip="Status Langganan Cabang"
+                  isActive={pathname.startsWith("/dashboard/membership")}
+                  tooltip="Langganan Member Pelanggan"
                   className={
-                    pathname.startsWith("/dashboard/pengaturan/langganan")
+                    pathname.startsWith("/dashboard/membership")
                       ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
                       : ""
                   }
                 >
-                  <Link href="/dashboard/pengaturan/langganan">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>Langganan Cabang (Rp 50rb)</span>
+                  <Link href="/dashboard/membership">
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span>Langganan Member</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-
-              {/* Superadmin Verification */}
-              {isOwner && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(
-                      "/dashboard/admin/subscriptions"
-                    )}
-                    tooltip="Verifikasi Pembayaran Superadmin"
-                    className={
-                      pathname.startsWith("/dashboard/admin/subscriptions")
-                        ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                        : ""
-                    }
-                  >
-                    <Link href="/dashboard/admin/subscriptions">
-                      <Receipt className="h-4 w-4" />
-                      <span>Approval Superadmin</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
 
             {/* Quick Action: Tambah Staf Baru Langsung */}

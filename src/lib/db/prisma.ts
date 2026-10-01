@@ -18,10 +18,13 @@ function makePrismaClient(): PrismaClient {
       parsed.searchParams.set("allowPublicKeyRetrieval", "true");
     }
     if (!parsed.searchParams.has("connectionLimit")) {
-      parsed.searchParams.set("connectionLimit", "10");
+      parsed.searchParams.set("connectionLimit", "25");
     }
     if (!parsed.searchParams.has("connectTimeout")) {
-      parsed.searchParams.set("connectTimeout", "15000");
+      parsed.searchParams.set("connectTimeout", "20000");
+    }
+    if (!parsed.searchParams.has("acquireTimeout")) {
+      parsed.searchParams.set("acquireTimeout", "20000");
     }
     connectionString = parsed.toString();
   } catch {

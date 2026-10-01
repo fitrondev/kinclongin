@@ -46,7 +46,6 @@ interface OutletItem {
   address: string;
   phone: string;
   isActive: boolean;
-  subscriptionStatus: string;
   isCurrent: boolean;
 }
 
@@ -304,10 +303,13 @@ export function OutletSwitcher({
               />
             </div>
 
-            <div className="border-primary/20 bg-primary/5 text-muted-foreground rounded-xl border p-3 text-xs">
-              Tarif langganan cabang flat{" "}
-              <strong className="text-foreground">Rp 50.000 / bulan</strong>{" "}
-              setelah masa uji coba 14 hari berakhir.
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400">
+              <Sparkles className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span>
+                Penambahan cabang baru{" "}
+                <strong className="font-bold">100% Gratis</strong> tanpa batasan
+                atau biaya langganan.
+              </span>
             </div>
 
             <DialogFooter className="pt-2">

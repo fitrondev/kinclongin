@@ -56,16 +56,16 @@ export async function canAccessStorageFile(
       return true;
     }
 
-    // Cek bukti transfer langganan SaaS outlet
-    const subPayment = await prisma.tenantSubscriptionPayment.findFirst({
+    // Cek bukti pembayaran langganan member pelanggan
+    const memberPayment = await prisma.customerMembership.findFirst({
       where: {
-        proofImageUrl: { contains: cleanKey },
+        paymentRef: { contains: cleanKey },
         outletId: user.outletId ?? undefined,
       },
       select: { id: true },
     });
 
-    return !!subPayment;
+    return !!memberPayment;
   }
 
   return false;

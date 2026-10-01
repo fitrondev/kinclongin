@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 import { prisma } from "@/lib/db/prisma";
 
 export interface DashboardMetrics {
@@ -35,11 +37,11 @@ export interface DashboardMetrics {
     totalAmount: number;
     status: string;
     paymentStatus: string;
-    createdAt: Date;
+    createdAt: string | Date;
   }>;
 }
 
-export async function getDashboardMetrics(
+async function fetchDashboardMetricsFromDB(
   outletId: string
 ): Promise<DashboardMetrics> {
   const now = new Date();
@@ -295,7 +297,25 @@ export async function getDashboardMetrics(
       totalAmount: Number(t.totalAmount),
       status: t.status,
       paymentStatus: t.paymentStatus,
-      createdAt: t.createdAt,
+      createdAt: t.createdAt.toISOString(),
     })),
   };
 }
+
+/**
+ * Mengambil ringkasan metrik dasbor operasional dengan Data Caching terkelola.
+ * - Cache disimpan selama 30 detik (ISR background revalidation)
+ * - Di-purge instan via revalidateTag("dashboard-metrics") saat ada mutasi tiket/transaksi baru
+ */
+export const getDashboardMetrics = async (
+  outletId: string
+): Promise<DashboardMetrics> => {
+  return unstable_cache(
+    async () => fetchDashboardMetricsFromDB(outletId),
+    [`dashboard-metrics-${outletId}`],
+    {
+      revalidate: 30,
+      tags: ["dashboard-metrics", `outlet-${outletId}`],
+    }
+  )();
+};

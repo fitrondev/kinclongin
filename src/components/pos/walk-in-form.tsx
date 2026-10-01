@@ -9,6 +9,7 @@ import {
   Car,
   CheckCircle2,
   Clock,
+  Crown,
   HelpCircle,
   Loader2,
   Phone,
@@ -125,6 +126,17 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
     lastServicePackageName?: string;
   } | null>(null);
 
+  // Status Langganan Member Aktif
+  const [activeMembership, setActiveMembership] = useState<{
+    id: string;
+    planName: string;
+    remainingQuota: number;
+    totalQuota: number;
+    endDate: string;
+    discountPercent: number;
+  } | null>(null);
+  const [useMembershipQuota, setUseMembershipQuota] = useState(false);
+
   // Simpan master data layanan ke IndexedDB untuk cadangan offline
   useEffect(() => {
     if (servicePackages && servicePackages.length > 0) {
@@ -179,12 +191,21 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
               visitsToReward: data.vehicle.visitsToReward ?? 0,
               lastServicePackageName: data.lastService?.servicePackageName,
             });
-            toast.info(
-              `Kendaraan dikenali: ${data.vehicle.brand || ""} ${data.vehicle.model || ""}`
-            );
+            if (data.membership) {
+              setActiveMembership(data.membership);
+              setUseMembershipQuota(true);
+            } else {
+              setActiveMembership(null);
+              setUseMembershipQuota(false);
+            }
+          } else {
+            setActiveMembership(null);
+            setUseMembershipQuota(false);
           }
         } else {
           setRecognizedCustomer(null);
+          setActiveMembership(null);
+          setUseMembershipQuota(false);
         }
       } catch {
         // Silently ignore lookup error
@@ -201,6 +222,8 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
     setLicensePlate(formatted);
     if (formatted.replace(/\s+/g, "").trim().length < 4) {
       setRecognizedCustomer(null);
+      setActiveMembership(null);
+      setUseMembershipQuota(false);
     }
   };
 
@@ -272,6 +295,8 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
           brand: brand || undefined,
           model: model || undefined,
           color: color || undefined,
+          useMembershipQuota: useMembershipQuota && !!activeMembership,
+          membershipId: activeMembership?.id,
         });
 
         if (!res.success || !res.data) {
@@ -369,6 +394,53 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
                   </span>
                 )}
               </div>
+
+              {/* Banner Langganan Member Aktif */}
+              {activeMembership && (
+                <div className="mt-3 space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-black shadow-xs">
+                        <Crown className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black tracking-wide text-amber-800 uppercase dark:text-amber-300">
+                          Langganan Member Aktif: {activeMembership.planName}
+                        </span>
+                        <p className="text-muted-foreground text-[11px]">
+                          Sisa kuota:{" "}
+                          <strong className="text-foreground">
+                            {activeMembership.remainingQuota}x
+                          </strong>{" "}
+                          dari {activeMembership.totalQuota}x cuci (Berlaku s/d{" "}
+                          {new Date(
+                            activeMembership.endDate
+                          ).toLocaleDateString("id-ID")}
+                          )
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/50 bg-amber-500/20 text-xs font-bold text-amber-800 dark:text-amber-200"
+                    >
+                      {activeMembership.remainingQuota} Kuota
+                    </Badge>
+                  </div>
+
+                  <label className="flex cursor-pointer items-center gap-2 border-t border-amber-500/20 pt-1">
+                    <input
+                      type="checkbox"
+                      checked={useMembershipQuota}
+                      onChange={(e) => setUseMembershipQuota(e.target.checked)}
+                      className="h-4 w-4 rounded border-amber-400 text-amber-600 accent-amber-600 focus:ring-amber-500"
+                    />
+                    <span className="text-foreground text-xs font-bold">
+                      Gunakan 1 Kuota Langganan Member Cuci (Biaya Cuci Rp 0)
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -551,8 +623,17 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
             </>
           ) : (
             <>
-              <Sparkles className="h-6 w-6" />
-              <span>Daftarkan Antrean & Cetak Tiket</span>
+              {useMembershipQuota && activeMembership ? (
+                <>
+                  <Crown className="h-6 w-6 text-amber-300" />
+                  <span>Daftarkan Antrean (Pakai Kuota Member - Rp 0)</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-6 w-6" />
+                  <span>Daftarkan Antrean & Cetak Tiket</span>
+                </>
+              )}
             </>
           )}
         </Button>

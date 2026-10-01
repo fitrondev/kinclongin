@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { z } from "zod";
 
@@ -22,7 +22,7 @@ export type ActionResponse<T = unknown> = {
   fieldErrors?: Record<string, string[]>;
 };
 
-export const createWashTicketSchema = z.object({
+const createWashTicketSchema = z.object({
   outletId: z.string().min(1, "ID Cabang wajib diisi"),
   licensePlate: z
     .string()
@@ -45,6 +45,8 @@ export const createWashTicketSchema = z.object({
   brand: z.string().optional(),
   model: z.string().optional(),
   color: z.string().optional(),
+  useMembershipQuota: z.boolean().optional(),
+  membershipId: z.string().optional(),
 });
 
 export type CreateWashTicketInput = z.infer<typeof createWashTicketSchema>;
@@ -85,6 +87,8 @@ export async function createWashTicketAction(
       brand,
       model,
       color,
+      useMembershipQuota,
+      membershipId,
     } = parsed.data;
 
     // 1. Ambil detail paket layanan cuci
@@ -169,7 +173,39 @@ export async function createWashTicketAction(
       },
     });
 
-    // 5. Buat Tiket Cuci Baru di status QUEUED
+    // 5. Periksa jika pelanggan menggunakan Kuota Langganan Member
+    let isMembershipWash = false;
+    let validMembershipId: string | null = null;
+    let finalDiscount = 0;
+    let finalTotal = Number(servicePackage.price);
+    let finalPaymentStatus: PaymentStatus = PaymentStatus.UNPAID;
+
+    if (useMembershipQuota && membershipId) {
+      const activeMembership = await prisma.customerMembership.findFirst({
+        where: {
+          id: membershipId,
+          status: "ACTIVE",
+          remainingQuota: { gt: 0 },
+        },
+      });
+
+      if (activeMembership) {
+        // Potong 1 kuota cuci dari langganan
+        await prisma.customerMembership.update({
+          where: { id: activeMembership.id },
+          data: {
+            remainingQuota: { decrement: 1 },
+          },
+        });
+        isMembershipWash = true;
+        validMembershipId = activeMembership.id;
+        finalDiscount = Number(servicePackage.price);
+        finalTotal = 0;
+        finalPaymentStatus = PaymentStatus.PAID;
+      }
+    }
+
+    // 6. Buat Tiket Cuci Baru di status QUEUED
     const ticket = await prisma.washTicket.create({
       data: {
         ticketNumber,
@@ -183,7 +219,12 @@ export async function createWashTicketAction(
         servicePrice: servicePackage.price,
         subtotalServices: servicePackage.price,
         subtotalRetail: 0,
-        totalAmount: servicePackage.price,
+        discountAmount: finalDiscount,
+        totalAmount: finalTotal,
+        paidAmount: isMembershipWash ? 0 : 0,
+        paymentStatus: finalPaymentStatus,
+        membershipId: validMembershipId,
+        isMembershipWash,
         status: TicketStatus.QUEUED,
         initialNotes: initialNotes || null,
         inspectionPhotos:
@@ -196,6 +237,8 @@ export async function createWashTicketAction(
     revalidatePath("/pos/antrean");
     revalidatePath("/pos/queue");
     revalidatePath("/pos");
+    revalidatePath("/dashboard");
+    updateTag("dashboard-metrics");
 
     return {
       success: true,
@@ -216,7 +259,7 @@ export async function createWashTicketAction(
   }
 }
 
-export const advanceTicketStatusSchema = z.object({
+const advanceTicketStatusSchema = z.object({
   ticketId: z.string().min(1, "ID Tiket wajib diisi"),
   nextStatus: z.enum([
     "WASHING",
@@ -327,6 +370,8 @@ export async function advanceTicketStatusAction(
     revalidatePath("/pos/antrean");
     revalidatePath("/pos/queue");
     revalidatePath("/pos");
+    revalidatePath("/dashboard");
+    updateTag("dashboard-metrics");
 
     return {
       success: true,
@@ -347,7 +392,7 @@ export async function advanceTicketStatusAction(
   }
 }
 
-export const checkoutTicketSchema = z.object({
+const checkoutTicketSchema = z.object({
   ticketId: z.string().min(1, "ID Tiket wajib diisi"),
   outletId: z.string().min(1, "ID Cabang wajib diisi"),
   paymentMethod: z.enum([
@@ -371,6 +416,7 @@ export const checkoutTicketSchema = z.object({
     .default([]),
   discountAmount: z.number().min(0).default(0),
   redeemPoints: z.number().int().min(0).default(0),
+  registerMembership: z.boolean().optional(),
 });
 
 export type CheckoutTicketInput = z.infer<typeof checkoutTicketSchema>;
@@ -415,6 +461,7 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
       retailItems,
       discountAmount,
       redeemPoints,
+      registerMembership,
     } = parsed.data;
 
     // 1. Ambil detail tiket cuci
@@ -446,13 +493,14 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
       0
     );
 
-    // Hitung potongan jika ada redeem poin (100 poin = Rp 10.000)
+    // Hitung potongan jika ada redeem poin (10 poin = Rp 1.000)
     const pointsDiscount = Math.floor(redeemPoints / 10) * 1000;
     const effectiveDiscount = discountAmount + pointsDiscount;
+    const membershipFee = registerMembership ? 50000 : 0;
 
     const totalAmount = Math.max(
       0,
-      servicePrice + subtotalRetail - effectiveDiscount
+      servicePrice + subtotalRetail + membershipFee - effectiveDiscount
     );
 
     let changeGiven = 0;
@@ -548,10 +596,39 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
         }
       }
 
-      // d. Akumulasi Poin Loyalitas Pelanggan (1 poin per Rp 10.000 belanja)
+      // d. Registrasi Membership Baru Rp 50.000 (Jika Dipilih Kasir)
+      let membershipBonusPoints = 0;
+      if (registerMembership && ticket.customerId) {
+        const startDate = new Date();
+        const endDate = new Date(
+          startDate.getTime() + 365 * 24 * 60 * 60 * 1000
+        );
+        await tx.customerMembership.create({
+          data: {
+            customerId: ticket.customerId,
+            outletId,
+            planName: "Member Loyalitas Kinclongin",
+            price: 50000,
+            startDate,
+            endDate,
+            status: "ACTIVE",
+            totalQuota: 999,
+            remainingQuota: 999,
+            discountPercent: 0,
+            paymentMethod: paymentMethod as PaymentMethod,
+            paymentRef: referenceNumber || null,
+            cashierId: user.id,
+            notes: "Pendaftaran member saat checkout kasir",
+          },
+        });
+        membershipBonusPoints = 50;
+      }
+
+      // e. Akumulasi Poin Loyalitas Pelanggan (1 poin per Rp 1.000 belanja)
       if (ticket.customerId) {
-        const pointsEarned = Math.floor(totalAmount / 10000);
-        const netPointsChange = pointsEarned - redeemPoints;
+        const pointsEarned = Math.floor((servicePrice + subtotalRetail) / 1000);
+        const netPointsChange =
+          pointsEarned - redeemPoints + membershipBonusPoints;
 
         const updatedCustomer = await tx.customer.update({
           where: { id: ticket.customerId },
@@ -568,7 +645,7 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
             balanceAfter: updatedCustomer.loyaltyPoints,
             description: `Transaksi Tiket #${ticket.ticketNumber} (+${pointsEarned} poin${
               redeemPoints > 0 ? `, -${redeemPoints} redeem` : ""
-            })`,
+            }${membershipBonusPoints > 0 ? `, +${membershipBonusPoints} bonus member` : ""})`,
           },
         });
       }
@@ -627,6 +704,8 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
     revalidatePath("/pos/queue");
     revalidatePath(`/pos/bayar/${ticketId}`);
     revalidatePath(`/pos/checkout/${ticketId}`);
+    revalidatePath("/dashboard");
+    updateTag("dashboard-metrics");
 
     return {
       success: true,

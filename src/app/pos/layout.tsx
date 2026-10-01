@@ -2,30 +2,9 @@ import { redirect } from "next/navigation";
 
 import { POSHeader } from "@/components/pos/header";
 import { OfflineIndicator } from "@/components/pos/offline-indicator";
-import { SubscriptionBanner } from "@/components/pos/subscription-banner";
 import { TicketStatus } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-
-function checkSubscriptionGrace(expiresAt?: Date | null) {
-  if (!expiresAt) {
-    return { isGracePeriod: false, graceDaysRemaining: 0, isHardLocked: false };
-  }
-  const diffMs = expiresAt.getTime() - new Date().getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) {
-    const daysPast = Math.abs(diffDays);
-    if (daysPast <= 3) {
-      return {
-        isGracePeriod: true,
-        graceDaysRemaining: 3 - daysPast,
-        isHardLocked: false,
-      };
-    }
-    return { isGracePeriod: false, graceDaysRemaining: 0, isHardLocked: true };
-  }
-  return { isGracePeriod: false, graceDaysRemaining: 0, isHardLocked: false };
-}
 
 export default async function POSLayout({
   children,
@@ -80,25 +59,16 @@ export default async function POSLayout({
     });
   }
 
-  // Periksa masa aktif langganan & grace period cabang
-  const { isGracePeriod, graceDaysRemaining, isHardLocked } =
-    checkSubscriptionGrace(outlet?.subscriptionExpiresAt);
-
   return (
     <div className="bg-background flex min-h-screen flex-col">
       <POSHeader
-        outletName={outlet?.name || "Kinclongin Cabang Pusat"}
+        outletId={outlet?.id}
+        outletName={outlet?.name || "Kinclongin Cabang Utama"}
         cashierName={user.fullName}
         stats={stats}
       />
-      <SubscriptionBanner
-        status={outlet?.subscriptionStatus}
-        isGracePeriod={isGracePeriod}
-        graceDaysRemaining={graceDaysRemaining}
-        isHardLocked={isHardLocked}
-      />
       <OfflineIndicator />
-      <main className="mx-auto w-full max-w-7xl flex-1 p-4 lg:p-6">
+      <main className="mx-auto w-full max-w-[1600px] flex-1 p-3 sm:p-4 lg:p-6">
         {children}
       </main>
     </div>

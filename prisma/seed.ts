@@ -64,9 +64,6 @@ async function main() {
       logoUrl:
         "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=400&q=80",
       ownerId: ownerUser.id,
-      subscriptionStatus: "ACTIVE",
-      subscriptionExpiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // Aktif 6 bulan ke depan
-      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       isActive: true,
     },
   });
@@ -80,9 +77,6 @@ async function main() {
       logoUrl:
         "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?w=400&q=80",
       ownerId: ownerUser.id,
-      subscriptionStatus: "ACTIVE",
-      subscriptionExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // Aktif 3 bulan ke depan
-      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       isActive: true,
     },
   });

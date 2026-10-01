@@ -97,10 +97,7 @@ model Outlet {
   isActive        Boolean @default(true)
   ownerId         String? // User ID pemilik cabang (Owner)
 
-  // Status Langganan SaaS (Flat Rp 50.000 / Bulan)
-  subscriptionStatus    String    @default("TRIAL") // TRIAL, ACTIVE, PENDING_VERIFICATION, EXPIRED
-  subscriptionExpiresAt DateTime? // Tanggal berakhir masa aktif
-  trialEndsAt           DateTime? // Tanggal berakhir uji coba 14 hari
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,7 +112,7 @@ model Outlet {
   operationalSupplies  OperationalSupply[]
   stockMovements       StockMovement[]
   payments             Payment[]
-  subscriptionPayments TenantSubscriptionPayment[]
+  customerMemberships  CustomerMembership[]
   auditLogs            AuditLog[]
 
   @@index([ownerId])
@@ -139,8 +136,9 @@ model User {
   ownedOutlets    Outlet[]     @relation("OwnedOutlets")
   employee        Employee?
   createdTickets  WashTicket[] @relation("TicketCreator")
-  handledPayments Payment[]    @relation("CashierPayments")
-  auditLogs       AuditLog[]   @relation("ActorAuditLogs")
+  handledPayments            Payment[]            @relation("CashierPayments")
+  handledCustomerMemberships CustomerMembership[] @relation("CashierMemberships")
+  auditLogs                  AuditLog[]           @relation("ActorAuditLogs")
 
   @@index([role])
   @@index([outletId])
@@ -187,6 +185,7 @@ model Customer {
   // Relasi
   vehicles    Vehicle[]
   washTickets WashTicket[]
+  memberships CustomerMembership[]
   loyaltyLogs CustomerLoyaltyLog[]
 
   @@index([phone])
@@ -252,6 +251,8 @@ model WashTicket {
   vehicleCategory  VehicleCategory
   servicePackageId String
   servicePrice     Decimal         @db.Decimal(10, 2)
+  membershipId     String?
+  isMembershipWash Boolean         @default(false)
 
   status           TicketStatus @default(QUEUED)
   initialNotes     String? // Catatan kondisi: "Baret spion kiri"
@@ -284,6 +285,7 @@ model WashTicket {
   washers        TicketWasher[]
   retailItems    TicketRetailItem[]
   payment        Payment?
+  membership     CustomerMembership?  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
   loyaltyLogs    CustomerLoyaltyLog[]
   whatsAppLogs   WhatsAppLog[]
 
@@ -476,25 +478,35 @@ model AuditLog {
 }
 
 // -------------------------------------------------------------
-// 8. PEMBAYARAN LANGGANAN SAAS (FLAT RP 50.000 / BULAN)
+// 8. LANGGANAN & MEMBERSHIP PELANGGAN
 // -------------------------------------------------------------
 
-model TenantSubscriptionPayment {
-  id              String    @id @default(cuid())
+model CustomerMembership {
+  id              String        @id @default(cuid())
+  customerId      String
   outletId        String
-  amount          Decimal   @default(50000) @db.Decimal(10, 2)
-  durationMonths  Int       @default(1) // 1 bulan (Rp 50rb), 3 bulan, 6 bulan, 12 bulan
-  paymentMethod   String // "BANK_TRANSFER" atau "QRIS"
-  proofImageUrl   String // URL foto bukti transfer/struk QRIS di SumoPod S3
-  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
-  rejectionReason String?
-  submittedAt     DateTime  @default(now())
-  verifiedAt      DateTime?
-  verifiedById    String? // User ID Superadmin verifikator
+  planName        String        // Contoh: "Paket Hemat 4x Cuci / Bulan", "VIP Unlimited 1 Bulan"
+  price           Decimal       @db.Decimal(10, 2)
+  startDate       DateTime      @default(now())
+  endDate         DateTime
+  status          String        @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  totalQuota      Int           @default(4) // Kuota cuci (misal 4x, atau 999 untuk unlimited)
+  remainingQuota  Int           @default(4) // Sisa kuota cuci yang dapat digunakan
+  discountPercent Int           @default(0) // Diskon tambahan produk ritel/detailing (misal 10%)
+  paymentMethod   PaymentMethod @default(CASH)
+  paymentRef      String?       // Nomor referensi QRIS / transfer
+  cashierId       String?       // Kasir yang memproses pendaftaran/pembayaran
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   // Relasi
-  outlet Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  outlet      Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  cashier     User?        @relation("CashierMemberships", fields: [cashierId], references: [id], onDelete: SetNull)
+  washTickets WashTicket[]
 
-  @@index([outletId, status])
-  @@index([submittedAt])
+  @@index([customerId, status])
+  @@index([outletId, endDate])
+  @@index([status])
 }

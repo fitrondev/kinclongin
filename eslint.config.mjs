@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".agents/**",
     ".claude/**",
+    // Prisma auto-generated files
+    "src/generated/**",
+    // Test coverage reports
+    "coverage/**",
   ]),
 ]);
 

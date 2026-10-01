@@ -219,7 +219,6 @@ export async function getUserOutletsAction(): Promise<
       address: string;
       phone: string;
       isActive: boolean;
-      subscriptionStatus: string;
       isCurrent: boolean;
     }>
   >
@@ -259,7 +258,6 @@ export async function getUserOutletsAction(): Promise<
         address: o.address,
         phone: o.phone,
         isActive: o.isActive,
-        subscriptionStatus: o.subscriptionStatus,
         isCurrent: o.id === user.outletId,
       })),
     };
@@ -379,9 +377,6 @@ export async function createOutletAction(
       counter++;
     }
 
-    // Trial 14 hari
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-
     const outlet = await prisma.outlet.create({
       data: {
         name,
@@ -390,9 +385,6 @@ export async function createOutletAction(
         phone,
         logoUrl: logoUrl || null,
         ownerId: user.id,
-        subscriptionStatus: "TRIAL",
-        trialEndsAt,
-        subscriptionExpiresAt: trialEndsAt,
         isActive: true,
       },
     });

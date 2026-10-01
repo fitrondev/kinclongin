@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -65,8 +66,14 @@ export function LayarCuciHeader({
       <div className="flex h-16 items-center justify-between px-4 sm:h-20 sm:px-6">
         {/* Logo & Mode Layar Cuci */}
         <div className="flex items-center gap-3">
-          <div className="bg-primary text-primary-foreground flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm sm:h-12 sm:w-12">
-            <Tablet className="h-6 w-6" />
+          <div className="bg-primary/10 flex h-11 w-11 items-center justify-center rounded-2xl p-2 shadow-sm sm:h-12 sm:w-12">
+            <Image
+              src="/logoipsum.svg"
+              alt="Kinclongin Logo"
+              width={36}
+              height={36}
+              className="h-8 w-8 object-contain"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -125,12 +132,12 @@ export function LayarCuciHeader({
           <Button
             asChild
             variant="ghost"
-            className="text-muted-foreground hover:text-foreground hidden h-11 gap-1.5 px-3 text-xs sm:h-12 lg:flex"
+            className="text-muted-foreground hover:text-foreground flex h-11 gap-1.5 px-2.5 text-xs sm:h-12 sm:px-3"
             title="Kembali ke Layar Antrean Kasir"
           >
             <Link href="/pos/antrean">
               <LayoutGrid className="h-4 w-4" />
-              <span>Antrean Kasir</span>
+              <span className="hidden md:inline">Antrean Kasir</span>
             </Link>
           </Button>
 

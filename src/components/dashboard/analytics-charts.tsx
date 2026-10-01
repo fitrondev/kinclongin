@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   Area,
   AreaChart,
@@ -17,6 +19,16 @@ import {
 
 import { formatRupiah } from "@/lib/formatters";
 
+function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // Pakai setTimeout untuk menghindari setState synchronous dalam effect
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
+  return mounted;
+}
+
 interface TrendData {
   date: string;
   dayLabel: string;
@@ -26,9 +38,23 @@ interface TrendData {
 }
 
 export function RevenueTrendChart({ data }: { data: TrendData[] }) {
+  const mounted = useMounted();
+
+  if (!mounted) {
+    return (
+      <div className="bg-muted/10 h-72 w-full min-w-0 animate-pulse rounded-xl" />
+    );
+  }
+
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-72 w-full min-w-0">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        minWidth={0}
+        minHeight={0}
+        initialDimension={{ width: 500, height: 288 }}
+      >
         <AreaChart
           data={data}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -105,9 +131,23 @@ interface PeakHourData {
 }
 
 export function PeakHoursChart({ data }: { data: PeakHourData[] }) {
+  const mounted = useMounted();
+
+  if (!mounted) {
+    return (
+      <div className="bg-muted/10 h-72 w-full min-w-0 animate-pulse rounded-xl" />
+    );
+  }
+
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-72 w-full min-w-0">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        minWidth={0}
+        minHeight={0}
+        initialDimension={{ width: 500, height: 288 }}
+      >
         <BarChart
           data={data}
           margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -152,11 +192,36 @@ interface CompositionData {
 }
 
 export function RevenueCompositionChart({ data }: { data: CompositionData[] }) {
+  const mounted = useMounted();
+
+  if (!mounted) {
+    return (
+      <div className="bg-muted/10 h-64 w-full min-w-0 animate-pulse rounded-xl" />
+    );
+  }
+
   const COLORS = ["#1447E6", "#10b981", "#8b5cf6", "#f59e0b"];
+  const hasData = data && data.length > 0 && data.some((d) => d.value > 0);
+
+  if (!hasData) {
+    return (
+      <div className="flex h-64 w-full min-w-0 flex-col items-center justify-center text-center">
+        <p className="text-muted-foreground text-xs">
+          Belum ada data transaksi omset tercatat
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-64 w-full items-center justify-center">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="flex h-64 w-full min-w-0 items-center justify-center">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        minWidth={0}
+        minHeight={0}
+        initialDimension={{ width: 320, height: 256 }}
+      >
         <PieChart>
           <Pie
             data={data}
@@ -199,9 +264,35 @@ interface CategoryData {
 }
 
 export function VehicleCategoryChart({ data }: { data: CategoryData[] }) {
+  const mounted = useMounted();
+
+  if (!mounted) {
+    return (
+      <div className="bg-muted/10 h-64 w-full min-w-0 animate-pulse rounded-xl" />
+    );
+  }
+
+  const hasData = data && data.length > 0 && data.some((d) => d.count > 0);
+
+  if (!hasData) {
+    return (
+      <div className="flex h-64 w-full min-w-0 flex-col items-center justify-center text-center">
+        <p className="text-muted-foreground text-xs">
+          Belum ada kendaraan yang dicuci di cabang ini
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-64 w-full min-w-0">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        minWidth={0}
+        minHeight={0}
+        initialDimension={{ width: 350, height: 256 }}
+      >
         <BarChart
           data={data}
           layout="vertical"

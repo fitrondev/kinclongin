@@ -56,8 +56,8 @@ export default async function DashboardLayout({
             <div className="flex items-center gap-3">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
-              <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold">
-                <span className="text-foreground font-bold">
+              <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs font-semibold">
+                <span className="text-foreground max-w-36 truncate font-bold sm:max-w-xs">
                   {outlet?.name || "Kinclongin Cabang Pusat"}
                 </span>
                 <span className="hidden sm:inline">•</span>
@@ -66,7 +66,7 @@ export default async function DashboardLayout({
             </div>
 
             {/* Fast Action Shortcuts */}
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 asChild
                 size="sm"
@@ -103,7 +103,7 @@ export default async function DashboardLayout({
             </div>
           </header>
 
-          <main className="w-full flex-1 p-4 lg:p-6">{children}</main>
+          <main className="w-full flex-1 p-3 sm:p-4 lg:p-6">{children}</main>
         </SidebarInset>
       </div>
     </SidebarProvider>

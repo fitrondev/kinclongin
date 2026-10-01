@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { z } from "zod";
 
@@ -14,7 +14,7 @@ export type ActionResponse<T = unknown> = {
   fieldErrors?: Record<string, string[]>;
 };
 
-export const verifyWasherPinSchema = z.object({
+const verifyWasherPinSchema = z.object({
   outletId: z.string().min(1, "ID Cabang wajib diisi"),
   pinCode: z.string().length(4, "PIN harus 4 digit angka"),
 });
@@ -75,7 +75,7 @@ export async function verifyWasherPinAction(
   }
 }
 
-export const claimTicketSchema = z.object({
+const claimTicketSchema = z.object({
   ticketId: z.string().min(1, "ID Tiket wajib diisi"),
   washerEmployeeIds: z
     .array(z.string())
@@ -162,6 +162,8 @@ export async function claimTicketAction(
     revalidatePath("/layar-cuci");
     revalidatePath("/pos/antrean");
     revalidatePath("/pos");
+    revalidatePath("/dashboard");
+    updateTag("dashboard-metrics");
 
     return {
       success: true,

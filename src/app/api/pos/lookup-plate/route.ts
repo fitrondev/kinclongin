@@ -34,6 +34,20 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Cek apakah pelanggan memiliki langganan member aktif dengan sisa kuota
+    let activeMembership = null;
+    if (vehicle.customer) {
+      activeMembership = await prisma.customerMembership.findFirst({
+        where: {
+          customerId: vehicle.customer.id,
+          status: "ACTIVE",
+          endDate: { gte: new Date() },
+          remainingQuota: { gt: 0 },
+        },
+        orderBy: { endDate: "desc" },
+      });
+    }
+
     return NextResponse.json({
       found: true,
       vehicle: {
@@ -58,6 +72,16 @@ export async function GET(req: NextRequest) {
             fullName: vehicle.customer.fullName,
             totalVisits: vehicle.customer.totalVisits,
             loyaltyPoints: vehicle.customer.loyaltyPoints,
+          }
+        : null,
+      membership: activeMembership
+        ? {
+            id: activeMembership.id,
+            planName: activeMembership.planName,
+            remainingQuota: activeMembership.remainingQuota,
+            totalQuota: activeMembership.totalQuota,
+            endDate: activeMembership.endDate,
+            discountPercent: activeMembership.discountPercent,
           }
         : null,
       lastService: lastTicket

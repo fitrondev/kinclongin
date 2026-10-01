@@ -24,7 +24,7 @@ export function generateAutoWashSchema(outlet: WashOutletSchemaInput) {
     },
     telephone: outlet.phone,
     url: outlet.url || "https://kinclongin.com",
-    logo: outlet.logoUrl || "https://kinclongin.com/logo.webp",
+    logo: outlet.logoUrl || "https://kinclongin.com/logoipsum.svg",
     priceRange: "Rp 15.000 - Rp 90.000",
   };
 }
