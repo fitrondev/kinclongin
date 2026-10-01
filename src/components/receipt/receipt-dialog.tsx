@@ -10,9 +10,6 @@ import {
   ExternalLink,
   MessageCircle,
   Printer,
-  Share2,
-  Sparkles,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,16 +43,20 @@ export function ReceiptDialog({
   ticketId,
 }: ReceiptDialogProps) {
   const [isPrintingBt, setIsPrintingBt] = useState(false);
+  const [paperWidth, setPaperWidth] = useState<"58mm" | "80mm">("58mm");
 
-  const receiptPlainText = generatePlainTextReceipt(receiptData);
+  const columnWidth = paperWidth === "58mm" ? 32 : 48;
+  const receiptPlainText = generatePlainTextReceipt(receiptData, columnWidth);
 
   const handleBluetoothPrint = async () => {
     setIsPrintingBt(true);
-    const res = await printReceiptViaBluetooth(receiptData);
+    const res = await printReceiptViaBluetooth(receiptData, columnWidth);
     setIsPrintingBt(false);
 
     if (res.success) {
-      toast.success("Struk berhasil dikirim ke printer Bluetooth thermal!");
+      toast.success(
+        `Struk ${paperWidth} berhasil dikirim ke printer Bluetooth thermal!`
+      );
     } else {
       toast.error(res.error || "Gagal mencetak via Bluetooth.");
     }
@@ -74,11 +75,11 @@ export function ReceiptDialog({
         <head>
           <title>Struk #${receiptData.ticketNumber}</title>
           <style>
-            @page { size: 58mm auto; margin: 0; }
+            @page { size: ${paperWidth} auto; margin: 0; }
             body {
               font-family: 'Courier New', Courier, monospace;
-              font-size: 11px;
-              width: 58mm;
+              font-size: ${paperWidth === "58mm" ? "11px" : "13px"};
+              width: ${paperWidth};
               margin: 0;
               padding: 6px;
               white-space: pre-wrap;
@@ -139,6 +140,37 @@ export function ReceiptDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Pemilih Lebar Kertas Struk 58mm / 80mm */}
+          <div className="bg-muted/30 flex items-center justify-between rounded-lg border p-1.5 text-xs font-semibold">
+            <span className="text-muted-foreground pl-2 text-[11px]">
+              Format Lebar Kertas:
+            </span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setPaperWidth("58mm")}
+                className={`rounded-md px-2.5 py-1 transition-all ${
+                  paperWidth === "58mm"
+                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                58 mm (Standar)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaperWidth("80mm")}
+                className={`rounded-md px-2.5 py-1 transition-all ${
+                  paperWidth === "80mm"
+                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                80 mm (Lebar)
+              </button>
+            </div>
+          </div>
+
           {/* Preview Kertas Struk Thermal Monospace */}
           <div className="bg-muted/40 text-foreground max-h-72 overflow-x-auto overflow-y-auto rounded-xl border p-3.5 font-mono text-[11px] leading-tight whitespace-pre shadow-inner select-all">
             {receiptPlainText}

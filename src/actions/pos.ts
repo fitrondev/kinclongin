@@ -11,7 +11,7 @@ import {
   TicketStatus,
   VehicleCategory,
 } from "@/generated/prisma/enums";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { sendWhatsAppReceipt } from "@/lib/whatsapp/sender";
 

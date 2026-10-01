@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import {
   BarChart3,
   Boxes,
@@ -16,6 +15,8 @@ import {
   Users,
 } from "lucide-react";
 
+import { OutletSwitcher } from "@/components/auth/outlet-switcher";
+import { UserButton } from "@/components/auth/user-button";
 import { CreateMemberDialog } from "@/components/dashboard/create-member-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -93,10 +94,9 @@ export function DashboardHeader({
 
           <div className="bg-border hidden h-5 w-px sm:block" />
 
-          {/* Clerk Organization Switcher */}
+          {/* Outlet Switcher */}
           <div className="flex items-center">
-            <OrganizationSwitcher
-              hidePersonal
+            <OutletSwitcher
               afterSelectOrganizationUrl="/dashboard"
               afterCreateOrganizationUrl="/dashboard"
               appearance={{

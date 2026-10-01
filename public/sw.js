@@ -38,12 +38,10 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Jangan sentuh API routes, Server Actions POST, atau Clerk Auth
+  // Jangan sentuh API routes atau Server Actions POST
   if (
     request.method !== "GET" ||
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_clerk/") ||
-    url.hostname.includes("clerk")
+    url.pathname.startsWith("/api/")
   ) {
     return;
   }

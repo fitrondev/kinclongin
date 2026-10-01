@@ -87,15 +87,15 @@ enum WhatsAppDeliveryStatus {
 
 model Outlet {
   id              String        @id @default(cuid())
-  clerkOrgId      String        @unique // ID Organisasi di Clerk (org_xxx)
   name            String        // Contoh: "Kinclongin Cabang Mataram"
-  slug            String        @unique // Slug Organisasi di Clerk / URL
+  slug            String        @unique // Slug URL identitas cabang
   address         String        @db.Text
   phone           String
   logoUrl         String?
   waGatewayApiKey String?       // Kunci API untuk WhatsApp Gateway
   waSenderNumber  String?       // Nomor WhatsApp pengirim notifikasi
   isActive        Boolean       @default(true)
+  ownerId         String?       // User ID pemilik cabang (Owner)
 
   // Status Langganan SaaS (Flat Rp 50.000 / Bulan)
   subscriptionStatus    String    @default("TRIAL") // TRIAL, ACTIVE, PENDING_VERIFICATION, EXPIRED
@@ -106,7 +106,8 @@ model Outlet {
   updatedAt       DateTime      @updatedAt
 
   // Relasi
-  users           User[]
+  owner           User?         @relation("OwnedOutlets", fields: [ownerId], references: [id], onDelete: SetNull)
+  users           User[]        @relation("OutletUsers")
   employees       Employee[]
   servicePackages ServicePackage[]
   washTickets     WashTicket[]
@@ -117,14 +118,14 @@ model Outlet {
   subscriptionPayments TenantSubscriptionPayment[]
   auditLogs       AuditLog[]
 
-  @@index([clerkOrgId])
+  @@index([ownerId])
   @@index([isActive])
 }
 
 model User {
   id            String      @id @default(cuid())
-  clerkId       String      @unique
   email         String      @unique
+  passwordHash  String?     // Hash password bcryptjs untuk kredensial login Auth.js
   fullName      String
   avatarUrl     String?
   role          UserRole    @default(CASHIER)
@@ -134,7 +135,8 @@ model User {
   updatedAt     DateTime    @updatedAt
 
   // Relasi
-  outlet        Outlet?     @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  outlet        Outlet?     @relation("OutletUsers", fields: [outletId], references: [id], onDelete: SetNull)
+  ownedOutlets  Outlet[]    @relation("OwnedOutlets")
   employee      Employee?
   createdTickets WashTicket[] @relation("TicketCreator")
   handledPayments Payment[]   @relation("CashierPayments")
@@ -148,7 +150,7 @@ model User {
 model Employee {
   id              String          @id @default(cuid())
   outletId        String
-  userId          String?         @unique // Jika pekerja memiliki akun Clerk (opsional)
+  userId          String?         @unique // Jika pekerja memiliki akun login Kinclongin (opsional)
   fullName        String
   phone           String?
   pinCode         String?         // 4-digit PIN terenkripsi untuk login Kiosk Tablet

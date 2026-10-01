@@ -4,7 +4,7 @@ import { POSHeader } from "@/components/pos/header";
 import { OfflineIndicator } from "@/components/pos/offline-indicator";
 import { SubscriptionBanner } from "@/components/pos/subscription-banner";
 import { TicketStatus } from "@/generated/prisma/enums";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 function checkSubscriptionGrace(expiresAt?: Date | null) {

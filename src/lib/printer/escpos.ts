@@ -37,8 +37,6 @@ export function generatePlainTextReceipt(
 ): string {
   const pad = (text: string, len: number) =>
     text.padEnd(len, " ").slice(0, len);
-  const padLeft = (text: string, len: number) =>
-    text.padStart(len, " ").slice(-len);
   const line = "=".repeat(width);
   const dash = "-".repeat(width);
 
@@ -169,7 +167,8 @@ interface NavigatorWithBluetooth extends Navigator {
  * Mencetak langsung ke printer thermal Bluetooth menggunakan Web Bluetooth API
  */
 export async function printReceiptViaBluetooth(
-  data: ReceiptData
+  data: ReceiptData,
+  width = 32
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const nav =
@@ -204,7 +203,7 @@ export async function printReceiptViaBluetooth(
       "00002af1-0000-1000-8000-00805f9b34fb"
     );
 
-    const receiptText = generatePlainTextReceipt(data);
+    const receiptText = generatePlainTextReceipt(data, width);
     const commands = buildEscPosCommands(receiptText);
 
     // Kirim chunk per 512 bytes untuk Bluetooth LE

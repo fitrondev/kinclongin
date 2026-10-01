@@ -1,4 +1,7 @@
-export {};
+import type { DefaultSession } from "next-auth";
+import type { DefaultJWT } from "next-auth/jwt";
+
+import type { UserRole } from "@/generated/prisma/enums";
 
 // Definisi Role yang didukung di Kinclongin POS
 export type Roles =
@@ -8,22 +11,34 @@ export type Roles =
   | "washer"
   | "admin"
   | "superadmin"
-  | "org:owner"
-  | "org:admin"
-  | "org:manager"
-  | "org:cashier"
   | "OWNER"
   | "MANAGER"
   | "CASHIER"
   | "WASHER";
 
-declare global {
-  interface CustomJwtSessionClaims {
-    metadata?: {
-      role?: Roles;
-    };
-    org_id?: string;
-    org_role?: string;
-    org_slug?: string;
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      role: UserRole;
+      outletId?: string | null;
+      fullName?: string;
+    } & DefaultSession["user"];
+  }
+
+  interface User {
+    id?: string;
+    role?: UserRole;
+    outletId?: string | null;
+    fullName?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT extends DefaultJWT {
+    id?: string;
+    role?: UserRole;
+    outletId?: string | null;
+    fullName?: string;
   }
 }

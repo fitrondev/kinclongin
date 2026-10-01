@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
-import { clerkClient } from "@clerk/nextjs/server";
+import bcrypt from "bcryptjs";
+import slugify from "slugify";
 import { z } from "zod";
 
 import { UserRole } from "@/generated/prisma/enums";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export type ActionResponse<T = unknown> = {
@@ -33,7 +34,7 @@ export type CreateBranchMemberInput = z.infer<typeof createBranchMemberSchema>;
 
 /**
  * Pendaftaran staf (Kasir, Manager, atau Tukang Cuci) langsung oleh Owner/Admin
- * tanpa proses undangan email berbelit.
+ * disimpan langsung ke database Prisma dengan hash password bcryptjs.
  */
 export async function createBranchMemberAction(
   input: CreateBranchMemberInput
@@ -71,59 +72,21 @@ export async function createBranchMemberAction(
     const { fullName, email, password, role, phone, pinCode, commissionRate } =
       parsed.data;
 
-    // Ambil data outlet
-    const outlet = await prisma.outlet.findUnique({
-      where: { id: outletId },
+    // Cek apakah email sudah terdaftar
+    const existing = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
     });
 
-    if (!outlet) {
+    if (existing) {
       return {
         success: false,
-        error: "Data outlet tidak ditemukan di database.",
+        error: "Email sudah terdaftar pada sistem.",
       };
     }
 
-    // 1. Buat akun di Clerk Backend
-    const client = await clerkClient();
-    const clerkOrgRole = role === "MANAGER" ? "org:admin" : "org:member";
+    // Hash password staf baru
+    const passwordHash = await bcrypt.hash(password, 10);
 
-    let clerkUser;
-    try {
-      clerkUser = await client.users.createUser({
-        emailAddress: [email],
-        password,
-        firstName: fullName,
-        publicMetadata: {
-          role,
-          outletId,
-        },
-      });
-    } catch (clerkErr) {
-      console.error("Gagal membuat user di Clerk:", clerkErr);
-      return {
-        success: false,
-        error:
-          clerkErr instanceof Error
-            ? clerkErr.message
-            : "Gagal mendaftarkan akun di Clerk.",
-      };
-    }
-
-    // 2. Tambahkan ke Clerk Organization cabang
-    try {
-      await client.organizations.createOrganizationMembership({
-        organizationId: outlet.clerkOrgId,
-        userId: clerkUser.id,
-        role: clerkOrgRole,
-      });
-    } catch (membershipErr) {
-      console.warn(
-        "Gagal menambahkan membership organisasi Clerk:",
-        membershipErr
-      );
-    }
-
-    // 3. Simpan ke Database Prisma (User & Employee)
     const prismaRole =
       role === "MANAGER"
         ? UserRole.MANAGER
@@ -131,10 +94,11 @@ export async function createBranchMemberAction(
           ? UserRole.WASHER
           : UserRole.CASHIER;
 
+    // Buat User di database
     const dbUser = await prisma.user.create({
       data: {
-        clerkId: clerkUser.id,
-        email,
+        email: email.toLowerCase().trim(),
+        passwordHash,
         fullName,
         role: prismaRole,
         outletId,
@@ -143,7 +107,7 @@ export async function createBranchMemberAction(
 
     let employeeId: string | undefined;
 
-    // Jika pekerja adalah Washer atau Kasir, buat profil Employee
+    // Jika pekerja adalah Washer atau Kasir, buat profil Employee (untuk PIN Kiosk & komisi)
     if (role === "WASHER" || role === "CASHIER") {
       const employee = await prisma.employee.create({
         data: {
@@ -238,6 +202,220 @@ export async function getBranchMembersAction(): Promise<
       success: false,
       error:
         error instanceof Error ? error.message : "Gagal memuat staf cabang.",
+    };
+  }
+}
+
+/**
+ * Mengambil seluruh outlet yang dapat diakses oleh user saat ini
+ * (Jika OWNER: semua cabang miliknya; Jika staf: cabang tempatnya bekerja)
+ */
+export async function getUserOutletsAction(): Promise<
+  ActionResponse<
+    Array<{
+      id: string;
+      name: string;
+      slug: string;
+      address: string;
+      phone: string;
+      isActive: boolean;
+      subscriptionStatus: string;
+      isCurrent: boolean;
+    }>
+  >
+> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Sesi tidak valid." };
+    }
+
+    type OutletRecord = Awaited<
+      ReturnType<typeof prisma.outlet.findMany>
+    >[number];
+    let outlets: OutletRecord[] = [];
+    if (user.role === UserRole.OWNER) {
+      outlets = await prisma.outlet.findMany({
+        where: {
+          OR: [{ ownerId: user.id }, { id: user.outletId ?? undefined }],
+          isActive: true,
+        },
+        orderBy: { name: "asc" },
+      });
+    } else if (user.outletId) {
+      outlets = await prisma.outlet.findMany({
+        where: { id: user.outletId, isActive: true },
+      });
+    } else {
+      outlets = [];
+    }
+
+    return {
+      success: true,
+      data: outlets.map((o) => ({
+        id: o.id,
+        name: o.name,
+        slug: o.slug,
+        address: o.address,
+        phone: o.phone,
+        isActive: o.isActive,
+        subscriptionStatus: o.subscriptionStatus,
+        isCurrent: o.id === user.outletId,
+      })),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Gagal mengambil daftar cabang.",
+    };
+  }
+}
+
+/**
+ * Beralih cabang aktif (Active Outlet Switcher)
+ */
+export async function switchActiveOutletAction(
+  outletId: string
+): Promise<ActionResponse<{ currentOutletId: string }>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Sesi tidak valid." };
+    }
+
+    // Validasi apakah user memiliki akses ke cabang target
+    const targetOutlet = await prisma.outlet.findFirst({
+      where: {
+        id: outletId,
+        isActive: true,
+        ...(user.role === UserRole.OWNER
+          ? {
+              OR: [{ ownerId: user.id }, { id: user.outletId ?? undefined }],
+            }
+          : { id: user.outletId ?? undefined }),
+      },
+    });
+
+    if (!targetOutlet) {
+      return {
+        success: false,
+        error: "Cabang tidak ditemukan atau Anda tidak memiliki akses.",
+      };
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { outletId: targetOutlet.id },
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/pos");
+    revalidatePath("/pos/antrean");
+    revalidatePath("/layar-cuci");
+
+    return {
+      success: true,
+      data: { currentOutletId: targetOutlet.id },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Gagal beralih cabang outlet.",
+    };
+  }
+}
+
+const createOutletSchema = z.object({
+  name: z.string().min(2, "Nama cabang minimal 2 karakter"),
+  address: z.string().min(3, "Alamat cabang minimal 3 karakter"),
+  phone: z.string().min(5, "Nomor telepon cabang minimal 5 karakter"),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+});
+
+export type CreateOutletInput = z.infer<typeof createOutletSchema>;
+
+/**
+ * Membuat cabang outlet baru (khusus akun Owner)
+ */
+export async function createOutletAction(
+  input: CreateOutletInput
+): Promise<ActionResponse<{ outletId: string; slug: string }>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
+    }
+
+    if (user.role !== UserRole.OWNER) {
+      return {
+        success: false,
+        error: "Hanya Owner yang dapat membuka cabang outlet baru.",
+      };
+    }
+
+    const parsed = createOutletSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: "Validasi formulir cabang gagal.",
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const { name, address, phone, logoUrl } = parsed.data;
+
+    // Generate unique slug
+    let baseSlug = slugify(name, { lower: true, strict: true });
+    if (!baseSlug) baseSlug = `outlet-${Date.now().toString().slice(-4)}`;
+
+    let slug = baseSlug;
+    let counter = 1;
+    while (await prisma.outlet.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    // Trial 14 hari
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    const outlet = await prisma.outlet.create({
+      data: {
+        name,
+        slug,
+        address,
+        phone,
+        logoUrl: logoUrl || null,
+        ownerId: user.id,
+        subscriptionStatus: "TRIAL",
+        trialEndsAt,
+        subscriptionExpiresAt: trialEndsAt,
+        isActive: true,
+      },
+    });
+
+    // Otomatis aktifkan cabang baru ini untuk user Owner
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { outletId: outlet.id },
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/pos");
+
+    return {
+      success: true,
+      data: { outletId: outlet.id, slug: outlet.slug },
+    };
+  } catch (error) {
+    console.error("Gagal membuat cabang baru:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Gagal membuat cabang baru.",
     };
   }
 }

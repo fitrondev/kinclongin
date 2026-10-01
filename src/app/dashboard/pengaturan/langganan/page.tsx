@@ -5,7 +5,7 @@ import {
   getSubscriptionStatusAction,
 } from "@/actions/subscription";
 import { SubscriptionView } from "@/components/dashboard/subscription-view";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {

@@ -1,3 +1,5 @@
+import bcrypt from "bcryptjs";
+
 import {
   CommissionType,
   MovementType,
@@ -36,17 +38,32 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.outlet.deleteMany();
 
-  // 2. Buat Cabang Outlet (Multi-Tenant Demo)
-  console.log("\n🏢 2. Membuat Cabang Outlet Demo...");
+  // Hash kata sandi default untuk akun demo (123456)
+  const defaultPasswordHash = await bcrypt.hash("123456", 10);
+
+  // 2. Buat Pengguna Utama Cabang (Owner terlebih dahulu agar dapat ditautkan ke Outlet)
+  console.log("👤 2. Membuat Akun Pengguna Cabang...");
+  const ownerUser = await prisma.user.create({
+    data: {
+      email: "owner@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Pak H. Ridwan (Owner Cabang)",
+      role: UserRole.OWNER,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
+  // 3. Buat Cabang Outlet (Multi-Tenant Manual Demo)
+  console.log("\n🏢 3. Membuat Cabang Outlet Demo...");
   const outletMataram = await prisma.outlet.create({
     data: {
-      clerkOrgId: "org_demo_mataram_001",
       name: "Kinclongin Cabang Pusat Mataram",
       slug: "kinclongin-pusat-mataram",
       address: "Jl. Pejanggik No. 88, Cakranegara, Kota Mataram, NTB",
       phone: "081912345678",
       logoUrl:
         "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=400&q=80",
+      ownerId: ownerUser.id,
       subscriptionStatus: "ACTIVE",
       subscriptionExpiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // Aktif 6 bulan ke depan
       trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
@@ -56,13 +73,13 @@ async function main() {
 
   const outletRembiga = await prisma.outlet.create({
     data: {
-      clerkOrgId: "org_demo_rembiga_002",
       name: "Kinclongin Express Rembiga",
       slug: "kinclongin-express-rembiga",
       address: "Jl. Dr. Wahidin No. 45, Rembiga, Kota Mataram, NTB",
       phone: "081987654321",
       logoUrl:
         "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?w=400&q=80",
+      ownerId: ownerUser.id,
       subscriptionStatus: "ACTIVE",
       subscriptionExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // Aktif 3 bulan ke depan
       trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
@@ -70,8 +87,48 @@ async function main() {
     },
   });
 
-  // 3. Catat Riwayat Langganan SaaS Cabang (Rp 50.000 / Bulan)
-  console.log("💳 3. Membuat Riwayat Pembayaran Langganan SaaS Cabang...");
+  // Tautkan outletId aktif untuk Owner
+  await prisma.user.update({
+    where: { id: ownerUser.id },
+    data: { outletId: outletMataram.id },
+  });
+
+  // Buat Manajer & Kasir
+  const managerUser = await prisma.user.create({
+    data: {
+      email: "danu.operasional@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Danu Prakoso (Manajer Operasional)",
+      role: UserRole.MANAGER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  const cashierMorning = await prisma.user.create({
+    data: {
+      email: "kasir.mataram@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Siti Rahma (Kasir Shift Pagi)",
+      role: UserRole.CASHIER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  const cashierAfternoon = await prisma.user.create({
+    data: {
+      email: "kasir.sore@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Putri Anggraeni (Kasir Shift Sore)",
+      role: UserRole.CASHIER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  // 4. Catat Riwayat Langganan SaaS Cabang (Rp 50.000 / Bulan)
+  console.log("💳 4. Membuat Riwayat Pembayaran Langganan SaaS Cabang...");
   await prisma.tenantSubscriptionPayment.create({
     data: {
       outletId: outletMataram.id,
@@ -83,53 +140,7 @@ async function main() {
       status: "APPROVED",
       submittedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       verifiedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000 + 3600000),
-      verifiedById: "user_superadmin_001",
-    },
-  });
-
-  // 4. Buat Pengguna Utama Cabang (Owner, Manajer, Kasir)
-  console.log("👤 4. Membuat Akun Pengguna Cabang...");
-  const ownerUser = await prisma.user.create({
-    data: {
-      clerkId: "user_owner_demo_001",
-      email: "owner@kinclongin.com",
-      fullName: "Pak H. Ridwan (Owner Cabang)",
-      role: UserRole.OWNER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  const managerUser = await prisma.user.create({
-    data: {
-      clerkId: "user_manager_demo_002",
-      email: "danu.operasional@kinclongin.com",
-      fullName: "Danu Prakoso (Manajer Operasional)",
-      role: UserRole.MANAGER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  const cashierMorning = await prisma.user.create({
-    data: {
-      clerkId: "user_cashier_demo_001",
-      email: "kasir.mataram@kinclongin.com",
-      fullName: "Siti Rahma (Kasir Shift Pagi)",
-      role: UserRole.CASHIER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  const cashierAfternoon = await prisma.user.create({
-    data: {
-      clerkId: "user_cashier_demo_002",
-      email: "kasir.sore@kinclongin.com",
-      fullName: "Putri Anggraeni (Kasir Shift Sore)",
-      role: UserRole.CASHIER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
+      verifiedById: ownerUser.id,
     },
   });
 

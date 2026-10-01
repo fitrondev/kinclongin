@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db/prisma";
 
 export interface StorageAuthUser {
   id: string;
-  clerkId: string;
   role: string;
   outletId?: string | null;
 }
@@ -35,7 +34,7 @@ export async function canAccessStorageFile(
   // Dokumen Bukti Pembayaran (payments)
   if (prefix === "payments") {
     // Pengunggah langsung
-    if (user.id === ownerId || user.clerkId === ownerId) {
+    if (user.id === ownerId) {
       return true;
     }
 
@@ -93,7 +92,7 @@ export async function canModifyStorageFile(
 
   // Avatar milik sendiri
   if (prefix === "avatars") {
-    return user.id === ownerId || user.clerkId === ownerId;
+    return user.id === ownerId;
   }
 
   // Aset outlet (logo, produk, inspeksi)

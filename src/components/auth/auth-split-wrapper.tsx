@@ -127,7 +127,7 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
         </div>
       </div>
 
-      {/* Kolom Kanan: Clerk Auth Form */}
+      {/* Kolom Kanan: Auth.js Form */}
       <div className="bg-background flex w-full flex-col justify-between p-6 sm:p-10 lg:w-1/2 lg:p-12 xl:p-16">
         {/* Top Header Bar with Theme Toggle & Mobile Logo */}
         <div className="flex items-center justify-between">
@@ -155,7 +155,7 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
           </div>
         </div>
 
-        {/* Center Container for Clerk */}
+        {/* Center Container for Auth Form */}
         <div className="my-auto flex w-full flex-col items-center justify-center py-8">
           <div className="w-full max-w-md">{children}</div>
         </div>

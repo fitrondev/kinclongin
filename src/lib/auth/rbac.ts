@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@clerk/nextjs/server";
-
-import { prisma } from "@/lib/db/prisma";
+import { getCurrentUser } from "@/lib/auth/session";
 import type { Roles } from "@/types/globals";
+
+export { getCurrentUser } from "@/lib/auth/session";
 
 /**
  * Memeriksa apakah role berstatus Admin / Superadmin / Owner
@@ -19,16 +19,15 @@ export function isAdminRole(role?: string | null): boolean {
 }
 
 /**
- * Memeriksa role pengguna saat ini dari claims session token Clerk atau orgRole
+ * Memeriksa role pengguna saat ini dari database user
  */
 export async function checkRole(
   allowedRoles: Roles | Roles[]
 ): Promise<boolean> {
-  const { sessionClaims, orgRole } = await auth();
-  const userRole = sessionClaims?.metadata?.role || orgRole;
+  const user = await getCurrentUser();
+  if (!user || !user.role) return false;
 
-  if (!userRole) return false;
-
+  const userRole = user.role;
   const targetRoles = Array.isArray(allowedRoles)
     ? allowedRoles
     : [allowedRoles];
@@ -51,9 +50,9 @@ export async function requireRole(
   allowedRoles: Roles | Roles[],
   redirectTo = "/sign-in"
 ): Promise<{ userId: string; role?: string }> {
-  const { userId, sessionClaims, orgRole } = await auth();
+  const user = await getCurrentUser();
 
-  if (!userId) {
+  if (!user) {
     redirect("/sign-in");
   }
 
@@ -64,13 +63,13 @@ export async function requireRole(
   }
 
   return {
-    userId,
-    role: sessionClaims?.metadata?.role || orgRole,
+    userId: user.id,
+    role: user.role,
   };
 }
 
 /**
- * Guard Multi-Tenant B2B Kinclongin (Clerk Organizations).
+ * Guard Multi-Tenant Kinclongin (Manual Multi-Outlet Organisasi).
  * Memvalidasi sesi login, keberadaan organisasi aktif (cabang outlet), dan status outlet di database.
  */
 export async function requireOrgAuth(options?: {
@@ -78,14 +77,14 @@ export async function requireOrgAuth(options?: {
   redirectToNoOrg?: string;
   redirectToNoAccess?: string;
 }) {
-  const { userId, orgId, orgRole, orgSlug } = await auth();
+  const user = await getCurrentUser();
 
-  if (!userId) {
+  if (!user) {
     redirect("/sign-in");
   }
 
-  if (!orgId) {
-    redirect(options?.redirectToNoOrg ?? "/choose-organization");
+  if (!user.outlet) {
+    redirect(options?.redirectToNoOrg ?? "/sign-in");
   }
 
   if (options?.allowedRoles && options.allowedRoles.length > 0) {
@@ -95,16 +94,14 @@ export async function requireOrgAuth(options?: {
     }
   }
 
-  // Cari outlet cabang yang terhubung dengan Clerk Organization
-  const outlet = await prisma.outlet.findUnique({
-    where: { clerkOrgId: orgId },
-  });
+  const outlet = user.outlet;
 
   return {
-    userId,
-    orgId,
-    orgRole,
-    orgSlug,
+    userId: user.id,
+    orgId: outlet.id,
+    orgRole: user.role,
+    orgSlug: outlet.slug,
     outlet,
+    user,
   };
 }

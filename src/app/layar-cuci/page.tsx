@@ -6,7 +6,7 @@ import {
 } from "@/components/layar-cuci/layar-cuci-card";
 import { LayarCuciView } from "@/components/layar-cuci/layar-cuci-view";
 import { TicketStatus } from "@/generated/prisma/enums";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {

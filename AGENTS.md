@@ -10,25 +10,25 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # KINCLONGIN — AI AGENT CONSTITUTION & CODING GUIDELINES
 
-> **Kinclongin** adalah platform Point of Sale (POS) dan manajemen operasional modern terpadu khusus untuk bisnis cuci mobil, motor, dan auto-detailing multi-cabang dengan dukungan **Clerk Organizations (Multi-Tenant B2B)**, antrean Kanban visual, perhitungan komisi pekerja otomatis berbasis PIN, dan ketahanan **Offline-First PWA** di area semi-outdoor.
+> **Kinclongin** adalah platform Point of Sale (POS) dan manajemen operasional modern terpadu khusus untuk bisnis cuci mobil, motor, dan auto-detailing multi-cabang dengan dukungan **Multi-Tenant B2B (Manual Outlet/Branch Model)**, autentikasi **Auth.js v5 (NextAuth)**, antrean Kanban visual, perhitungan komisi pekerja otomatis berbasis PIN, dan ketahanan **Offline-First PWA** di area semi-outdoor.
 
 ---
 
 ## 1. Core Technology Stack
 
-| Komponen           | Spesifikasi & Versi                | Peran & Catatan Implementasi                                                                                |
-| :----------------- | :--------------------------------- | :---------------------------------------------------------------------------------------------------------- |
-| **Framework**      | Next.js 16 (App Router, Turbopack) | Server Components default, async params/headers, performa rendering tinggi                                  |
-| **UI & Runtime**   | React 19 + Bun 1.3+                | Fast package management, modern JSX compiler, zero-latency execution                                        |
-| **Bahasa**         | TypeScript 5 (Strict Mode)         | **Zero `any` policy**, strongly typed end-to-end dari database hingga UI                                    |
-| **UI Library**     | shadcn/ui (`radix-nova` preset)    | 60+ komponen Radix primitives, Sonner, Tooltips, Dialog, Sheet, Sidebar                                     |
-| **Styling**        | Tailwind CSS v4 + OKLCH Tokens     | `--primary: oklch(...)`, semantic color tokens, high-contrast dark/light mode                               |
-| **Database & ORM** | MySQL di SumoPod + Prisma ORM v7   | `@prisma/adapter-mariadb`, connection pooling terkelola, referential integrity                              |
-| **Auth & Tenancy** | Clerk Auth + Clerk Organizations   | Multi-tenant B2B, role-scoped routing, `<OrganizationSwitcher />`, pendaftaran staf langsung (`createUser`) |
-| **Storage**        | SumoPod Object Storage (S3 API)    | Presigned direct upload via `@aws-sdk/client-s3` untuk foto inspeksi & bukti bayar                          |
-| **Offline-First**  | PWA Service Worker + Dexie.js      | IndexedDB cache lokal, offline mutation queue, automatic background sync                                    |
-| **Integrasi**      | Webhook WhatsApp + ESC/POS Printer | Notifikasi status cuci/struk digital & cetak struk thermal Bluetooth/USB                                    |
-| **Formatting**     | Prettier + Tailwind Plugin         | `@trivago/prettier-plugin-sort-imports`, format konsisten di seluruh berkas                                 |
+| Komponen           | Spesifikasi & Versi                | Peran & Catatan Implementasi                                                                                           |
+| :----------------- | :--------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| **Framework**      | Next.js 16 (App Router, Turbopack) | Server Components default, async params/headers, performa rendering tinggi                                             |
+| **UI & Runtime**   | React 19 + Bun 1.3+                | Fast package management, modern JSX compiler, zero-latency execution                                                   |
+| **Bahasa**         | TypeScript 5 (Strict Mode)         | **Zero `any` policy**, strongly typed end-to-end dari database hingga UI                                               |
+| **UI Library**     | shadcn/ui (`radix-nova` preset)    | 60+ komponen Radix primitives, Sonner, Tooltips, Dialog, Sheet, Sidebar                                                |
+| **Styling**        | Tailwind CSS v4 + OKLCH Tokens     | `--primary: oklch(...)`, semantic color tokens, high-contrast dark/light mode                                          |
+| **Database & ORM** | MySQL di SumoPod + Prisma ORM v7   | `@prisma/adapter-mariadb`, connection pooling terkelola, referential integrity                                         |
+| **Auth & Tenancy** | Auth.js v5 (NextAuth) + Manual Org | Multi-tenant B2B berbasis Outlet & Owner, role-scoped routing, `<OutletSwitcher />`, pendaftaran langsung (`bcryptjs`) |
+| **Storage**        | SumoPod Object Storage (S3 API)    | Presigned direct upload via `@aws-sdk/client-s3` untuk foto inspeksi & bukti bayar                                     |
+| **Offline-First**  | PWA Service Worker + Dexie.js      | IndexedDB cache lokal, offline mutation queue, automatic background sync                                               |
+| **Integrasi**      | Webhook WhatsApp + ESC/POS Printer | Notifikasi status cuci/struk digital & cetak struk thermal Bluetooth/USB                                               |
+| **Formatting**     | Prettier + Tailwind Plugin         | `@trivago/prettier-plugin-sort-imports`, format konsisten di seluruh berkas                                            |
 
 ---
 
@@ -80,13 +80,14 @@ export type ActionResponse<T = unknown> = {
 };
 ```
 
-- Setiap Server Action wajib memvalidasi sesi Clerk (`auth()`), memastikan keberadaan `orgId` aktif, dan memeriksa otoritas peran pengguna.
+- Setiap Server Action wajib memvalidasi sesi autentikasi (`getCurrentUser()` / `auth()`), memastikan keberadaan `outletId` aktif, dan memeriksa otoritas peran pengguna.
 - Seluruh input data wajib divalidasi dengan skema **Zod**.
 
-### 2.5 Multi-Tenancy & Isolasi Data Cabang (Clerk Organizations)
+### 2.5 Multi-Tenancy & Isolasi Data Cabang (Manual Multi-Outlet)
 
-- Setiap cabang operasional cuci dipetakan ke **Clerk Organization** (`orgId` / `clerkOrgId`).
-- **DILARANG QUERY LINTAS TENANT TANPA SCOPING**: Seluruh kueri mutasi dan pembacaan tiket cuci, inventaris, dan komisi wajib menyertakan filter `outletId` (atau `clerkOrgId`).
+- Setiap cabang operasional cuci dipetakan ke model **Outlet** (`outletId`).
+- Pemilik cabang (Owner) dapat memiliki satu atau lebih Outlet (`ownerId`) dan beralih cabang via `<OutletSwitcher />`.
+- **DILARANG QUERY LINTAS TENANT TANPA SCOPING**: Seluruh kueri mutasi dan pembacaan tiket cuci, inventaris, dan komisi wajib menyertakan filter `outletId`.
 - Gunakan helper `requireOrgAuth()` untuk mengunci halaman dan aksi hanya bagi anggota organisasi yang sah.
 
 ### 2.6 Penanganan Berkas & Object Storage
@@ -96,7 +97,7 @@ export type ActionResponse<T = unknown> = {
 ### 2.7 Sistem Langganan SaaS Flat (Manual Transfer / QRIS)
 
 - **TARIF FLAT TUNGGAL**: Rp 50.000 / bulan per cabang outlet (Full Features).
-- **DILARANG MENGGUNAKAN CLERK BILLING**: Seluruh pembayaran diproses secara lokal melalui **Transfer Bank Manual** atau **QRIS Usaha**.
+- Seluruh pembayaran diproses secara lokal melalui **Transfer Bank Manual** atau **QRIS Usaha**.
 - **Alur Verifikasi Bukti Bayar**: Pengguna mengunggah bukti transfer ke S3 (`TenantSubscriptionPayment`), kemudian Superadmin memverifikasi (approve) secara manual untuk memperpanjang masa aktif `Outlet.subscriptionExpiresAt` (+30 hari per bulan).
 - **Grace Period**: Sistem memberikan masa tenggang 3 hari sebelum membatasi akses input tiket baru jika masa langganan berakhir.
 
@@ -146,15 +147,16 @@ d:/kinclongin/
 ├── src/
 │   ├── actions/                     # Server Actions terisolasi (pos, kiosk, inventory, loyalty, org)
 │   ├── app/
-│   │   ├── (auth)/                  # Clerk sign-in / sign-up / choose-organization
+│   │   ├── (auth)/                  # Auth.js sign-in & sign-up
 │   │   ├── (dashboard)/             # Dasbor analitik Owner & Manager (Multi-outlet, Payroll, Stok)
 │   │   ├── (kiosk)/                 # Tablet Kiosk tukang cuci (Numpad PIN, klaim tiket cuci)
 │   │   ├── (pos)/                   # Front-desk POS Kasir (Antrean Kanban, input walk-in, checkout)
 │   │   ├── track/[ticketId]/        # Halaman publik pelacak status cuci pelanggan
-│   │   ├── api/                     # Route handlers (webhooks clerk/whatsapp, offline sync, presign)
+│   │   ├── api/                     # Route handlers (auth.js, whatsapp, offline sync, presign)
 │   │   ├── globals.css              # Tailwind v4 & OKLCH variables
 │   │   └── layout.tsx               # Root layout dengan Font Inter & Providers
 │   ├── components/
+│   │   ├── auth/                    # SignInForm, SignUpForm, UserButton, OutletSwitcher
 │   │   ├── dashboard/               # Komponen chart Recharts, tabel analitik, switcher
 │   │   ├── kiosk/                   # Numpad besar, modal PIN washer, kartu antrean basah
 │   │   ├── pos/                     # Kartu Kanban antrean, modal pembayaran, kamera inspeksi
@@ -163,7 +165,7 @@ d:/kinclongin/
 │   │   ├── providers.tsx            # ThemeProvider, TooltipProvider, Sonner Toaster
 │   │   └── theme-toggle.tsx
 │   ├── lib/
-│   │   ├── auth/                    # Clerk RBAC & org-guard helper (`requireOrgAuth`)
+│   │   ├── auth/                    # Auth.js session, RBAC & org-guard helper (`requireOrgAuth`)
 │   │   ├── db/                      # Prisma singleton client terkelola
 │   │   ├── offline/                 # Dexie.js database client & background syncer
 │   │   ├── printer/                 # ESC/POS command builder & Web Bluetooth bridge
@@ -173,7 +175,7 @@ d:/kinclongin/
 │   │   └── utils.ts                 # Utility cn()
 │   └── types/
 │       ├── database.ts              # Ekstensi tipe dari Prisma Client
-│       ├── globals.d.ts             # Clerk JWT session metadata declaration
+│       ├── globals.d.ts             # NextAuth v5 session & JWT type augmentations
 │       └── pos.ts                   # Tipe state transaksi & tiket
 ├── package.json                     # Dependensi & skrip proyek
 └── tsconfig.json                    # Strict TypeScript config

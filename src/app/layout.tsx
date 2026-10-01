@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
-import { ClerkProvider } from "@clerk/nextjs";
-import { shadcn } from "@clerk/ui/themes";
-
 import { Providers } from "@/components/providers";
 
 import "./globals.css";
@@ -44,9 +41,7 @@ export default function RootLayout({
       className={`${inter.variable} h-full font-sans antialiased`}
     >
       <body className="bg-background text-foreground flex min-h-full flex-col font-sans">
-        <ClerkProvider appearance={{ theme: shadcn }}>
-          <Providers>{children}</Providers>
-        </ClerkProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

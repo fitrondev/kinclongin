@@ -4,14 +4,16 @@ import { TicketStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 
 /**
- * Mengambil data cabang outlet berdasarkan Clerk Organization ID.
+ * Mengambil data cabang outlet berdasarkan ID atau Slug.
  * Di-memoize per-request menggunakan React.cache() untuk mencegah query ganda.
  */
-export const getOutletByOrgId = cache(async (clerkOrgId: string) => {
+export const getOutletById = cache(async (id: string) => {
   return await prisma.outlet.findUnique({
-    where: { clerkOrgId },
+    where: { id },
   });
 });
+
+export const getOutletByOrgId = getOutletById;
 
 /**
  * Mengambil daftar seluruh paket layanan cuci aktif untuk cabang outlet tertentu.

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getPendingSubscriptionsAction } from "@/actions/subscription";
 import { SuperadminSubscriptionsView } from "@/components/dashboard/superadmin-subscriptions-view";
 import { UserRole } from "@/generated/prisma/enums";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Verifikasi Pembayaran Langganan Superadmin | Kinclongin",

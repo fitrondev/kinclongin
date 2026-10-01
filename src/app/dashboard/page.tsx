@@ -34,7 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getDashboardMetrics } from "@/lib/db/dashboard-queries";
 import { prisma } from "@/lib/db/prisma";
 import { formatLicensePlate, formatRupiah } from "@/lib/formatters";

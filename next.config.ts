@@ -8,10 +8,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "kencana.basic.box.cloudeka.id",
       },
-      {
-        protocol: "https",
-        hostname: "img.clerk.com",
-      },
+
       {
         protocol: "https",
         hostname: "images.unsplash.com",

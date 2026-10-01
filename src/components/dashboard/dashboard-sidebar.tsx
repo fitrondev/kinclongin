@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import {
   Boxes,
   CreditCard,
@@ -22,6 +21,8 @@ import {
   Users,
 } from "lucide-react";
 
+import { OutletSwitcher } from "@/components/auth/outlet-switcher";
+import { UserButton } from "@/components/auth/user-button";
 import { CreateMemberDialog } from "@/components/dashboard/create-member-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -85,10 +86,9 @@ export function DashboardSidebar({
           </div>
         </div>
 
-        {/* Organization Switcher */}
+        {/* Outlet Switcher */}
         <div className="mt-2 group-data-[collapsible=icon]:hidden">
-          <OrganizationSwitcher
-            hidePersonal
+          <OutletSwitcher
             afterSelectOrganizationUrl="/dashboard"
             afterCreateOrganizationUrl="/dashboard"
             appearance={{

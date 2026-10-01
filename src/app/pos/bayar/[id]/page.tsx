@@ -6,7 +6,7 @@ import {
   CheckoutView,
   RetailProductItem,
 } from "@/components/pos/checkout-view";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { getActiveRetailProducts } from "@/lib/db/queries";
 

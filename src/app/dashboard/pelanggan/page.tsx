@@ -7,7 +7,7 @@ import {
   CustomerLoyaltyTable,
   CustomerRowData,
 } from "@/components/dashboard/customer-loyalty-table";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {
@@ -38,16 +38,21 @@ export default async function DashboardPelangganPage() {
 
   // Hitung metrik agregat
   let totalEligibleVehicles = 0;
-  let totalPointsCirculating = 0;
-
-  const initialCustomers: CustomerRowData[] = customers.map((c) => {
-    totalPointsCirculating += c.loyaltyPoints;
-
-    const formattedVehicles = c.vehicles.map((v) => {
-      const isPromoEligible = v.totalVisits > 0 && v.totalVisits % 10 === 0;
-      if (isPromoEligible) {
+  for (const c of customers) {
+    for (const v of c.vehicles) {
+      if (v.totalVisits > 0 && v.totalVisits % 10 === 0) {
         totalEligibleVehicles += 1;
       }
+    }
+  }
+  const totalPointsCirculating = customers.reduce(
+    (acc, c) => acc + c.loyaltyPoints,
+    0
+  );
+
+  const initialCustomers: CustomerRowData[] = customers.map((c) => {
+    const formattedVehicles = c.vehicles.map((v) => {
+      const isPromoEligible = v.totalVisits > 0 && v.totalVisits % 10 === 0;
       const visitsToNextPromo =
         v.totalVisits % 10 === 0 ? 10 : 10 - (v.totalVisits % 10);
 

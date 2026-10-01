@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import {
   Car,
   Clock,
@@ -14,6 +13,8 @@ import {
   Tablet,
 } from "lucide-react";
 
+import { OutletSwitcher } from "@/components/auth/outlet-switcher";
+import { UserButton } from "@/components/auth/user-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,8 +62,7 @@ export function POSHeader({
           </div>
 
           <div className="hidden sm:block">
-            <OrganizationSwitcher
-              hidePersonal
+            <OutletSwitcher
               afterSelectOrganizationUrl="/pos/antrean"
               appearance={{
                 elements: {

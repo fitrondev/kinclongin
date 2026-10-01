@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 import { getPayrollSummaryAction } from "@/actions/payroll";
 import { PayrollView } from "@/components/dashboard/payroll-view";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {

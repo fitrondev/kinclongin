@@ -4,7 +4,7 @@ import {
   type InventoryData,
   InventoryView,
 } from "@/components/dashboard/inventory-view";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {

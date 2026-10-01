@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { KanbanBoard } from "@/components/pos/kanban-board";
 import { KanbanTicket } from "@/components/pos/ticket-card";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { getActiveQueueTickets } from "@/lib/db/queries";
 

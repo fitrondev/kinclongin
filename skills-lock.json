@@ -8,6 +8,12 @@
       "computedHash": "cdb9293f9d8461b525a42949d5f3509754c42efa2eab11f20d406b16270eb867",
       "wellKnownDigest": "sha256:c3dc1a035894db5e60d3cde5e06147c660220f1cffacf8b7469b80f12309bc08"
     },
+    "authjs-skills": {
+      "source": "gocallum/nextjs16-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/authjs-skills/SKILL.md",
+      "computedHash": "a9e50317bfff481c46c9b7199bbb952c9cd776dc02767e1c0f22232452bb0341"
+    },
     "clerk-orgs": {
       "source": "clerk/skills",
       "sourceType": "github",

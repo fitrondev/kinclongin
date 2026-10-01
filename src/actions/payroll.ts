@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { UserRole } from "@/generated/prisma/enums";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export type ActionResponse<T = unknown> = {

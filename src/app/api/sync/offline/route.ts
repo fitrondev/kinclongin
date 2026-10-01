@@ -4,7 +4,7 @@ import {
   type TicketStatus,
   type VehicleCategory,
 } from "@/generated/prisma/client";
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 interface SyncMutationRequest {

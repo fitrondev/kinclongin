@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { canAccessStorageFile } from "@/lib/storage/authorization";
 import { S3_BUCKET_NAME, s3Client } from "@/lib/storage/s3";
 
@@ -37,7 +37,7 @@ export async function GET(
       }
 
       const isAuthorized = await canAccessStorageFile(
-        { id: user.id, clerkId: user.clerkId, role: user.role },
+        { id: user.id, role: user.role, outletId: user.outletId },
         storageKey
       );
 

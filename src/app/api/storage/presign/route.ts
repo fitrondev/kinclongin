@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { z } from "zod";
 
-import { getCurrentUser } from "@/lib/auth/clerk-sync";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import {
