@@ -28,6 +28,9 @@
     "types/**/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "e2e/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"

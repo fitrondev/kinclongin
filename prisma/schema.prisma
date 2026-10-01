@@ -29,22 +29,22 @@ enum UserStatus {
 }
 
 enum VehicleCategory {
-  MOTOR_KECIL     // Bebek, Matic 110-125cc (Beat, Vario, Mio)
-  MOTOR_BESAR     // NMax, PCX, Vespa, 150-250cc
-  MOTOR_MOGE      // 250cc+, Harley, Trail
-  MOBIL_KECIL     // Brio, Agya, Yaris, Hatchback
-  MOBIL_SEDANG    // Avanza, Xpander, HR-V, Sedan
-  MOBIL_BESAR     // Pajero, Fortuner, Alphard, Double Cabin
-  KENDARAAN_LAIN  // Pick-up, Truk Engkel
+  MOTOR_KECIL // Bebek, Matic 110-125cc (Beat, Vario, Mio)
+  MOTOR_BESAR // NMax, PCX, Vespa, 150-250cc
+  MOTOR_MOGE // 250cc+, Harley, Trail
+  MOBIL_KECIL // Brio, Agya, Yaris, Hatchback
+  MOBIL_SEDANG // Avanza, Xpander, HR-V, Sedan
+  MOBIL_BESAR // Pajero, Fortuner, Alphard, Double Cabin
+  KENDARAAN_LAIN // Pick-up, Truk Engkel
 }
 
 enum TicketStatus {
-  QUEUED          // Menunggu slot/bay cuci
-  WASHING         // Di area basah / hidrolik
-  DRYING          // Pengeringan, lap semir ban, vakum
-  READY           // Selesai QC, siap diserahkan/diambil
-  COMPLETED       // Pembayaran lunas & kendaraan telah keluar
-  CANCELLED       // Dibatalkan (dengan audit log)
+  QUEUED // Menunggu slot/bay cuci
+  WASHING // Di area basah / hidrolik
+  DRYING // Pengeringan, lap semir ban, vakum
+  READY // Selesai QC, siap diserahkan/diambil
+  COMPLETED // Pembayaran lunas & kendaraan telah keluar
+  CANCELLED // Dibatalkan (dengan audit log)
 }
 
 enum PaymentMethod {
@@ -62,15 +62,15 @@ enum PaymentStatus {
 }
 
 enum CommissionType {
-  PERCENTAGE      // Persentase dari harga paket (contoh: 30%)
-  FIXED_NOMINAL   // Nominal flat (contoh: Rp 10.000 / kendaraan)
+  PERCENTAGE // Persentase dari harga paket (contoh: 30%)
+  FIXED_NOMINAL // Nominal flat (contoh: Rp 10.000 / kendaraan)
 }
 
 enum MovementType {
-  IN_RESTOCK          // Pembelian/penambahan stok baru
-  OUT_USAGE           // Pemakaian bahan habis pakai
-  OUT_SALE            // Terjual via POS Kasir
-  ADJUSTMENT_OPNAME   // Penyesuaian fisik opname
+  IN_RESTOCK // Pembelian/penambahan stok baru
+  OUT_USAGE // Pemakaian bahan habis pakai
+  OUT_SALE // Terjual via POS Kasir
+  ADJUSTMENT_OPNAME // Penyesuaian fisik opname
 }
 
 enum WhatsAppDeliveryStatus {
@@ -86,61 +86,61 @@ enum WhatsAppDeliveryStatus {
 // -------------------------------------------------------------
 
 model Outlet {
-  id              String        @id @default(cuid())
-  name            String        // Contoh: "Kinclongin Cabang Mataram"
-  slug            String        @unique // Slug URL identitas cabang
-  address         String        @db.Text
+  id              String  @id @default(cuid())
+  name            String // Contoh: "Kinclongin Cabang Mataram"
+  slug            String  @unique // Slug URL identitas cabang
+  address         String  @db.Text
   phone           String
   logoUrl         String?
-  waGatewayApiKey String?       // Kunci API untuk WhatsApp Gateway
-  waSenderNumber  String?       // Nomor WhatsApp pengirim notifikasi
-  isActive        Boolean       @default(true)
-  ownerId         String?       // User ID pemilik cabang (Owner)
+  waGatewayApiKey String? // Kunci API untuk WhatsApp Gateway
+  waSenderNumber  String? // Nomor WhatsApp pengirim notifikasi
+  isActive        Boolean @default(true)
+  ownerId         String? // User ID pemilik cabang (Owner)
 
   // Status Langganan SaaS (Flat Rp 50.000 / Bulan)
   subscriptionStatus    String    @default("TRIAL") // TRIAL, ACTIVE, PENDING_VERIFICATION, EXPIRED
-  subscriptionExpiresAt DateTime?                   // Tanggal berakhir masa aktif
-  trialEndsAt           DateTime?                   // Tanggal berakhir uji coba 14 hari
+  subscriptionExpiresAt DateTime? // Tanggal berakhir masa aktif
+  trialEndsAt           DateTime? // Tanggal berakhir uji coba 14 hari
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relasi
-  owner           User?         @relation("OwnedOutlets", fields: [ownerId], references: [id], onDelete: SetNull)
-  users           User[]        @relation("OutletUsers")
-  employees       Employee[]
-  servicePackages ServicePackage[]
-  washTickets     WashTicket[]
-  retailProducts  RetailProduct[]
-  operationalSupplies OperationalSupply[]
-  stockMovements  StockMovement[]
-  payments        Payment[]
+  owner                User?                       @relation("OwnedOutlets", fields: [ownerId], references: [id], onDelete: SetNull)
+  users                User[]                      @relation("OutletUsers")
+  employees            Employee[]
+  servicePackages      ServicePackage[]
+  washTickets          WashTicket[]
+  retailProducts       RetailProduct[]
+  operationalSupplies  OperationalSupply[]
+  stockMovements       StockMovement[]
+  payments             Payment[]
   subscriptionPayments TenantSubscriptionPayment[]
-  auditLogs       AuditLog[]
+  auditLogs            AuditLog[]
 
   @@index([ownerId])
   @@index([isActive])
 }
 
 model User {
-  id            String      @id @default(cuid())
-  email         String      @unique
-  passwordHash  String?     // Hash password bcryptjs untuk kredensial login Auth.js
-  fullName      String
-  avatarUrl     String?
-  role          UserRole    @default(CASHIER)
-  status        UserStatus  @default(ACTIVE)
-  outletId      String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String? // Hash password bcryptjs untuk kredensial login Auth.js
+  fullName     String
+  avatarUrl    String?
+  role         UserRole   @default(CASHIER)
+  status       UserStatus @default(ACTIVE)
+  outletId     String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   // Relasi
-  outlet        Outlet?     @relation("OutletUsers", fields: [outletId], references: [id], onDelete: SetNull)
-  ownedOutlets  Outlet[]    @relation("OwnedOutlets")
-  employee      Employee?
-  createdTickets WashTicket[] @relation("TicketCreator")
-  handledPayments Payment[]   @relation("CashierPayments")
-  auditLogs     AuditLog[]   @relation("ActorAuditLogs")
+  outlet          Outlet?      @relation("OutletUsers", fields: [outletId], references: [id], onDelete: SetNull)
+  ownedOutlets    Outlet[]     @relation("OwnedOutlets")
+  employee        Employee?
+  createdTickets  WashTicket[] @relation("TicketCreator")
+  handledPayments Payment[]    @relation("CashierPayments")
+  auditLogs       AuditLog[]   @relation("ActorAuditLogs")
 
   @@index([role])
   @@index([outletId])
@@ -148,22 +148,22 @@ model User {
 }
 
 model Employee {
-  id              String          @id @default(cuid())
-  outletId        String
-  userId          String?         @unique // Jika pekerja memiliki akun login Kinclongin (opsional)
-  fullName        String
-  phone           String?
-  pinCode         String?         // 4-digit PIN terenkripsi untuk login Kiosk Tablet
-  role            UserRole        @default(WASHER)
-  commissionType  CommissionType  @default(FIXED_NOMINAL)
-  commissionRate  Decimal         @default(10000) @db.Decimal(10, 2)
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id             String         @id @default(cuid())
+  outletId       String
+  userId         String?        @unique // Jika pekerja memiliki akun login Kinclongin (opsional)
+  fullName       String
+  phone          String?
+  pinCode        String? // 4-digit PIN terenkripsi untuk login Kiosk Tablet
+  role           UserRole       @default(WASHER)
+  commissionType CommissionType @default(FIXED_NOMINAL)
+  commissionRate Decimal        @default(10000) @db.Decimal(10, 2)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   // Relasi
-  outlet          Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  user            User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  outlet          Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   assignedTickets TicketWasher[]
 
   @@index([outletId])
@@ -175,38 +175,38 @@ model Employee {
 // -------------------------------------------------------------
 
 model Customer {
-  id              String               @id @default(cuid())
-  phone           String               @unique // Nomor WhatsApp sebagai primary key bisnis
-  fullName        String
-  notes           String?
-  loyaltyPoints   Int                  @default(0)
-  totalVisits     Int                  @default(0)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id            String   @id @default(cuid())
+  phone         String   @unique // Nomor WhatsApp sebagai primary key bisnis
+  fullName      String
+  notes         String?
+  loyaltyPoints Int      @default(0)
+  totalVisits   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relasi
-  vehicles        Vehicle[]
-  washTickets     WashTicket[]
-  loyaltyLogs     CustomerLoyaltyLog[]
+  vehicles    Vehicle[]
+  washTickets WashTicket[]
+  loyaltyLogs CustomerLoyaltyLog[]
 
   @@index([phone])
 }
 
 model Vehicle {
-  id            String          @id @default(cuid())
-  licensePlate  String          @unique // Contoh: "DR 1234 AB" (uppercase tanpa spasi berlebih)
-  category      VehicleCategory
-  brand         String?         // Honda, Toyota, Yamaha, dll.
-  model         String?         // Avanza, Vario 160, Fortuner
-  color         String?         // Hitam, Putih, dll.
-  customerId    String?
-  totalVisits   Int             @default(0) // Akumulasi kunjungan khusus plat nomor ini untuk validasi promo Cuci 10x Gratis 1x
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id           String          @id @default(cuid())
+  licensePlate String          @unique // Contoh: "DR 1234 AB" (uppercase tanpa spasi berlebih)
+  category     VehicleCategory
+  brand        String? // Honda, Toyota, Yamaha, dll.
+  model        String? // Avanza, Vario 160, Fortuner
+  color        String? // Hitam, Putih, dll.
+  customerId   String?
+  totalVisits  Int             @default(0) // Akumulasi kunjungan khusus plat nomor ini untuk validasi promo Cuci 10x Gratis 1x
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   // Relasi
-  customer      Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  washTickets   WashTicket[]
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  washTickets WashTicket[]
 
   @@index([licensePlate])
   @@index([category])
@@ -219,7 +219,7 @@ model Vehicle {
 model ServicePackage {
   id                String          @id @default(cuid())
   outletId          String
-  name              String          // Contoh: "Cuci Salju + Semir Ban"
+  name              String // Contoh: "Cuci Salju + Semir Ban"
   description       String?
   vehicleCategory   VehicleCategory
   price             Decimal         @db.Decimal(10, 2)
@@ -231,8 +231,8 @@ model ServicePackage {
   updatedAt         DateTime        @updatedAt
 
   // Relasi
-  outlet            Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  washTickets       WashTicket[]
+  outlet      Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  washTickets WashTicket[]
 
   @@index([outletId, vehicleCategory, isActive])
 }
@@ -242,50 +242,50 @@ model ServicePackage {
 // -------------------------------------------------------------
 
 model WashTicket {
-  id                String            @id @default(cuid())
-  ticketNumber      String            @unique // KNC-YYYYMMDD-001
-  outletId          String
-  createdById       String            // Kasir pembuat tiket
-  customerId        String?
-  vehicleId         String?
-  licensePlate      String            // Redundan untuk pencarian kilat
-  vehicleCategory   VehicleCategory
-  servicePackageId  String
-  servicePrice      Decimal           @db.Decimal(10, 2)
+  id               String          @id @default(cuid())
+  ticketNumber     String          @unique // KNC-YYYYMMDD-001
+  outletId         String
+  createdById      String // Kasir pembuat tiket
+  customerId       String?
+  vehicleId        String?
+  licensePlate     String // Redundan untuk pencarian kilat
+  vehicleCategory  VehicleCategory
+  servicePackageId String
+  servicePrice     Decimal         @db.Decimal(10, 2)
 
-  status            TicketStatus      @default(QUEUED)
-  initialNotes      String?           // Catatan kondisi: "Baret spion kiri"
-  inspectionPhotos  Json?             // Array of S3 URLs foto sebelum cuci
+  status           TicketStatus @default(QUEUED)
+  initialNotes     String? // Catatan kondisi: "Baret spion kiri"
+  inspectionPhotos Json? // Array of S3 URLs foto sebelum cuci
 
   // Waktu Alur Kerja (SLA Metrics)
-  queuedAt          DateTime          @default(now())
-  washingStartedAt  DateTime?
-  dryingStartedAt   DateTime?
-  readyAt           DateTime?
-  completedAt       DateTime?
+  queuedAt         DateTime  @default(now())
+  washingStartedAt DateTime?
+  dryingStartedAt  DateTime?
+  readyAt          DateTime?
+  completedAt      DateTime?
 
   // Kalkulasi Finansial
-  subtotalServices  Decimal           @default(0) @db.Decimal(10, 2)
-  subtotalRetail    Decimal           @default(0) @db.Decimal(10, 2)
-  discountAmount    Decimal           @default(0) @db.Decimal(10, 2)
-  totalAmount       Decimal           @db.Decimal(10, 2)
-  paidAmount        Decimal           @default(0) @db.Decimal(10, 2)
-  paymentStatus     PaymentStatus     @default(UNPAID)
+  subtotalServices Decimal       @default(0) @db.Decimal(10, 2)
+  subtotalRetail   Decimal       @default(0) @db.Decimal(10, 2)
+  discountAmount   Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount      Decimal       @db.Decimal(10, 2)
+  paidAmount       Decimal       @default(0) @db.Decimal(10, 2)
+  paymentStatus    PaymentStatus @default(UNPAID)
 
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relasi
-  outlet            Outlet            @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  creator           User              @relation("TicketCreator", fields: [createdById], references: [id])
-  customer          Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  vehicle           Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  servicePackage    ServicePackage    @relation(fields: [servicePackageId], references: [id])
-  washers           TicketWasher[]
-  retailItems       TicketRetailItem[]
-  payment           Payment?
-  loyaltyLogs       CustomerLoyaltyLog[]
-  whatsAppLogs      WhatsAppLog[]
+  outlet         Outlet               @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  creator        User                 @relation("TicketCreator", fields: [createdById], references: [id])
+  customer       Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  vehicle        Vehicle?             @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  servicePackage ServicePackage       @relation(fields: [servicePackageId], references: [id])
+  washers        TicketWasher[]
+  retailItems    TicketRetailItem[]
+  payment        Payment?
+  loyaltyLogs    CustomerLoyaltyLog[]
+  whatsAppLogs   WhatsAppLog[]
 
   @@index([outletId, status])
   @@index([licensePlate])
@@ -293,17 +293,17 @@ model WashTicket {
 }
 
 model TicketWasher {
-  id                String          @id @default(cuid())
-  ticketId          String
-  employeeId        String
-  commissionAmount  Decimal         @db.Decimal(10, 2)
-  assignedAt        DateTime        @default(now())
-  isPaidToWasher    Boolean         @default(false)
-  paidAt            DateTime?
+  id               String    @id @default(cuid())
+  ticketId         String
+  employeeId       String
+  commissionAmount Decimal   @db.Decimal(10, 2)
+  assignedAt       DateTime  @default(now())
+  isPaidToWasher   Boolean   @default(false)
+  paidAt           DateTime?
 
   // Relasi
-  ticket            WashTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  washer            Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  ticket WashTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  washer Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, employeeId])
   @@index([employeeId, isPaidToWasher])
@@ -314,78 +314,78 @@ model TicketWasher {
 // -------------------------------------------------------------
 
 model RetailProduct {
-  id              String            @id @default(cuid())
-  outletId        String
-  sku             String?
-  name            String            // Kopi Dingin, Parfum Mobil Kaleng, Snack
-  category        String            // Minuman, Makanan, Aksesoris
-  costPrice       Decimal           @db.Decimal(10, 2)
-  sellingPrice    Decimal           @db.Decimal(10, 2)
-  stock           Int               @default(0)
-  minStockAlert   Int               @default(5)
-  imageUrl        String?
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id            String   @id @default(cuid())
+  outletId      String
+  sku           String?
+  name          String // Kopi Dingin, Parfum Mobil Kaleng, Snack
+  category      String // Minuman, Makanan, Aksesoris
+  costPrice     Decimal  @db.Decimal(10, 2)
+  sellingPrice  Decimal  @db.Decimal(10, 2)
+  stock         Int      @default(0)
+  minStockAlert Int      @default(5)
+  imageUrl      String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relasi
-  outlet          Outlet            @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  ticketItems     TicketRetailItem[]
-  stockMovements  StockMovement[]
+  outlet         Outlet             @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  ticketItems    TicketRetailItem[]
+  stockMovements StockMovement[]
 
   @@index([outletId, isActive])
 }
 
 model TicketRetailItem {
-  id              String        @id @default(cuid())
+  id              String  @id @default(cuid())
   ticketId        String
   retailProductId String
-  quantity        Int           @default(1)
-  unitPrice       Decimal       @db.Decimal(10, 2)
-  subtotal        Decimal       @db.Decimal(10, 2)
+  quantity        Int     @default(1)
+  unitPrice       Decimal @db.Decimal(10, 2)
+  subtotal        Decimal @db.Decimal(10, 2)
 
   // Relasi
-  ticket          WashTicket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  product         RetailProduct @relation(fields: [retailProductId], references: [id])
+  ticket  WashTicket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  product RetailProduct @relation(fields: [retailProductId], references: [id])
 
   @@index([ticketId])
 }
 
 model OperationalSupply {
-  id                  String          @id @default(cuid())
-  outletId            String
-  sku                 String?
-  name                String          // Shampo Salju Konsentrat, Semir Ban, Degreaser
-  unit                String          // "Liter", "Botol", "Lembar"
-  stock               Decimal         @default(0) @db.Decimal(10, 2)
-  minStockAlert       Decimal         @default(5) @db.Decimal(10, 2)
-  usagePerCarWash     Decimal         @default(0.1) @db.Decimal(10, 3) // Pemakaian per mobil (0.1 Liter)
-  usagePerMotorWash   Decimal         @default(0.04) @db.Decimal(10, 3) // Pemakaian per motor (0.04 Liter)
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  id                String   @id @default(cuid())
+  outletId          String
+  sku               String?
+  name              String // Shampo Salju Konsentrat, Semir Ban, Degreaser
+  unit              String // "Liter", "Botol", "Lembar"
+  stock             Decimal  @default(0) @db.Decimal(10, 2)
+  minStockAlert     Decimal  @default(5) @db.Decimal(10, 2)
+  usagePerCarWash   Decimal  @default(0.1) @db.Decimal(10, 3) // Pemakaian per mobil (0.1 Liter)
+  usagePerMotorWash Decimal  @default(0.04) @db.Decimal(10, 3) // Pemakaian per motor (0.04 Liter)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Relasi
-  outlet              Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  stockMovements      StockMovement[]
+  outlet         Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
 
   @@index([outletId])
 }
 
 model StockMovement {
-  id                  String              @id @default(cuid())
+  id                  String       @id @default(cuid())
   outletId            String
   retailProductId     String?
   operationalSupplyId String?
   movementType        MovementType
-  quantity            Decimal             @db.Decimal(10, 2)
-  balanceAfter        Decimal             @db.Decimal(10, 2)
-  referenceNote       String?             // "Penjualan Tiket #KNC-001" atau "Restok Toko Jaya"
-  createdAt           DateTime            @default(now())
+  quantity            Decimal      @db.Decimal(10, 2)
+  balanceAfter        Decimal      @db.Decimal(10, 2)
+  referenceNote       String? // "Penjualan Tiket #KNC-001" atau "Restok Toko Jaya"
+  createdAt           DateTime     @default(now())
 
   // Relasi
-  outlet              Outlet              @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  retailProduct       RetailProduct?      @relation(fields: [retailProductId], references: [id], onDelete: SetNull)
-  operationalSupply   OperationalSupply?  @relation(fields: [operationalSupplyId], references: [id], onDelete: SetNull)
+  outlet            Outlet             @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  retailProduct     RetailProduct?     @relation(fields: [retailProductId], references: [id], onDelete: SetNull)
+  operationalSupply OperationalSupply? @relation(fields: [operationalSupplyId], references: [id], onDelete: SetNull)
 
   @@index([outletId, createdAt])
 }
@@ -395,56 +395,56 @@ model StockMovement {
 // -------------------------------------------------------------
 
 model Payment {
-  id                String          @id @default(cuid())
-  ticketId          String          @unique
-  outletId          String
-  cashierId         String
-  method            PaymentMethod
-  status            PaymentStatus   @default(PAID)
-  totalAmount       Decimal         @db.Decimal(10, 2)
-  cashGiven         Decimal?        @db.Decimal(10, 2)
-  changeGiven       Decimal?        @db.Decimal(10, 2)
-  referenceNumber   String?         // Nomor referensi QRIS / Transfer
-  proofImageUrl     String?         // Bukti transfer di S3 SumoPod
-  paidAt            DateTime        @default(now())
+  id              String        @id @default(cuid())
+  ticketId        String        @unique
+  outletId        String
+  cashierId       String
+  method          PaymentMethod
+  status          PaymentStatus @default(PAID)
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  cashGiven       Decimal?      @db.Decimal(10, 2)
+  changeGiven     Decimal?      @db.Decimal(10, 2)
+  referenceNumber String? // Nomor referensi QRIS / Transfer
+  proofImageUrl   String? // Bukti transfer di S3 SumoPod
+  paidAt          DateTime      @default(now())
 
   // Relasi
-  ticket            WashTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  outlet            Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  cashier           User            @relation("CashierPayments", fields: [cashierId], references: [id])
+  ticket  WashTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  outlet  Outlet     @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  cashier User       @relation("CashierPayments", fields: [cashierId], references: [id])
 
   @@index([outletId, paidAt])
   @@index([cashierId])
 }
 
 model CustomerLoyaltyLog {
-  id              String        @id @default(cuid())
-  customerId      String
-  ticketId        String?
-  pointsChanged   Int           // Positif untuk dapat poin, negatif untuk redeem
-  balanceAfter    Int
-  description     String        // "Poin dari Tiket #KNC-001" atau "Redeem Cuci Gratis"
-  createdAt       DateTime      @default(now())
+  id            String   @id @default(cuid())
+  customerId    String
+  ticketId      String?
+  pointsChanged Int // Positif untuk dapat poin, negatif untuk redeem
+  balanceAfter  Int
+  description   String // "Poin dari Tiket #KNC-001" atau "Redeem Cuci Gratis"
+  createdAt     DateTime @default(now())
 
   // Relasi
-  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  ticket          WashTicket?   @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  customer Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  ticket   WashTicket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@index([customerId, createdAt])
 }
 
 model WhatsAppLog {
-  id              String                  @id @default(cuid())
-  ticketId        String
-  recipientPhone  String
-  messageType     String                  // "RECEIPT", "STATUS_READY", "PROMO"
-  status          WhatsAppDeliveryStatus  @default(PENDING)
-  payloadJson     Json?
-  externalId      String?
-  sentAt          DateTime                @default(now())
+  id             String                 @id @default(cuid())
+  ticketId       String
+  recipientPhone String
+  messageType    String // "RECEIPT", "STATUS_READY", "PROMO"
+  status         WhatsAppDeliveryStatus @default(PENDING)
+  payloadJson    Json?
+  externalId     String?
+  sentAt         DateTime               @default(now())
 
   // Relasi
-  ticket          WashTicket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket WashTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@index([recipientPhone])
@@ -455,21 +455,21 @@ model WhatsAppLog {
 // -------------------------------------------------------------
 
 model AuditLog {
-  id          String      @id @default(cuid())
-  outletId    String?
-  actorId     String
-  actorRole   String
-  action      String      // TICKET_CANCELLED, COMMISSION_PAID, PRICE_CHANGED, VOID_PAYMENT
-  entityType  String      // "WashTicket", "Payment", "Employee", "Stock"
-  entityId    String
-  metadata    Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime    @default(now())
+  id         String   @id @default(cuid())
+  outletId   String?
+  actorId    String
+  actorRole  String
+  action     String // TICKET_CANCELLED, COMMISSION_PAID, PRICE_CHANGED, VOID_PAYMENT
+  entityType String // "WashTicket", "Payment", "Employee", "Stock"
+  entityId   String
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
 
   // Relasi
-  outlet      Outlet?     @relation(fields: [outletId], references: [id], onDelete: SetNull)
-  actor       User        @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: Cascade)
+  outlet Outlet? @relation(fields: [outletId], references: [id], onDelete: SetNull)
+  actor  User    @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([outletId, createdAt])
   @@index([actorId])
@@ -483,17 +483,17 @@ model TenantSubscriptionPayment {
   id              String    @id @default(cuid())
   outletId        String
   amount          Decimal   @default(50000) @db.Decimal(10, 2)
-  durationMonths  Int       @default(1)    // 1 bulan (Rp 50rb), 3 bulan, 6 bulan, 12 bulan
-  paymentMethod   String    // "BANK_TRANSFER" atau "QRIS"
-  proofImageUrl   String    // URL foto bukti transfer/struk QRIS di SumoPod S3
+  durationMonths  Int       @default(1) // 1 bulan (Rp 50rb), 3 bulan, 6 bulan, 12 bulan
+  paymentMethod   String // "BANK_TRANSFER" atau "QRIS"
+  proofImageUrl   String // URL foto bukti transfer/struk QRIS di SumoPod S3
   status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
   rejectionReason String?
   submittedAt     DateTime  @default(now())
   verifiedAt      DateTime?
-  verifiedById    String?   // User ID Superadmin verifikator
+  verifiedById    String? // User ID Superadmin verifikator
 
   // Relasi
-  outlet          Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  outlet Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
 
   @@index([outletId, status])
   @@index([submittedAt])
