@@ -182,6 +182,14 @@ export async function redeemLoyaltyRewardAction(input: {
       };
     }
 
+    if (user.role === "WASHER") {
+      return {
+        success: false,
+        error:
+          "Akses ditolak. Petugas cuci (Washer) tidak diizinkan memproses reward diskon kasir.",
+      };
+    }
+
     const parsed = redeemSchema.safeParse(input);
     if (!parsed.success) {
       return {

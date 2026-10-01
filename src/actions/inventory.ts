@@ -34,6 +34,14 @@ export async function restockProductAction(input: {
       return { success: false, error: "Sesi berakhir. Silakan login kembali." };
     }
 
+    if (user.role !== "OWNER" && user.role !== "MANAGER") {
+      return {
+        success: false,
+        error:
+          "Akses ditolak. Hanya Pemilik (Owner) dan Manajer yang berwenang mengelola stok barang ritel.",
+      };
+    }
+
     const parsed = restockProductSchema.safeParse(input);
     if (!parsed.success) {
       return { success: false, error: "Input restok tidak valid." };
@@ -113,6 +121,14 @@ export async function restockSupplyAction(input: {
     const user = await getCurrentUser();
     if (!user) {
       return { success: false, error: "Sesi berakhir. Silakan login kembali." };
+    }
+
+    if (user.role !== "OWNER" && user.role !== "MANAGER") {
+      return {
+        success: false,
+        error:
+          "Akses ditolak. Hanya Pemilik (Owner) dan Manajer yang berwenang mengelola stok bahan operasional.",
+      };
     }
 
     const parsed = restockSupplySchema.safeParse(input);

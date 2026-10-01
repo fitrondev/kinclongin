@@ -1,9 +1,98 @@
 import { redirect } from "next/navigation";
 
+import { UserRole } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { Roles } from "@/types/globals";
 
 export { getCurrentUser } from "@/lib/auth/session";
+
+/**
+ * Matriks Hak Akses Granular untuk 4 Role Utama di Kinclongin POS.
+ */
+export const ROLE_PERMISSIONS = {
+  OWNER: {
+    canViewBusinessAnalytics: true,
+    canManageUsers: true,
+    canManageInventory: true,
+    canViewPayroll: true,
+    canDisburseCommissions: true,
+    canOperatePOS: true,
+    canOperateKiosk: true,
+    canManageSubscriptions: true,
+    canSwitchOutlet: true,
+    canViewCustomers: true,
+  },
+  MANAGER: {
+    canViewBusinessAnalytics: true,
+    canManageUsers: false, // Hanya Owner yang boleh mengelola akun & role pengguna
+    canManageInventory: true,
+    canViewPayroll: true,
+    canDisburseCommissions: true,
+    canOperatePOS: true,
+    canOperateKiosk: true,
+    canManageSubscriptions: false,
+    canSwitchOutlet: false,
+    canViewCustomers: true,
+  },
+  CASHIER: {
+    canViewBusinessAnalytics: false, // Dilarang melihat omset dan profit margin
+    canManageUsers: false,
+    canManageInventory: false,
+    canViewPayroll: false,
+    canDisburseCommissions: false,
+    canOperatePOS: true,
+    canOperateKiosk: true,
+    canManageSubscriptions: false,
+    canSwitchOutlet: false,
+    canViewCustomers: false, // Hanya via pencarian POS
+  },
+  WASHER: {
+    canViewBusinessAnalytics: false,
+    canViewWasherDashboard: true, // Dashboard personal komisi dan unit diri sendiri
+    canManageUsers: false,
+    canManageInventory: false,
+    canViewPayroll: false, // Tidak bisa melihat payroll global orang lain
+    canDisburseCommissions: false,
+    canOperatePOS: false, // Dilarang checkout dan input tiket baru kasir
+    canOperateKiosk: true, // Kiosk pengerjaan cuci dengan PIN
+    canManageSubscriptions: false,
+    canSwitchOutlet: false,
+    canViewCustomers: false,
+  },
+} as const;
+
+export type PermissionKey =
+  keyof (typeof ROLE_PERMISSIONS)[keyof typeof ROLE_PERMISSIONS];
+
+/**
+ * Memeriksa apakah suatu role memiliki permission tertentu.
+ */
+export function hasPermission(
+  role: string | undefined | null,
+  permission: PermissionKey
+): boolean {
+  if (!role) return false;
+  const upperRole = role.toUpperCase() as keyof typeof ROLE_PERMISSIONS;
+  const permissions = ROLE_PERMISSIONS[upperRole];
+  if (!permissions) return false;
+  return Boolean((permissions as Record<string, boolean>)[permission]);
+}
+
+export function isOwner(role?: string | null): boolean {
+  return role?.toUpperCase() === "OWNER";
+}
+
+export function isManager(role?: string | null): boolean {
+  return role?.toUpperCase() === "MANAGER";
+}
+
+export function isCashier(role?: string | null): boolean {
+  return role?.toUpperCase() === "CASHIER";
+}
+
+export function isWasher(role?: string | null): boolean {
+  return role?.toUpperCase() === "WASHER";
+}
 
 /**
  * Memeriksa apakah role berstatus Admin / Superadmin / Owner

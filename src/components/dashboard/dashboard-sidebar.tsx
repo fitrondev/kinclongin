@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 
 import {
   Boxes,
+  Coins,
   CreditCard,
   Crown,
   Droplets,
@@ -25,7 +26,6 @@ import {
 
 import { OutletSwitcher } from "@/components/auth/outlet-switcher";
 import { UserButton } from "@/components/auth/user-button";
-import { CreateMemberDialog } from "@/components/dashboard/create-member-dialog";
 import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -63,8 +63,11 @@ export function DashboardSidebar({
 
   const isOwner = userRole === "OWNER";
   const isManager = userRole === "MANAGER";
-  const canManageStaff = isOwner || isManager;
+  const isWasher = userRole === "WASHER";
+  const isCashier = userRole === "CASHIER";
+  const canManageStaff = isOwner; // Khusus Owner: Manajemen akun & role staf
   const canViewPayroll = isOwner || isManager;
+  const canViewAnalytics = isOwner || isManager;
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -116,213 +119,333 @@ export function DashboardSidebar({
         )}
       </SidebarHeader>
 
-      {/* 2. Content: Semua Fitur Lengkap Kinclongin */}
+      {/* 2. Content: Navigasi Disesuaikan Berdasarkan Role Pengguna */}
       <SidebarContent>
-        {/* GRUP 1: POS & Operasional Lapangan */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-            Operasional Cuci
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* Antrean Cuci Real-time */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/pos/antrean"}
-                  tooltip="Papan Antrean Cuci"
-                  className={
-                    pathname === "/pos/antrean"
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/pos/antrean">
-                    <LayoutGrid className="h-4 w-4" />
-                    <span>Papan Antrean Cuci</span>
-                  </Link>
-                </SidebarMenuButton>
-                <SidebarMenuBadge className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-600">
-                  Live
-                </SidebarMenuBadge>
-              </SidebarMenuItem>
-
-              {/* Input Pendaftaran Cuci Baru */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/pos/daftar-baru"}
-                  tooltip="Daftar Kendaraan Baru"
-                  className={
-                    pathname === "/pos/daftar-baru"
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/pos/daftar-baru">
-                    <PlusCircle className="h-4 w-4" />
-                    <span>Daftar Cuci Baru (&lt;15s)</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Front Desk Kasir & Transaksi */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/pos"}
-                  tooltip="Kasir & Transaksi Pembayaran"
-                  className={
-                    pathname === "/pos"
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/pos">
-                    <CreditCard className="h-4 w-4" />
-                    <span>Kasir & Pembayaran</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Layar Cuci PIN (Area Hidrolik) */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={
-                    pathname.startsWith("/layar-cuci") ||
-                    pathname.startsWith("/panel-cuci")
-                  }
-                  tooltip="Layar Cuci (Area Hidrolik)"
-                  className={
-                    pathname.startsWith("/layar-cuci") ||
-                    pathname.startsWith("/panel-cuci")
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/layar-cuci">
-                    <Tablet className="h-4 w-4" />
-                    <span>Layar Cuci (Area Hidrolik)</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Modul Keanggotaan & Loyalitas Pelanggan (B2C) */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/dashboard/pelanggan")}
-                  tooltip="Keanggotaan & Loyalitas Pelanggan"
-                  className={
-                    pathname.startsWith("/dashboard/pelanggan")
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/dashboard/pelanggan">
-                    <Gift className="h-4 w-4 text-amber-500" />
-                    <span>Member & Loyalitas</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Pendaftaran Member Baru (Bisa dilakukan Owner, Manajer & Kasir) */}
-              <SidebarMenuItem className="pt-1 group-data-[collapsible=icon]:hidden">
-                <MembershipDialog
-                  buttonText="+ Daftar Member Baru"
-                  className="h-8 w-full justify-start text-xs font-bold"
-                />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        {/* GRUP 2: Manajemen Bisnis & Analitik */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-            Manajemen & Analitik
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* Ringkasan Dasbor Utama */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/dashboard"}
-                  tooltip="Ringkasan Dasbor"
-                  className={
-                    pathname === "/dashboard"
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span>Ringkasan Dasbor</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Inventori Stok & Bahan Operasional */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/dashboard/stok")}
-                  tooltip="Manajemen Stok & Bahan Cuci"
-                  className={
-                    pathname.startsWith("/dashboard/stok")
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/dashboard/stok">
-                    <Boxes className="h-4 w-4" />
-                    <span>Stok Bahan & Barang</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Penggajian & Komisi Washer (Khusus Owner & Manajer) */}
-              {canViewPayroll && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith("/dashboard/komisi")}
-                    tooltip="Gaji & Komisi Pekerja Cuci"
-                    className={
-                      pathname.startsWith("/dashboard/komisi")
-                        ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                        : ""
-                    }
-                  >
-                    <Link href="/dashboard/komisi">
-                      <Users className="h-4 w-4" />
-                      <span>Gaji & Komisi Pekerja</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* GRUP 3: Manajemen Staf & Akses (Hanya untuk Owner & Manajer) */}
-        {canManageStaff && (
+        {isWasher ? (
+          /* ============================================================ */
+          /* MENU KHUSUS PERAN WASHER (Pekerja Cuci Lapangan)             */
+          /* ============================================================ */
           <>
-            <SidebarSeparator />
             <SidebarGroup>
               <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                Manajemen Staf
+                Pengerjaan Lapangan
               </SidebarGroupLabel>
               <SidebarGroupContent>
-                <div className="px-2 pt-1 group-data-[collapsible=icon]:hidden">
-                  <CreateMemberDialog />
-                </div>
+                <SidebarMenu>
+                  {/* Layar Cuci (Area Hidrolik) - Menu Utama Washer */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={
+                        pathname.startsWith("/layar-cuci") ||
+                        pathname.startsWith("/panel-cuci")
+                      }
+                      tooltip="Layar Cuci (Area Hidrolik)"
+                      className={
+                        pathname.startsWith("/layar-cuci") ||
+                        pathname.startsWith("/panel-cuci")
+                          ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold shadow-xs"
+                          : ""
+                      }
+                    >
+                      <Link href="/layar-cuci">
+                        <Tablet className="h-4 w-4 text-cyan-500" />
+                        <span>Layar Cuci (Kiosk PIN)</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    <SidebarMenuBadge className="border-cyan-500/30 bg-cyan-500/10 text-[10px] font-bold text-cyan-600">
+                      Utama
+                    </SidebarMenuBadge>
+                  </SidebarMenuItem>
+
+                  {/* Papan Antrean Cuci (Live Kanban) */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === "/pos/antrean"}
+                      tooltip="Papan Antrean Cuci"
+                      className={
+                        pathname === "/pos/antrean"
+                          ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                          : ""
+                      }
+                    >
+                      <Link href="/pos/antrean">
+                        <LayoutGrid className="h-4 w-4" />
+                        <span>Papan Antrean Cuci</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    <SidebarMenuBadge className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-600">
+                      Live
+                    </SidebarMenuBadge>
+                  </SidebarMenuItem>
+                </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            <SidebarSeparator />
+
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                Penghasilan & Kinerja
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {/* Dasbor Kinerja & Komisi Personal Washer */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === "/dashboard"}
+                      tooltip="Kinerja & Komisi Saya"
+                      className={
+                        pathname === "/dashboard"
+                          ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                          : ""
+                      }
+                    >
+                      <Link href="/dashboard">
+                        <Coins className="h-4 w-4 text-amber-500" />
+                        <span>Kinerja & Komisi Saya</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : (
+          /* ============================================================ */
+          /* MENU STANDARD (Owner, Manager, Cashier)                      */
+          /* ============================================================ */
+          <>
+            {/* GRUP 1: POS & Operasional Lapangan */}
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                Operasional Cuci
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {/* Antrean Cuci Real-time */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === "/pos/antrean"}
+                      tooltip="Papan Antrean Cuci"
+                      className={
+                        pathname === "/pos/antrean"
+                          ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                          : ""
+                      }
+                    >
+                      <Link href="/pos/antrean">
+                        <LayoutGrid className="h-4 w-4" />
+                        <span>Papan Antrean Cuci</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    <SidebarMenuBadge className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-600">
+                      Live
+                    </SidebarMenuBadge>
+                  </SidebarMenuItem>
+
+                  {/* Input Pendaftaran Cuci Baru */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === "/pos/daftar-baru"}
+                      tooltip="Daftar Kendaraan Baru"
+                      className={
+                        pathname === "/pos/daftar-baru"
+                          ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                          : ""
+                      }
+                    >
+                      <Link href="/pos/daftar-baru">
+                        <PlusCircle className="h-4 w-4" />
+                        <span>Daftar Cuci Baru (&lt;15s)</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  {/* Front Desk Kasir & Transaksi */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === "/pos"}
+                      tooltip="Kasir & Transaksi Pembayaran"
+                      className={
+                        pathname === "/pos"
+                          ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                          : ""
+                      }
+                    >
+                      <Link href="/pos">
+                        <CreditCard className="h-4 w-4" />
+                        <span>Kasir & Pembayaran</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  {/* Layar Cuci PIN (Area Hidrolik) */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={
+                        pathname.startsWith("/layar-cuci") ||
+                        pathname.startsWith("/panel-cuci")
+                      }
+                      tooltip="Layar Cuci (Area Hidrolik)"
+                      className={
+                        pathname.startsWith("/layar-cuci") ||
+                        pathname.startsWith("/panel-cuci")
+                          ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                          : ""
+                      }
+                    >
+                      <Link href="/layar-cuci">
+                        <Tablet className="h-4 w-4" />
+                        <span>Layar Cuci (Area Hidrolik)</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  {/* Modul Keanggotaan & Loyalitas Pelanggan (B2C) - Khusus Owner & Manajer */}
+                  {canViewAnalytics && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith("/dashboard/pelanggan")}
+                        tooltip="Keanggotaan & Loyalitas Pelanggan"
+                        className={
+                          pathname.startsWith("/dashboard/pelanggan")
+                            ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                            : ""
+                        }
+                      >
+                        <Link href="/dashboard/pelanggan">
+                          <Gift className="h-4 w-4 text-amber-500" />
+                          <span>Member & Loyalitas</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+
+                  {/* Pendaftaran Member Baru (Bisa dilakukan Owner, Manajer & Kasir) */}
+                  <SidebarMenuItem className="pt-1 group-data-[collapsible=icon]:hidden">
+                    <MembershipDialog
+                      buttonText="+ Daftar Member Baru"
+                      className="h-8 w-full justify-start text-xs font-bold"
+                    />
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* GRUP 2: Manajemen Bisnis & Analitik (Khusus Owner & Manajer) */}
+            {canViewAnalytics && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                    Manajemen & Analitik
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {/* Ringkasan Dasbor Utama */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === "/dashboard"}
+                          tooltip="Ringkasan Dasbor"
+                          className={
+                            pathname === "/dashboard"
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard">
+                            <LayoutDashboard className="h-4 w-4" />
+                            <span>Ringkasan Dasbor</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Inventori Stok & Bahan Operasional */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith("/dashboard/stok")}
+                          tooltip="Manajemen Stok & Bahan Cuci"
+                          className={
+                            pathname.startsWith("/dashboard/stok")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/stok">
+                            <Boxes className="h-4 w-4" />
+                            <span>Stok Bahan & Barang</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Penggajian & Komisi Washer (Khusus Owner & Manajer) */}
+                      {canViewPayroll && (
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={pathname.startsWith("/dashboard/komisi")}
+                            tooltip="Gaji & Komisi Pekerja Cuci"
+                            className={
+                              pathname.startsWith("/dashboard/komisi")
+                                ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                                : ""
+                            }
+                          >
+                            <Link href="/dashboard/komisi">
+                              <Users className="h-4 w-4" />
+                              <span>Gaji & Komisi Pekerja</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+
+            {/* GRUP 3: Manajemen Akun, Role & Akses (Hanya untuk Owner) */}
+            {canManageStaff && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                    Akses & Tim
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith("/dashboard/pengguna")}
+                          tooltip="Manajemen Akun & Role"
+                          className={
+                            pathname.startsWith("/dashboard/pengguna")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/pengguna">
+                            <ShieldCheck className="h-4 w-4" />
+                            <span>Manajemen Akun & Role</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
           </>
         )}
       </SidebarContent>
@@ -350,10 +473,18 @@ export function DashboardSidebar({
                       ? "bg-amber-500"
                       : isManager
                         ? "bg-blue-500"
-                        : "bg-emerald-500"
+                        : isWasher
+                          ? "bg-purple-500"
+                          : "bg-emerald-500"
                   }`}
                 />
-                {isOwner ? "Owner" : isManager ? "Manajer" : "Kasir"}
+                {isOwner
+                  ? "Owner"
+                  : isManager
+                    ? "Manajer"
+                    : isWasher
+                      ? "Washer"
+                      : "Kasir"}
               </span>
             </div>
           </div>

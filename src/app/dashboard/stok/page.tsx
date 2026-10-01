@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import {
   type InventoryData,
@@ -15,7 +16,19 @@ export const metadata: Metadata = {
 
 export default async function DashboardStokPage() {
   const user = await getCurrentUser();
-  const outlet = user?.outletId
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  // Khusus Owner & Manager: Washer dan Kasir tidak mengelola stok ritel/operasional
+  if (user.role === "WASHER") {
+    redirect("/dashboard");
+  }
+  if (user.role === "CASHIER") {
+    redirect("/pos/antrean");
+  }
+
+  const outlet = user.outletId
     ? await prisma.outlet.findUnique({ where: { id: user.outletId } })
     : await prisma.outlet.findFirst({ where: { isActive: true } });
 

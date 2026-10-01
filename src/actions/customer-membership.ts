@@ -63,6 +63,14 @@ export async function registerCustomerMembershipAction(
       };
     }
 
+    if (user.role === "WASHER") {
+      return {
+        success: false,
+        error:
+          "Akses ditolak. Petugas cuci (Washer) tidak memiliki akses pendaftaran paket membership.",
+      };
+    }
+
     const parsed = registerMembershipSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -349,6 +357,10 @@ export async function getCustomerMembershipsAction(query?: {
     const user = await getCurrentUser();
     if (!user || !user.outletId) {
       return { success: false, error: "Sesi tidak valid." };
+    }
+
+    if (user.role === "WASHER") {
+      return { success: false, error: "Akses ditolak." };
     }
 
     const now = new Date();

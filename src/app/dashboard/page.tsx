@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import {
   ArrowDownRight,
@@ -25,6 +26,10 @@ import {
   RevenueTrendChart,
   VehicleCategoryChart,
 } from "@/components/dashboard/analytics-charts";
+import {
+  WasherDashboardView,
+  type WasherJobHistoryItem,
+} from "@/components/dashboard/washer-dashboard-view";
 import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +53,15 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  // Khusus Peran CASHIER: Redirect langsung ke antrean POS karena Kasir bertugas di loket depan
+  if (user.role === "CASHIER") {
+    redirect("/pos/antrean");
+  }
+
   const outlet = user?.outletId
     ? await prisma.outlet.findUnique({ where: { id: user.outletId } })
     : await prisma.outlet.findFirst({ where: { isActive: true } });
@@ -60,12 +74,107 @@ export default async function DashboardPage() {
     );
   }
 
+  // Khusus Peran WASHER: Tampilkan Dasbor Personal Pekerja Cuci
+  if (user?.role === "WASHER") {
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { userId: user.id },
+          { fullName: user.fullName, outletId: outlet.id },
+        ],
+      },
+      include: {
+        assignedTickets: {
+          include: {
+            ticket: {
+              include: {
+                servicePackage: true,
+                washers: {
+                  include: { washer: true },
+                },
+              },
+            },
+          },
+          orderBy: { assignedAt: "desc" },
+        },
+      },
+    });
+
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    const assignedTickets = employee?.assignedTickets || [];
+    const assignedToday = assignedTickets.filter(
+      (item) => new Date(item.assignedAt) >= todayStart
+    );
+
+    const todayWashedCount = assignedToday.length;
+    const todayCommission = assignedToday.reduce(
+      (sum, item) => sum + Number(item.commissionAmount),
+      0
+    );
+    const unpaidCommission = assignedTickets
+      .filter((item) => !item.isPaidToWasher)
+      .reduce((sum, item) => sum + Number(item.commissionAmount), 0);
+    const paidCommission = assignedTickets
+      .filter((item) => item.isPaidToWasher)
+      .reduce((sum, item) => sum + Number(item.commissionAmount), 0);
+    const totalAllTimeCount = assignedTickets.length;
+
+    const recentJobs: WasherJobHistoryItem[] = assignedTickets
+      .slice(0, 20)
+      .map((item) => {
+        const otherWashers = item.ticket.washers
+          .filter((w) => w.employeeId !== employee?.id)
+          .map((w) => w.washer.fullName);
+
+        return {
+          id: item.id,
+          ticketNumber: item.ticket.ticketNumber,
+          licensePlate: item.ticket.licensePlate,
+          vehicleCategory: item.ticket.vehicleCategory,
+          serviceName: item.ticket.servicePackage.name,
+          commissionAmount: Number(item.commissionAmount),
+          isTandem: item.ticket.washers.length > 1,
+          partnerNames:
+            otherWashers.length > 0 ? otherWashers.join(", ") : undefined,
+          assignedAt: item.assignedAt,
+          isPaidToWasher: item.isPaidToWasher,
+          ticketStatus: item.ticket.status,
+        };
+      });
+
+    return (
+      <WasherDashboardView
+        washerName={user.fullName || employee?.fullName || "Pekerja Cuci"}
+        outletName={outlet.name}
+        outletId={outlet.id}
+        pinCode={employee?.pinCode || "1234"}
+        commissionType={
+          employee?.commissionType === "PERCENTAGE"
+            ? "PERCENTAGE"
+            : "FIXED_NOMINAL"
+        }
+        commissionRate={Number(employee?.commissionRate || 10000)}
+        todayWashedCount={todayWashedCount}
+        todayCommission={todayCommission}
+        unpaidCommission={unpaidCommission}
+        paidCommission={paidCommission}
+        totalAllTimeCount={totalAllTimeCount}
+        recentJobs={recentJobs}
+      />
+    );
+  }
+
   const metrics = await getDashboardMetrics(outlet.id);
 
-  const isOwner = user?.role === "OWNER";
-  const isManager = user?.role === "MANAGER";
+  const isOwner = user.role === "OWNER";
+  const isManager = user.role === "MANAGER";
   const isOwnerOrManager = isOwner || isManager;
-  const isCashier = user?.role === "CASHIER";
 
   return (
     <div className="space-y-6">
@@ -74,10 +183,7 @@ export default async function DashboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
-              Halo,{" "}
-              {user?.fullName ||
-                (isCashier ? "Kasir" : isManager ? "Manajer" : "Owner")}
-              ! 👋
+              Halo, {user.fullName || (isManager ? "Manajer" : "Owner")}! 👋
             </h1>
             <Badge
               variant="outline"

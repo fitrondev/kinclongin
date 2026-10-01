@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 
@@ -24,7 +22,10 @@ interface AuthSplitWrapperProps {
 
 export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
   return (
-    <div className="bg-background relative flex min-h-screen w-full flex-col lg:flex-row">
+    <div
+      className="bg-background relative flex min-h-screen w-full flex-col lg:flex-row"
+      suppressHydrationWarning
+    >
       {/* Kolom Kiri: Visual Car Wash Studio & Branding */}
       <div className="relative hidden w-full flex-col justify-between overflow-hidden bg-slate-950 p-8 text-white lg:flex lg:w-1/2 lg:p-12 xl:p-16">
         {/* Background Image Hero */}
@@ -122,13 +123,23 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
         </div>
 
         {/* Bottom Testimonial / Footnote */}
-        <div className="relative z-10 border-t border-white/10 pt-4">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <div className="flex items-center gap-2">
+        <div
+          className="relative z-10 border-t border-white/10 pt-4"
+          suppressHydrationWarning
+        >
+          <div
+            className="flex items-center justify-between text-xs text-slate-400"
+            suppressHydrationWarning
+          >
+            <div className="flex items-center gap-2" suppressHydrationWarning>
               <ShieldCheck className="h-4 w-4 text-emerald-400" />
-              <span>Biaya Flat Rp 50.000 / bulan per cabang</span>
+              <span suppressHydrationWarning>
+                Sistem POS & Operasional Terpadu
+              </span>
             </div>
-            <span>© {new Date().getFullYear()} Kinclongin POS</span>
+            <span suppressHydrationWarning>
+              © {new Date().getFullYear()} Kinclongin POS
+            </span>
           </div>
         </div>
       </div>
@@ -163,17 +174,13 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
           <div className="w-full max-w-md">{children}</div>
         </div>
 
-        {/* Bottom Help Note */}
-        <div className="text-muted-foreground text-center text-xs">
-          Butuh bantuan aktivasi cabang?{" "}
-          <a
-            href="https://wa.me/6281234567890?text=Halo%20Admin%20Kinclongin,%20saya%20butuh%20bantuan%20aktivasi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary font-semibold hover:underline"
-          >
-            Hubungi WhatsApp Support
-          </a>
+        {/* Bottom Note */}
+        <div
+          className="text-muted-foreground text-center text-xs"
+          suppressHydrationWarning
+        >
+          © {new Date().getFullYear()} Kinclongin POS. Seluruh hak cipta
+          dilindungi.
         </div>
       </div>
     </div>

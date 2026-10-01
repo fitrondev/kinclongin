@@ -58,6 +58,9 @@ export function POSHeader({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isOwner = userRole === "OWNER";
+  const isManager = userRole === "MANAGER";
+  const isWasher = userRole === "WASHER";
+  const isCashier = userRole === "CASHIER";
   const totalActive = stats.queued + stats.washing + stats.drying + stats.ready;
 
   const isDaftarBaruActive =
@@ -173,19 +176,33 @@ export function POSHeader({
 
         {/* Sisi Kanan: Action Buttons & Navigasi */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Tombol Utama: Daftar Cuci Baru (Selalu Terlihat, Ukuran Adaptif) */}
-          <Button
-            asChild
-            variant={isDaftarBaruActive ? "default" : "outline"}
-            size="sm"
-            className="h-9 gap-1.5 px-2.5 font-bold shadow-xs sm:h-10 sm:px-3"
-          >
-            <Link href="/pos/daftar-baru">
-              <PlusCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Daftar Cuci Baru</span>
-              <span className="text-xs sm:hidden">+ Baru</span>
-            </Link>
-          </Button>
+          {/* Tombol Utama: Daftar Cuci Baru (Khusus Non-Washer: Kasir, Manajer, Owner) */}
+          {!isWasher ? (
+            <Button
+              asChild
+              variant={isDaftarBaruActive ? "default" : "outline"}
+              size="sm"
+              className="h-9 gap-1.5 px-2.5 font-bold shadow-xs sm:h-10 sm:px-3"
+            >
+              <Link href="/pos/daftar-baru">
+                <PlusCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Daftar Cuci Baru</span>
+                <span className="text-xs sm:hidden">+ Baru</span>
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              asChild
+              size="sm"
+              className="h-9 gap-1.5 bg-cyan-600 px-2.5 font-bold text-white shadow-xs hover:bg-cyan-700 sm:h-10 sm:px-3"
+            >
+              <Link href="/layar-cuci">
+                <Tablet className="h-4 w-4" />
+                <span className="hidden sm:inline">Layar Cuci (Kiosk)</span>
+                <span className="text-xs sm:hidden">Kiosk</span>
+              </Link>
+            </Button>
+          )}
 
           {/* Tombol Papan Antrean (Desktop & Tablet Landscape) */}
           <Button
@@ -201,14 +218,14 @@ export function POSHeader({
             </Link>
           </Button>
 
-          {/* Tombol Membership Langganan (Desktop Luas) */}
-          {outletId && (
+          {/* Tombol Membership Langganan (Desktop Luas - Non-Washer) */}
+          {!isWasher && outletId && (
             <div className="hidden xl:block">
               <MembershipDialog outletId={outletId} />
             </div>
           )}
 
-          {/* Navigasi Layar Cuci & Dasbor (Layar Desktop Besar) */}
+          {/* Navigasi Layar Cuci (Layar Desktop Besar) */}
           <Button
             asChild
             variant="ghost"
@@ -217,23 +234,30 @@ export function POSHeader({
             title="Buka Tablet Kiosk Layar Cuci"
           >
             <Link href="/layar-cuci">
-              <Tablet className="h-4 w-4" />
+              <Tablet className="h-4 w-4 text-cyan-500" />
               <span>Layar Cuci</span>
             </Link>
           </Button>
 
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground hidden h-10 gap-1.5 font-semibold xl:inline-flex"
-            title="Buka Dasbor Manajerial"
-          >
-            <Link href="/dashboard">
-              <LayoutDashboard className="h-4 w-4" />
-              <span>Dasbor</span>
-            </Link>
-          </Button>
+          {/* Tombol Dasbor (Disesuaikan Peran: Kasir disembunyikan, Washer 'Kinerja Saya', Owner/Manager 'Dasbor') */}
+          {!isCashier && (
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground hidden h-10 gap-1.5 font-semibold xl:inline-flex"
+              title={
+                isWasher
+                  ? "Buka Kinerja & Komisi Saya"
+                  : "Buka Dasbor Manajerial"
+              }
+            >
+              <Link href="/dashboard">
+                <LayoutDashboard className="text-primary h-4 w-4" />
+                <span>{isWasher ? "Kinerja Saya" : "Dasbor"}</span>
+              </Link>
+            </Button>
+          )}
 
           <div className="bg-border hidden h-5 w-px sm:block" />
 
@@ -244,7 +268,15 @@ export function POSHeader({
             <UserButton />
             <div className="hidden text-left text-xs leading-none 2xl:block">
               <p className="max-w-24 truncate font-semibold">{cashierName}</p>
-              <p className="text-muted-foreground text-[10px]">Kasir Shift</p>
+              <p className="text-muted-foreground text-[10px]">
+                {isOwner
+                  ? "Pemilik Bisnis"
+                  : isManager
+                    ? "Manajer Cabang"
+                    : isWasher
+                      ? "Washer Lapangan"
+                      : "Kasir Shift"}
+              </p>
             </div>
           </div>
 
@@ -372,21 +404,23 @@ export function POSHeader({
                     Modul POS & Operasional
                   </span>
 
-                  <Link
-                    href="/pos/daftar-baru"
-                    onClick={() => setDrawerOpen(false)}
-                    className={`flex items-center justify-between rounded-xl p-3 text-sm font-bold transition-colors ${
-                      isDaftarBaruActive
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <PlusCircle className="h-4 w-4" />
-                      <span>Daftar Cuci Baru</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 opacity-50" />
-                  </Link>
+                  {!isWasher && (
+                    <Link
+                      href="/pos/daftar-baru"
+                      onClick={() => setDrawerOpen(false)}
+                      className={`flex items-center justify-between rounded-xl p-3 text-sm font-bold transition-colors ${
+                        isDaftarBaruActive
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <PlusCircle className="h-4 w-4" />
+                        <span>Daftar Cuci Baru</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 opacity-50" />
+                    </Link>
+                  )}
 
                   <Link
                     href="/pos/antrean"
@@ -410,27 +444,33 @@ export function POSHeader({
                     className="hover:bg-muted text-foreground flex items-center justify-between rounded-xl p-3 text-sm font-bold transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <Tablet className="h-4 w-4 text-purple-600" />
-                      <span>Layar Cuci (Tablet Washer)</span>
+                      <Tablet className="h-4 w-4 text-cyan-600" />
+                      <span>Layar Cuci (Tablet Kiosk)</span>
                     </div>
                     <ChevronRight className="h-4 w-4 opacity-50" />
                   </Link>
 
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setDrawerOpen(false)}
-                    className="hover:bg-muted text-foreground flex items-center justify-between rounded-xl p-3 text-sm font-bold transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <LayoutDashboard className="h-4 w-4 text-blue-600" />
-                      <span>Dasbor & Analitik</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 opacity-50" />
-                  </Link>
+                  {!isCashier && (
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setDrawerOpen(false)}
+                      className="hover:bg-muted text-foreground flex items-center justify-between rounded-xl p-3 text-sm font-bold transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <LayoutDashboard className="h-4 w-4 text-blue-600" />
+                        <span>
+                          {isWasher
+                            ? "Kinerja & Komisi Saya"
+                            : "Dasbor & Analitik"}
+                        </span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 opacity-50" />
+                    </Link>
+                  )}
                 </div>
 
-                {/* Dialog Membership Member di Mobile/Tablet */}
-                {outletId && (
+                {/* Dialog Membership Member di Mobile/Tablet (Khusus Non-Washer) */}
+                {!isWasher && outletId && (
                   <div className="border-t pt-2">
                     <span className="text-muted-foreground mb-2 block px-2 text-[11px] font-bold uppercase">
                       Program Loyalitas
@@ -447,7 +487,13 @@ export function POSHeader({
                 <div className="text-xs">
                   <p className="text-foreground font-bold">{cashierName}</p>
                   <p className="text-muted-foreground text-[10px]">
-                    Kasir Bertugas
+                    {isOwner
+                      ? "Pemilik Bisnis"
+                      : isManager
+                        ? "Manajer Cabang"
+                        : isWasher
+                          ? "Washer Lapangan"
+                          : "Kasir Shift"}
                   </p>
                 </div>
                 <UserButton />

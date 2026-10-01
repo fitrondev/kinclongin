@@ -28,6 +28,7 @@ export function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loggingInRole, setLoggingInRole] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,9 +60,37 @@ export function SignInForm() {
     }
   };
 
-  const handleFillDemo = (demoEmail: string, demoPass: string) => {
+  const handleDemoLogin = async (
+    demoEmail: string,
+    demoPass: string,
+    roleName: string,
+    targetUrl: string
+  ) => {
     setEmail(demoEmail);
     setPassword(demoPass);
+    setIsLoading(true);
+    setLoggingInRole(roleName);
+
+    try {
+      const res = await signIn("credentials", {
+        email: demoEmail.trim().toLowerCase(),
+        password: demoPass,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        toast.error("Gagal masuk dengan akun demo.");
+      } else {
+        toast.success(`Berhasil masuk sebagai ${roleName}!`);
+        router.push(targetUrl);
+        router.refresh();
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem saat mencoba masuk.");
+    } finally {
+      setIsLoading(false);
+      setLoggingInRole(null);
+    }
   };
 
   return (
@@ -123,37 +152,143 @@ export function SignInForm() {
             </div>
           </div>
 
-          {/* Quick Demo Credential Pills */}
-          <div className="border-border/50 bg-muted/40 rounded-xl border p-3">
-            <p className="text-muted-foreground mb-1.5 flex items-center gap-1 text-[11px] font-semibold">
-              <ShieldCheck className="text-primary h-3.5 w-3.5" />
-              Akun Demo Siap Pakai (Password: 123456):
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleFillDemo("owner@kinclongin.com", "123456")}
-                className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 rounded-md border px-2 py-0.5 text-[10px] font-bold transition-colors"
+          {/* Quick Demo Credential Section with 1-Click Login */}
+          <div
+            className="border-border/50 bg-muted/40 space-y-2.5 rounded-xl border p-3.5"
+            suppressHydrationWarning
+          >
+            <div className="flex items-center justify-between">
+              <p
+                className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold"
+                suppressHydrationWarning
               >
-                Owner
-              </button>
+                <ShieldCheck className="text-primary h-4 w-4" />
+                Masuk Cepat 1-Klik Akun Demo:
+              </p>
+              <span className="text-muted-foreground font-mono text-[10px]">
+                Pass: 123456
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2" suppressHydrationWarning>
+              {/* 1. Owner */}
               <button
                 type="button"
+                disabled={isLoading}
+                suppressHydrationWarning
                 onClick={() =>
-                  handleFillDemo("danu.operasional@kinclongin.com", "123456")
+                  handleDemoLogin(
+                    "owner@kinclongin.com",
+                    "123456",
+                    "Owner",
+                    "/dashboard"
+                  )
                 }
-                className="border-border bg-background text-foreground hover:bg-muted rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-left transition-all hover:bg-amber-500/20 disabled:opacity-50"
               >
-                Manajer
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                    👑 Owner
+                  </p>
+                  <p className="text-muted-foreground truncate text-[10px]">
+                    Pak H. Ridwan
+                  </p>
+                </div>
+                {loggingInRole === "Owner" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600" />
+                ) : (
+                  <ArrowRight className="h-3.5 w-3.5 text-amber-600/70" />
+                )}
               </button>
+
+              {/* 2. Manajer */}
               <button
                 type="button"
+                disabled={isLoading}
+                suppressHydrationWarning
                 onClick={() =>
-                  handleFillDemo("kasir.mataram@kinclongin.com", "123456")
+                  handleDemoLogin(
+                    "danu.operasional@kinclongin.com",
+                    "123456",
+                    "Manajer",
+                    "/dashboard"
+                  )
                 }
-                className="border-border bg-background text-foreground hover:bg-muted rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-left transition-all hover:bg-blue-500/20 disabled:opacity-50"
               >
-                Kasir
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                    👔 Manajer
+                  </p>
+                  <p className="text-muted-foreground truncate text-[10px]">
+                    Danu Prakoso
+                  </p>
+                </div>
+                {loggingInRole === "Manajer" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+                ) : (
+                  <ArrowRight className="h-3.5 w-3.5 text-blue-600/70" />
+                )}
+              </button>
+
+              {/* 3. Kasir */}
+              <button
+                type="button"
+                disabled={isLoading}
+                suppressHydrationWarning
+                onClick={() =>
+                  handleDemoLogin(
+                    "kasir.mataram@kinclongin.com",
+                    "123456",
+                    "Kasir",
+                    "/pos/antrean"
+                  )
+                }
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-left transition-all hover:bg-emerald-500/20 disabled:opacity-50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    💳 Kasir
+                  </p>
+                  <p className="text-muted-foreground truncate text-[10px]">
+                    Siti Rahma
+                  </p>
+                </div>
+                {loggingInRole === "Kasir" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                ) : (
+                  <ArrowRight className="h-3.5 w-3.5 text-emerald-600/70" />
+                )}
+              </button>
+
+              {/* 4. Washer (Agus) -> Langsung Masuk ke Dashboard Washer */}
+              <button
+                type="button"
+                disabled={isLoading}
+                suppressHydrationWarning
+                onClick={() =>
+                  handleDemoLogin(
+                    "agus.washer@kinclongin.com",
+                    "123456",
+                    "Washer (Agus)",
+                    "/dashboard"
+                  )
+                }
+                className="ring-primary/40 flex cursor-pointer items-center justify-between rounded-xl border border-purple-500/40 bg-purple-500/15 p-2.5 text-left shadow-xs ring-1 transition-all hover:bg-purple-500/25 disabled:opacity-50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1 text-xs font-bold text-purple-700 dark:text-purple-300">
+                    🧽 Washer (Agus)
+                  </p>
+                  <p className="truncate text-[10px] font-medium text-purple-600/90 dark:text-purple-300/90">
+                    PIN: 1234 • Ke Dasbor
+                  </p>
+                </div>
+                {loggingInRole === "Washer (Agus)" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600" />
+                ) : (
+                  <ArrowRight className="h-3.5 w-3.5 text-purple-600" />
+                )}
               </button>
             </div>
           </div>

@@ -20,7 +20,7 @@ export default async function DashboardKomisiPage() {
 
   // Khusus OWNER & MANAGER: Kasir atau staf lain tidak boleh melihat rekap gaji/komisi
   if (user.role !== "OWNER" && user.role !== "MANAGER") {
-    redirect("/dashboard");
+    redirect(user.role === "CASHIER" ? "/pos/antrean" : "/dashboard");
   }
 
   const outlet = user.outletId

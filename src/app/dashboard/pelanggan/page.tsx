@@ -23,6 +23,13 @@ export default async function DashboardPelangganPage() {
     redirect("/sign-in");
   }
 
+  if (user.role === "WASHER") {
+    redirect("/dashboard");
+  }
+  if (user.role === "CASHIER") {
+    redirect("/pos/antrean");
+  }
+
   // Ambil semua pelanggan dengan relasi kendaraan dan riwayat poin
   const customers = await prisma.customer.findMany({
     orderBy: { totalVisits: "desc" },

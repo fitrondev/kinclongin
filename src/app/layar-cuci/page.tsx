@@ -15,15 +15,32 @@ export const metadata: Metadata = {
     "Layar klaim pengerjaan cuci mobil & motor berbasis PIN tukang cuci.",
 };
 
-export default async function LayarCuciPage() {
+interface LayarCuciPageProps {
+  searchParams?: Promise<{ outlet?: string }>;
+}
+
+export default async function LayarCuciPage({
+  searchParams,
+}: LayarCuciPageProps) {
+  const query = searchParams ? await searchParams : undefined;
   const user = await getCurrentUser();
 
-  // Cari outlet yang sesuai
-  let outlet = user?.outletId
-    ? await prisma.outlet.findUnique({
-        where: { id: user.outletId },
-      })
-    : null;
+  // Cari outlet yang sesuai berdasarkan query param, user session, atau default aktif
+  let outlet = null;
+  if (query?.outlet) {
+    outlet = await prisma.outlet.findFirst({
+      where: {
+        OR: [{ slug: query.outlet }, { id: query.outlet }],
+        isActive: true,
+      },
+    });
+  }
+
+  if (!outlet && user?.outletId) {
+    outlet = await prisma.outlet.findUnique({
+      where: { id: user.outletId },
+    });
+  }
 
   if (!outlet) {
     outlet = await prisma.outlet.findFirst({
@@ -94,6 +111,7 @@ export default async function LayarCuciPage() {
       initialTickets={tickets}
       outletId={outlet.id}
       outletName={outlet.name}
+      userRole={user?.role ?? null}
     />
   );
 }

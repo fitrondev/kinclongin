@@ -27,12 +27,14 @@ interface LayarCuciViewProps {
   initialTickets: LayarCuciItem[];
   outletId: string;
   outletName: string;
+  userRole?: string | null;
 }
 
 export function LayarCuciView({
   initialTickets,
   outletId,
   outletName,
+  userRole,
 }: LayarCuciViewProps) {
   const router = useRouter();
 
@@ -78,6 +80,7 @@ export function LayarCuciView({
       <LayarCuciHeader
         outletName={outletName}
         onOpenShiftSummary={() => setShowShiftModal(true)}
+        userRole={userRole}
       />
 
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-5 p-4 sm:p-6">

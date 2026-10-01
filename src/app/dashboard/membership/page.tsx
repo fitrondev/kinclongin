@@ -29,6 +29,13 @@ export default async function DashboardMembershipPage() {
     redirect("/sign-in");
   }
 
+  if (user.role === "WASHER") {
+    redirect("/dashboard");
+  }
+  if (user.role === "CASHIER") {
+    redirect("/pos/antrean");
+  }
+
   const outletId = user.outletId;
 
   const now = new Date();

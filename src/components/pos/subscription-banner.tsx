@@ -32,21 +32,19 @@ export function SubscriptionBanner({
 
           <div className="space-y-1">
             <h2 className="text-foreground text-lg font-black">
-              Masa Langganan Cabang Telah Berakhir
+              Masa Akses Sistem Berakhir
             </h2>
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Masa tenggang 3 hari telah terlewati. Pendaftaran tiket baru
-              dinonaktifkan sementara. Seluruh data riwayat tiket dan laporan
-              keuangan tetap tersimpan aman.
+              Masa tenggang telah terlewati. Hubungi administrator atau perbarui
+              akses untuk melanjutkan pendaftaran tiket baru. Seluruh data
+              riwayat tiket dan laporan keuangan tetap tersimpan aman.
             </p>
           </div>
 
           <div className="bg-muted/40 rounded-xl border p-3 text-xs">
-            <span className="text-muted-foreground block">
-              Tarif Flat Kinclongin
-            </span>
+            <span className="text-muted-foreground block">Status Layanan</span>
             <span className="text-primary text-base font-black">
-              Rp 50.000 / Bulan
+              Kinclongin POS & Operasional
             </span>
           </div>
 

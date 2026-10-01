@@ -17,6 +17,11 @@ export default async function POSDaftarBaruPage() {
     redirect("/sign-in");
   }
 
+  // Khusus Kasir, Manajer & Owner: Washer tidak berwenang mendaftarkan kendaraan baru
+  if (user.role === "WASHER") {
+    redirect("/pos/antrean");
+  }
+
   let outletId = user.outletId;
   if (!outletId) {
     const defaultOutlet = await prisma.outlet.findFirst({

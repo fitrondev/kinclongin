@@ -25,6 +25,11 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
+  // Khusus Peran CASHIER: Seluruh dashboard dilindungi dari kasir (loket depan berada di /pos/antrean)
+  if (user.role === "CASHIER") {
+    redirect("/pos/antrean");
+  }
+
   // Ambil outlet cabang aktif pengguna
   let outlet = user.outletId
     ? await prisma.outlet.findUnique({
@@ -38,6 +43,8 @@ export default async function DashboardLayout({
       orderBy: { createdAt: "asc" },
     });
   }
+
+  const isWasher = user.role === "WASHER";
 
   return (
     <SidebarProvider defaultOpen>
@@ -62,50 +69,81 @@ export default async function DashboardLayout({
                   {outlet?.name || "Kinclongin Cabang Pusat"}
                 </span>
                 <span className="hidden sm:inline">•</span>
-                <span className="hidden sm:inline">Panel Manajemen & POS</span>
+                <span className="hidden sm:inline">
+                  {isWasher ? "Panel Pekerja Cuci" : "Panel Manajemen & POS"}
+                </span>
               </div>
             </div>
 
             {/* Fast Action Shortcuts */}
             <div className="flex shrink-0 items-center gap-2">
-              <MembershipDialog
-                outletId={outlet?.id}
-                buttonText="+ Daftar Member"
-                className="h-8 text-xs font-bold"
-              />
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="hidden h-8 gap-1.5 text-xs font-bold sm:flex"
-              >
-                <Link href="/pos/daftar-baru">
-                  <PlusCircle className="text-primary h-3.5 w-3.5" />
-                  <span>+ Daftar Cuci</span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="hidden h-8 gap-1.5 text-xs font-bold md:flex"
-              >
-                <Link href="/layar-cuci">
-                  <Tablet className="h-3.5 w-3.5 text-cyan-500" />
-                  <span>Layar Cuci</span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="sm"
-                className="h-8 gap-1.5 text-xs font-bold shadow-xs"
-              >
-                <Link href="/pos/antrean">
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Papan Antrean</span>
-                  <span className="sm:hidden">Antrean</span>
-                </Link>
-              </Button>
+              {isWasher ? (
+                <>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 gap-1.5 bg-cyan-600 text-xs font-bold text-white shadow-xs hover:bg-cyan-700"
+                  >
+                    <Link href="/layar-cuci">
+                      <Tablet className="h-3.5 w-3.5" />
+                      <span>Layar Cuci (Kiosk)</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 text-xs font-bold shadow-xs"
+                  >
+                    <Link href="/pos/antrean">
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Papan Antrean</span>
+                      <span className="sm:hidden">Antrean</span>
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <MembershipDialog
+                    outletId={outlet?.id}
+                    buttonText="+ Daftar Member"
+                    className="h-8 text-xs font-bold"
+                  />
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="hidden h-8 gap-1.5 text-xs font-bold sm:flex"
+                  >
+                    <Link href="/pos/daftar-baru">
+                      <PlusCircle className="text-primary h-3.5 w-3.5" />
+                      <span>+ Daftar Cuci</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="hidden h-8 gap-1.5 text-xs font-bold md:flex"
+                  >
+                    <Link href="/layar-cuci">
+                      <Tablet className="h-3.5 w-3.5 text-cyan-500" />
+                      <span>Layar Cuci</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs font-bold shadow-xs"
+                  >
+                    <Link href="/pos/antrean">
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Papan Antrean</span>
+                      <span className="sm:hidden">Antrean</span>
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
           </header>
 

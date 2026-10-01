@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -16,6 +17,7 @@ import {
   Tablet,
 } from "lucide-react";
 
+import { UserButton } from "@/components/auth/user-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,12 +25,26 @@ import { Button } from "@/components/ui/button";
 interface LayarCuciHeaderProps {
   outletName?: string;
   onOpenShiftSummary?: () => void;
+  userRole?: string | null;
 }
 
 export function LayarCuciHeader({
   outletName = "Kinclongin Cabang Pusat",
   onOpenShiftSummary,
+  userRole,
 }: LayarCuciHeaderProps) {
+  const { data: session } = useSession();
+  const currentRole = session?.user?.role || userRole;
+
+  // Hanya muncul jika login sebagai 3 role selain WASHER:
+  // OWNER, MANAGER, atau CASHIER.
+  // Jika tidak login (unauthenticated) atau login sebagai WASHER: TIDAK MUNCUL.
+  const canAccessPos =
+    Boolean(currentRole) &&
+    (currentRole === "OWNER" ||
+      currentRole === "MANAGER" ||
+      currentRole === "CASHIER");
+
   const [timeStr, setTimeStr] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -128,20 +144,38 @@ export function LayarCuciHeader({
             )}
           </Button>
 
-          {/* Link kembali ke Kasir POS */}
-          <Button
-            asChild
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground flex h-11 gap-1.5 px-2.5 text-xs sm:h-12 sm:px-3"
-            title="Kembali ke Layar Antrean Kasir"
-          >
-            <Link href="/pos/antrean">
-              <LayoutGrid className="h-4 w-4" />
-              <span className="hidden md:inline">Antrean Kasir</span>
-            </Link>
-          </Button>
+          {/* Link kembali ke Kasir POS (HANYA muncul jika login sebagai OWNER, MANAGER, atau CASHIER) */}
+          {canAccessPos && (
+            <Button
+              asChild
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground flex h-11 gap-1.5 px-2.5 text-xs sm:h-12 sm:px-3"
+              title="Kembali ke Layar Antrean Kasir"
+            >
+              <Link href="/pos/antrean">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden md:inline">Antrean Kasir</span>
+              </Link>
+            </Button>
+          )}
+
+          {/* Link ke Dasbor jika login sebagai Washer */}
+          {currentRole === "WASHER" && (
+            <Button
+              asChild
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground flex h-11 gap-1.5 px-2.5 text-xs sm:h-12 sm:px-3"
+              title="Buka Dasbor Washer"
+            >
+              <Link href="/dashboard">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden md:inline">Dasbor Washer</span>
+              </Link>
+            </Button>
+          )}
 
           <ThemeToggle />
+          <UserButton />
         </div>
       </div>
     </header>

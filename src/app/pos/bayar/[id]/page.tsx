@@ -28,6 +28,11 @@ export default async function POSBayarPage({
     redirect("/sign-in");
   }
 
+  // Khusus Kasir, Manajer & Owner: Washer dilarang menerima pembayaran/checkout kasir
+  if (user.role === "WASHER") {
+    redirect("/pos/antrean");
+  }
+
   // Ambil data tiket
   const ticket = await prisma.washTicket.findUnique({
     where: { id },

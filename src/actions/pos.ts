@@ -66,6 +66,14 @@ export async function createWashTicketAction(
       };
     }
 
+    if (user.role === "WASHER") {
+      return {
+        success: false,
+        error:
+          "Akses ditolak. Petugas cuci (Washer) tidak memiliki hak pendaftaran tiket POS.",
+      };
+    }
+
     const parsed = createWashTicketSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -283,10 +291,11 @@ export async function advanceTicketStatusAction(
 ): Promise<ActionResponse<{ ticketId: string; newStatus: TicketStatus }>> {
   try {
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user && input.nextStatus === "CANCELLED") {
       return {
         success: false,
-        error: "Unauthorized. Silakan masuk terlebih dahulu.",
+        error:
+          "Pembatalan tiket hanya dapat dilakukan oleh staf yang telah masuk ke akun.",
       };
     }
 
@@ -351,20 +360,22 @@ export async function advanceTicketStatusAction(
           .catch(() => null);
       }
 
-      await prisma.auditLog.create({
-        data: {
-          outletId: existingTicket.outletId,
-          actorId: user.id,
-          actorRole: user.role,
-          action: "TICKET_CANCELLED",
-          entityType: "WashTicket",
-          entityId: ticketId,
-          metadata: {
-            reason: cancellationReason || "Dibatalkan oleh kasir",
-            ticketNumber: existingTicket.ticketNumber,
+      if (user) {
+        await prisma.auditLog.create({
+          data: {
+            outletId: existingTicket.outletId,
+            actorId: user.id,
+            actorRole: user.role,
+            action: "TICKET_CANCELLED",
+            entityType: "WashTicket",
+            entityId: ticketId,
+            metadata: {
+              reason: cancellationReason || "Dibatalkan oleh kasir",
+              ticketNumber: existingTicket.ticketNumber,
+            },
           },
-        },
-      });
+        });
+      }
     }
 
     revalidatePath("/pos/antrean");
@@ -439,6 +450,14 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
       return {
         success: false,
         error: "Sesi kasir berakhir. Silakan masuk kembali.",
+      };
+    }
+
+    if (user.role === "WASHER") {
+      return {
+        success: false,
+        error:
+          "Akses ditolak. Petugas cuci (Washer) tidak diizinkan memproses pembayaran kasir.",
       };
     }
 

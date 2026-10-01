@@ -9,10 +9,12 @@ import { usePathname } from "next/navigation";
 import {
   Boxes,
   ChevronRight,
+  Coins,
   Crown,
   LayoutDashboard,
   Menu,
   PlusCircle,
+  ShieldCheck,
   Sparkles,
   Tablet,
   Users,
@@ -20,7 +22,6 @@ import {
 
 import { OutletSwitcher } from "@/components/auth/outlet-switcher";
 import { UserButton } from "@/components/auth/user-button";
-import { CreateMemberDialog } from "@/components/dashboard/create-member-dialog";
 import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -45,46 +46,78 @@ export function DashboardHeader({
 
   const isOwner = userRole === "OWNER";
   const isManager = userRole === "MANAGER";
-  const canManageStaff = isOwner || isManager;
+  const isWasher = userRole === "WASHER";
+  const canManageStaff = isOwner;
   const canViewPayroll = isOwner || isManager;
 
-  const allNavLinks = [
-    {
-      href: "/dashboard",
-      label: "Ringkasan",
-      icon: LayoutDashboard,
-      active: pathname === "/dashboard",
-      allowed: true,
-    },
-    {
-      href: "/dashboard/pelanggan",
-      label: "Member & Loyalitas",
-      icon: Sparkles,
-      active: pathname.startsWith("/dashboard/pelanggan"),
-      allowed: true,
-    },
-    {
-      href: "/dashboard/stok",
-      label: "Stok Bahan & Barang",
-      icon: Boxes,
-      active: pathname.startsWith("/dashboard/stok"),
-      allowed: true,
-    },
-    {
-      href: "/dashboard/komisi",
-      label: "Gaji & Komisi",
-      icon: Users,
-      active: pathname.startsWith("/dashboard/komisi"),
-      allowed: canViewPayroll,
-    },
-    {
-      href: "/dashboard/membership",
-      label: "Langganan Member",
-      icon: Crown,
-      active: pathname.startsWith("/dashboard/membership"),
-      allowed: true,
-    },
-  ];
+  const allNavLinks = isWasher
+    ? [
+        {
+          href: "/dashboard",
+          label: "Kinerja Saya",
+          icon: Coins,
+          active: pathname === "/dashboard",
+          allowed: true,
+        },
+        {
+          href: "/layar-cuci",
+          label: "Layar Cuci (Kiosk)",
+          icon: Tablet,
+          active: pathname.startsWith("/layar-cuci"),
+          allowed: true,
+        },
+        {
+          href: "/pos/antrean",
+          label: "Papan Antrean",
+          icon: LayoutDashboard,
+          active: pathname === "/pos/antrean",
+          allowed: true,
+        },
+      ]
+    : [
+        {
+          href: "/dashboard",
+          label: "Ringkasan",
+          icon: LayoutDashboard,
+          active: pathname === "/dashboard",
+          allowed: true,
+        },
+        {
+          href: "/dashboard/pelanggan",
+          label: "Member & Loyalitas",
+          icon: Sparkles,
+          active: pathname.startsWith("/dashboard/pelanggan"),
+          allowed: true,
+        },
+        {
+          href: "/dashboard/stok",
+          label: "Stok Bahan & Barang",
+          icon: Boxes,
+          active: pathname.startsWith("/dashboard/stok"),
+          allowed: true,
+        },
+        {
+          href: "/dashboard/komisi",
+          label: "Gaji & Komisi",
+          icon: Users,
+          active: pathname.startsWith("/dashboard/komisi"),
+          allowed: canViewPayroll,
+        },
+        {
+          href: "/dashboard/membership",
+          label: "Langganan Member",
+          icon: Crown,
+          active: pathname.startsWith("/dashboard/membership"),
+          allowed: true,
+        },
+        {
+          href: "/dashboard/pengguna",
+          label: "Akun & Role",
+          icon: ShieldCheck,
+          active: pathname.startsWith("/dashboard/pengguna"),
+          allowed: canManageStaff,
+        },
+      ];
 
   const navLinks = allNavLinks.filter((item) => item.allowed);
 
@@ -163,9 +196,6 @@ export function DashboardHeader({
             buttonText="+ Member"
             className="h-9 text-xs font-bold"
           />
-
-          {/* Direct Staff Addition Dialog (Hanya untuk Owner & Manajer) */}
-          {canManageStaff && <CreateMemberDialog />}
 
           {/* Quick links to POS */}
           <Button
