@@ -69,6 +69,10 @@ export async function restockProductAction(input: {
       });
 
       return updated.stock;
+    },
+    {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/dashboard/stok");
@@ -146,6 +150,10 @@ export async function restockSupplyAction(input: {
             notes || `Restok bahan operasional oleh ${user.fullName}`,
         },
       });
+    },
+    {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/dashboard/stok");

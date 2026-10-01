@@ -280,6 +280,10 @@ export async function redeemLoyaltyRewardAction(input: {
           },
         });
       }
+    },
+    {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath(`/pos/bayar/${ticketId}`);

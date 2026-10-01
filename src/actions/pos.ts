@@ -512,67 +512,69 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
       changeGiven = cashGiven - totalAmount;
     }
 
-    // 3. Jalankan Transaksi Database Terpadu
-    const result = await prisma.$transaction(async (tx) => {
-      // a. Buat Record Pembayaran
-      const payment = await tx.payment.create({
-        data: {
-          ticketId,
-          outletId,
-          cashierId: user.id,
-          method: paymentMethod as PaymentMethod,
-          status: PaymentStatus.PAID,
-          totalAmount,
-          cashGiven: paymentMethod === "CASH" ? cashGiven || totalAmount : null,
-          changeGiven: changeGiven > 0 ? changeGiven : null,
-          referenceNumber: referenceNumber || null,
-          proofImageUrl: proofImageUrl || null,
-          paidAt: new Date(),
-        },
-      });
+    // 3. Ambil data bahan operasional terlebih dahulu untuk efisiensi transaksi
+    const isMotor = ticket.vehicleCategory.startsWith("MOTOR_");
+    const supplies = await prisma.operationalSupply.findMany({
+      where: { outletId },
+    });
 
-      // b. Catat Produk Ritel & Potong Stok Toko
-      if (retailItems.length > 0) {
-        await tx.ticketRetailItem.deleteMany({ where: { ticketId } });
+    // 4. Jalankan Transaksi Database Terpadu dengan timeout toleran untuk koneksi remote (30 detik)
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // a. Buat Record Pembayaran
+        const payment = await tx.payment.create({
+          data: {
+            ticketId,
+            outletId,
+            cashierId: user.id,
+            method: paymentMethod as PaymentMethod,
+            status: PaymentStatus.PAID,
+            totalAmount,
+            cashGiven: paymentMethod === "CASH" ? cashGiven || totalAmount : null,
+            changeGiven: changeGiven > 0 ? changeGiven : null,
+            referenceNumber: referenceNumber || null,
+            proofImageUrl: proofImageUrl || null,
+            paidAt: new Date(),
+          },
+        });
 
-        for (const item of retailItems) {
-          await tx.ticketRetailItem.create({
-            data: {
-              ticketId,
-              retailProductId: item.productId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              subtotal: item.quantity * item.unitPrice,
-            },
-          });
+        // b. Catat Produk Ritel & Potong Stok Toko
+        if (retailItems.length > 0) {
+          await tx.ticketRetailItem.deleteMany({ where: { ticketId } });
 
-          // Kurangi stok ritel
-          const updatedProduct = await tx.retailProduct.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
+          for (const item of retailItems) {
+            await tx.ticketRetailItem.create({
+              data: {
+                ticketId,
+                retailProductId: item.productId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                subtotal: item.quantity * item.unitPrice,
+              },
+            });
 
-          // Catat mutasi stok OUT_SALE
-          await tx.stockMovement.create({
-            data: {
-              outletId,
-              retailProductId: item.productId,
-              movementType: MovementType.OUT_SALE,
-              quantity: item.quantity,
-              balanceAfter: updatedProduct.stock,
-              referenceNote: `Penjualan Ritel Tiket #${ticket.ticketNumber}`,
-            },
-          });
+            // Kurangi stok ritel
+            const updatedProduct = await tx.retailProduct.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } },
+            });
+
+            // Catat mutasi stok OUT_SALE
+            await tx.stockMovement.create({
+              data: {
+                outletId,
+                retailProductId: item.productId,
+                movementType: MovementType.OUT_SALE,
+                quantity: item.quantity,
+                balanceAfter: updatedProduct.stock,
+                referenceNote: `Penjualan Ritel Tiket #${ticket.ticketNumber}`,
+              },
+            });
+          }
         }
-      }
 
-      // c. Recipe Deduction: Potong Bahan Habis Pakai Operasional (Shampoo & Semir Ban)
-      const isMotor = ticket.vehicleCategory.startsWith("MOTOR_");
-      const supplies = await tx.operationalSupply.findMany({
-        where: { outletId },
-      });
-
-      for (const supply of supplies) {
+        // c. Recipe Deduction: Potong Bahan Habis Pakai Operasional (Shampoo & Semir Ban)
+        for (const supply of supplies) {
         const usage = isMotor
           ? Number(supply.usagePerMotorWash)
           : Number(supply.usagePerCarWash);
@@ -669,6 +671,10 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
       });
 
       return payment;
+    },
+    {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     // 4. Kirim Struk Digital via WhatsApp jika nomor pelanggan ada

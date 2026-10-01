@@ -164,6 +164,10 @@ export async function registerCustomerMembershipAction(
       });
 
       return { membership, customer };
+    },
+    {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/pos");

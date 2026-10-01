@@ -106,6 +106,10 @@ export async function registerOwnerAction(
       });
 
       return { user, outlet };
+    },
+    {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     return {
