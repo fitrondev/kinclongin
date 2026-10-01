@@ -53,6 +53,14 @@ export async function getPayrollSummaryAction(
       return { success: false, error: "Sesi berakhir. Silakan login kembali." };
     }
 
+    if (user.role !== UserRole.OWNER && user.role !== UserRole.MANAGER) {
+      return {
+        success: false,
+        error:
+          "Akses ditolak. Hanya Owner dan Manajer yang berhak melihat rincian gaji dan komisi.",
+      };
+    }
+
     const outletId = targetOutletId || user.outletId;
     if (!outletId) {
       return { success: false, error: "Cabang outlet tidak teridentifikasi." };

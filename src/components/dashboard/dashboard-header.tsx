@@ -42,38 +42,50 @@ export function DashboardHeader({
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const navLinks = [
+  const isOwner = userRole === "OWNER";
+  const isManager = userRole === "MANAGER";
+  const canManageStaff = isOwner || isManager;
+  const canViewPayroll = isOwner || isManager;
+
+  const allNavLinks = [
     {
       href: "/dashboard",
       label: "Ringkasan",
       icon: LayoutDashboard,
       active: pathname === "/dashboard",
+      allowed: true,
     },
     {
       href: "/dashboard/pelanggan",
       label: "Member & Loyalitas",
       icon: Sparkles,
       active: pathname.startsWith("/dashboard/pelanggan"),
+      allowed: true,
     },
     {
       href: "/dashboard/stok",
       label: "Stok Bahan & Barang",
       icon: Boxes,
       active: pathname.startsWith("/dashboard/stok"),
+      allowed: true,
     },
     {
       href: "/dashboard/komisi",
       label: "Gaji & Komisi",
       icon: Users,
       active: pathname.startsWith("/dashboard/komisi"),
+      allowed: canViewPayroll,
     },
     {
       href: "/dashboard/membership",
       label: "Langganan Member",
       icon: Crown,
       active: pathname.startsWith("/dashboard/membership"),
+      allowed: true,
     },
   ];
+
+  const navLinks = allNavLinks.filter((item) => item.allowed);
 
   return (
     <header className="bg-card/90 sticky top-0 z-40 w-full border-b backdrop-blur-md">
@@ -100,22 +112,26 @@ export function DashboardHeader({
             </div>
           </Link>
 
-          <div className="bg-border hidden h-5 w-px sm:block" />
+          {isOwner && (
+            <>
+              <div className="bg-border hidden h-5 w-px sm:block" />
 
-          {/* Outlet Switcher (Desktop Luas) */}
-          <div className="hidden items-center lg:flex">
-            <OutletSwitcher
-              afterSelectOrganizationUrl="/dashboard"
-              afterCreateOrganizationUrl="/dashboard"
-              appearance={{
-                elements: {
-                  rootBox: "flex items-center text-xs font-semibold",
-                  organizationSwitcherTrigger:
-                    "py-1.5 px-3 rounded-xl border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
-                },
-              }}
-            />
-          </div>
+              {/* Outlet Switcher (Desktop Luas - Khusus Owner) */}
+              <div className="hidden items-center lg:flex">
+                <OutletSwitcher
+                  afterSelectOrganizationUrl="/dashboard"
+                  afterCreateOrganizationUrl="/dashboard"
+                  appearance={{
+                    elements: {
+                      rootBox: "flex items-center text-xs font-semibold",
+                      organizationSwitcherTrigger:
+                        "py-1.5 px-3 rounded-xl border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
+                    },
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Navigation Tabs (Desktop Luas: xl 1280px+) */}
@@ -141,8 +157,8 @@ export function DashboardHeader({
 
         {/* Right Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Direct Staff Addition Dialog */}
-          <CreateMemberDialog />
+          {/* Direct Staff Addition Dialog (Hanya untuk Owner & Manajer) */}
+          {canManageStaff && <CreateMemberDialog />}
 
           {/* Quick links to POS */}
           <Button
@@ -218,23 +234,25 @@ export function DashboardHeader({
                   </div>
                 </div>
 
-                {/* Outlet Switcher di dalam Drawer */}
-                <div className="mt-3 border-t pt-2">
-                  <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold uppercase">
-                    Ganti Cabang Outlet
-                  </span>
-                  <OutletSwitcher
-                    afterSelectOrganizationUrl="/dashboard"
-                    afterCreateOrganizationUrl="/dashboard"
-                    appearance={{
-                      elements: {
-                        rootBox: "w-full",
-                        organizationSwitcherTrigger:
-                          "w-full justify-between py-2 px-3 rounded-xl border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
-                      },
-                    }}
-                  />
-                </div>
+                {/* Outlet Switcher di dalam Drawer (Khusus Owner) */}
+                {isOwner && (
+                  <div className="mt-3 border-t pt-2">
+                    <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold uppercase">
+                      Ganti Cabang Outlet
+                    </span>
+                    <OutletSwitcher
+                      afterSelectOrganizationUrl="/dashboard"
+                      afterCreateOrganizationUrl="/dashboard"
+                      appearance={{
+                        elements: {
+                          rootBox: "w-full",
+                          organizationSwitcherTrigger:
+                            "w-full justify-between py-2 px-3 rounded-xl border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
+                        },
+                      }}
+                    />
+                  </div>
+                )}
               </SheetHeader>
 
               {/* Menu Navigasi Dasbor di Drawer */}

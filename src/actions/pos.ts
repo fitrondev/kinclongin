@@ -530,7 +530,8 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
             method: paymentMethod as PaymentMethod,
             status: PaymentStatus.PAID,
             totalAmount,
-            cashGiven: paymentMethod === "CASH" ? cashGiven || totalAmount : null,
+            cashGiven:
+              paymentMethod === "CASH" ? cashGiven || totalAmount : null,
             changeGiven: changeGiven > 0 ? changeGiven : null,
             referenceNumber: referenceNumber || null,
             proofImageUrl: proofImageUrl || null,
@@ -575,107 +576,110 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
 
         // c. Recipe Deduction: Potong Bahan Habis Pakai Operasional (Shampoo & Semir Ban)
         for (const supply of supplies) {
-        const usage = isMotor
-          ? Number(supply.usagePerMotorWash)
-          : Number(supply.usagePerCarWash);
+          const usage = isMotor
+            ? Number(supply.usagePerMotorWash)
+            : Number(supply.usagePerCarWash);
 
-        if (usage > 0) {
-          const updatedSupply = await tx.operationalSupply.update({
-            where: { id: supply.id },
-            data: { stock: { decrement: usage } },
+          if (usage > 0) {
+            const updatedSupply = await tx.operationalSupply.update({
+              where: { id: supply.id },
+              data: { stock: { decrement: usage } },
+            });
+
+            await tx.stockMovement.create({
+              data: {
+                outletId,
+                operationalSupplyId: supply.id,
+                movementType: MovementType.OUT_USAGE,
+                quantity: usage,
+                balanceAfter: updatedSupply.stock,
+                referenceNote: `Pemakaian Cuci Tiket #${ticket.ticketNumber} (${ticket.licensePlate})`,
+              },
+            });
+          }
+        }
+
+        // d. Registrasi Membership Baru Rp 50.000 (Jika Dipilih Kasir)
+        let membershipBonusPoints = 0;
+        if (registerMembership && ticket.customerId) {
+          const startDate = new Date();
+          const endDate = new Date(
+            startDate.getTime() + 365 * 24 * 60 * 60 * 1000
+          );
+          await tx.customerMembership.create({
+            data: {
+              customerId: ticket.customerId,
+              outletId,
+              planName: "Member Loyalitas Kinclongin",
+              price: 50000,
+              startDate,
+              endDate,
+              status: "ACTIVE",
+              totalQuota: 999,
+              remainingQuota: 999,
+              discountPercent: 0,
+              paymentMethod: paymentMethod as PaymentMethod,
+              paymentRef: referenceNumber || null,
+              cashierId: user.id,
+              notes: "Pendaftaran member saat checkout kasir",
+            },
+          });
+          membershipBonusPoints = 50;
+        }
+
+        // e. Akumulasi Poin Loyalitas Pelanggan (1 poin per Rp 1.000 belanja)
+        if (ticket.customerId) {
+          const pointsEarned = Math.floor(
+            (servicePrice + subtotalRetail) / 1000
+          );
+          const netPointsChange =
+            pointsEarned - redeemPoints + membershipBonusPoints;
+
+          const updatedCustomer = await tx.customer.update({
+            where: { id: ticket.customerId },
+            data: {
+              loyaltyPoints: { increment: netPointsChange },
+            },
           });
 
-          await tx.stockMovement.create({
+          await tx.customerLoyaltyLog.create({
             data: {
-              outletId,
-              operationalSupplyId: supply.id,
-              movementType: MovementType.OUT_USAGE,
-              quantity: usage,
-              balanceAfter: updatedSupply.stock,
-              referenceNote: `Pemakaian Cuci Tiket #${ticket.ticketNumber} (${ticket.licensePlate})`,
+              customerId: ticket.customerId,
+              ticketId,
+              pointsChanged: netPointsChange,
+              balanceAfter: updatedCustomer.loyaltyPoints,
+              description: `Transaksi Tiket #${ticket.ticketNumber} (+${pointsEarned} poin${
+                redeemPoints > 0 ? `, -${redeemPoints} redeem` : ""
+              }${membershipBonusPoints > 0 ? `, +${membershipBonusPoints} bonus member` : ""})`,
             },
           });
         }
-      }
 
-      // d. Registrasi Membership Baru Rp 50.000 (Jika Dipilih Kasir)
-      let membershipBonusPoints = 0;
-      if (registerMembership && ticket.customerId) {
-        const startDate = new Date();
-        const endDate = new Date(
-          startDate.getTime() + 365 * 24 * 60 * 60 * 1000
-        );
-        await tx.customerMembership.create({
+        // e. Update Status Tiket Menjadi Selesai (COMPLETED)
+        const now = new Date();
+        await tx.washTicket.update({
+          where: { id: ticketId },
           data: {
-            customerId: ticket.customerId,
-            outletId,
-            planName: "Member Loyalitas Kinclongin",
-            price: 50000,
-            startDate,
-            endDate,
-            status: "ACTIVE",
-            totalQuota: 999,
-            remainingQuota: 999,
-            discountPercent: 0,
-            paymentMethod: paymentMethod as PaymentMethod,
-            paymentRef: referenceNumber || null,
-            cashierId: user.id,
-            notes: "Pendaftaran member saat checkout kasir",
-          },
-        });
-        membershipBonusPoints = 50;
-      }
-
-      // e. Akumulasi Poin Loyalitas Pelanggan (1 poin per Rp 1.000 belanja)
-      if (ticket.customerId) {
-        const pointsEarned = Math.floor((servicePrice + subtotalRetail) / 1000);
-        const netPointsChange =
-          pointsEarned - redeemPoints + membershipBonusPoints;
-
-        const updatedCustomer = await tx.customer.update({
-          where: { id: ticket.customerId },
-          data: {
-            loyaltyPoints: { increment: netPointsChange },
+            status: TicketStatus.COMPLETED,
+            paymentStatus: PaymentStatus.PAID,
+            subtotalServices: servicePrice,
+            subtotalRetail,
+            discountAmount: effectiveDiscount,
+            totalAmount,
+            paidAmount:
+              paymentMethod === "CASH" ? cashGiven || totalAmount : totalAmount,
+            readyAt: ticket.readyAt || now,
+            completedAt: now,
           },
         });
 
-        await tx.customerLoyaltyLog.create({
-          data: {
-            customerId: ticket.customerId,
-            ticketId,
-            pointsChanged: netPointsChange,
-            balanceAfter: updatedCustomer.loyaltyPoints,
-            description: `Transaksi Tiket #${ticket.ticketNumber} (+${pointsEarned} poin${
-              redeemPoints > 0 ? `, -${redeemPoints} redeem` : ""
-            }${membershipBonusPoints > 0 ? `, +${membershipBonusPoints} bonus member` : ""})`,
-          },
-        });
+        return payment;
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
       }
-
-      // e. Update Status Tiket Menjadi Selesai (COMPLETED)
-      const now = new Date();
-      await tx.washTicket.update({
-        where: { id: ticketId },
-        data: {
-          status: TicketStatus.COMPLETED,
-          paymentStatus: PaymentStatus.PAID,
-          subtotalServices: servicePrice,
-          subtotalRetail,
-          discountAmount: effectiveDiscount,
-          totalAmount,
-          paidAmount:
-            paymentMethod === "CASH" ? cashGiven || totalAmount : totalAmount,
-          readyAt: ticket.readyAt || now,
-          completedAt: now,
-        },
-      });
-
-      return payment;
-    },
-    {
-      maxWait: 15000,
-      timeout: 30000,
-    });
+    );
 
     // 4. Kirim Struk Digital via WhatsApp jika nomor pelanggan ada
     if (ticket.customer?.phone) {

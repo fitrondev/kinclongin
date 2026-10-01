@@ -19,7 +19,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  ...(process.env.BUILD_STANDALONE === "true" ? { output: "standalone" as const } : {}),
+  ...(process.env.BUILD_STANDALONE === "true"
+    ? { output: "standalone" as const }
+    : {}),
   async redirects() {
     return [
       {

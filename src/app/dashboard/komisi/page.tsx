@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { getPayrollSummaryAction } from "@/actions/payroll";
 import { PayrollView } from "@/components/dashboard/payroll-view";
@@ -13,7 +14,16 @@ export const metadata: Metadata = {
 
 export default async function DashboardKomisiPage() {
   const user = await getCurrentUser();
-  const outlet = user?.outletId
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  // Khusus OWNER & MANAGER: Kasir atau staf lain tidak boleh melihat rekap gaji/komisi
+  if (user.role !== "OWNER" && user.role !== "MANAGER") {
+    redirect("/dashboard");
+  }
+
+  const outlet = user.outletId
     ? await prisma.outlet.findUnique({ where: { id: user.outletId } })
     : await prisma.outlet.findFirst({ where: { isActive: true } });
 

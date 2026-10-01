@@ -92,83 +92,85 @@ export async function registerCustomerMembershipAction(
       startDate.getTime() + durationDays * 24 * 60 * 60 * 1000
     );
 
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Cari atau buat Pelanggan berdasarkan nomor WhatsApp
-      let customer = await tx.customer.findUnique({
-        where: { phone: customerPhone },
-      });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // 1. Cari atau buat Pelanggan berdasarkan nomor WhatsApp
+        let customer = await tx.customer.findUnique({
+          where: { phone: customerPhone },
+        });
 
-      if (!customer) {
-        customer = await tx.customer.create({
+        if (!customer) {
+          customer = await tx.customer.create({
+            data: {
+              phone: customerPhone,
+              fullName: customerName,
+              loyaltyPoints: 0,
+              totalVisits: 0,
+            },
+          });
+        } else if (customer.fullName !== customerName) {
+          customer = await tx.customer.update({
+            where: { id: customer.id },
+            data: { fullName: customerName },
+          });
+        }
+
+        // 2. Hubungkan plat nomor jika disertakan
+        if (licensePlate) {
+          await tx.vehicle.upsert({
+            where: { licensePlate },
+            update: { customerId: customer.id },
+            create: {
+              licensePlate,
+              category: "MOBIL_SEDANG",
+              customerId: customer.id,
+            },
+          });
+        }
+
+        // 3. Buat CustomerMembership baru
+        const membership = await tx.customerMembership.create({
           data: {
-            phone: customerPhone,
-            fullName: customerName,
-            loyaltyPoints: 0,
-            totalVisits: 0,
-          },
-        });
-      } else if (customer.fullName !== customerName) {
-        customer = await tx.customer.update({
-          where: { id: customer.id },
-          data: { fullName: customerName },
-        });
-      }
-
-      // 2. Hubungkan plat nomor jika disertakan
-      if (licensePlate) {
-        await tx.vehicle.upsert({
-          where: { licensePlate },
-          update: { customerId: customer.id },
-          create: {
-            licensePlate,
-            category: "MOBIL_SEDANG",
             customerId: customer.id,
+            outletId,
+            planName,
+            price,
+            startDate,
+            endDate,
+            status: "ACTIVE",
+            totalQuota,
+            remainingQuota: totalQuota,
+            discountPercent,
+            paymentMethod: paymentMethod as PaymentMethod,
+            paymentRef: paymentRef || null,
+            cashierId: user.id,
+            notes: notes || null,
           },
         });
+
+        // 4. Berikan bonus poin loyalty (1 poin per Rp 2.000)
+        const bonusPoints = Math.max(10, Math.floor(price / 2000));
+        await tx.customer.update({
+          where: { id: customer.id },
+          data: { loyaltyPoints: { increment: bonusPoints } },
+        });
+
+        await tx.customerLoyaltyLog.create({
+          data: {
+            customerId: customer.id,
+            pointsChanged: bonusPoints,
+            balanceAfter: customer.loyaltyPoints + bonusPoints,
+            description: `Bonus aktivasi langganan ${planName}`,
+          },
+        });
+
+        return { membership, customer };
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
       }
-
-      // 3. Buat CustomerMembership baru
-      const membership = await tx.customerMembership.create({
-        data: {
-          customerId: customer.id,
-          outletId,
-          planName,
-          price,
-          startDate,
-          endDate,
-          status: "ACTIVE",
-          totalQuota,
-          remainingQuota: totalQuota,
-          discountPercent,
-          paymentMethod: paymentMethod as PaymentMethod,
-          paymentRef: paymentRef || null,
-          cashierId: user.id,
-          notes: notes || null,
-        },
-      });
-
-      // 4. Berikan bonus poin loyalty (1 poin per Rp 2.000)
-      const bonusPoints = Math.max(10, Math.floor(price / 2000));
-      await tx.customer.update({
-        where: { id: customer.id },
-        data: { loyaltyPoints: { increment: bonusPoints } },
-      });
-
-      await tx.customerLoyaltyLog.create({
-        data: {
-          customerId: customer.id,
-          pointsChanged: bonusPoints,
-          balanceAfter: customer.loyaltyPoints + bonusPoints,
-          description: `Bonus aktivasi langganan ${planName}`,
-        },
-      });
-
-      return { membership, customer };
-    },
-    {
-      maxWait: 15000,
-      timeout: 30000,
-    });
+    );
 
     revalidatePath("/pos");
     revalidatePath("/pos/daftar-baru");

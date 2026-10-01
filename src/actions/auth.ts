@@ -77,40 +77,42 @@ export async function registerOwnerAction(
     }
 
     // Buat User dan Outlet dalam transaksi database terisolasi
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email: email.toLowerCase().trim(),
-          passwordHash,
-          fullName,
-          role: UserRole.OWNER,
-          status: UserStatus.ACTIVE,
-        },
-      });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            email: email.toLowerCase().trim(),
+            passwordHash,
+            fullName,
+            role: UserRole.OWNER,
+            status: UserStatus.ACTIVE,
+          },
+        });
 
-      const outlet = await tx.outlet.create({
-        data: {
-          name: outletName,
-          slug,
-          address: outletAddress,
-          phone: outletPhone,
-          ownerId: user.id,
-          isActive: true,
-        },
-      });
+        const outlet = await tx.outlet.create({
+          data: {
+            name: outletName,
+            slug,
+            address: outletAddress,
+            phone: outletPhone,
+            ownerId: user.id,
+            isActive: true,
+          },
+        });
 
-      // Tautkan outletId aktif ke user
-      await tx.user.update({
-        where: { id: user.id },
-        data: { outletId: outlet.id },
-      });
+        // Tautkan outletId aktif ke user
+        await tx.user.update({
+          where: { id: user.id },
+          data: { outletId: outlet.id },
+        });
 
-      return { user, outlet };
-    },
-    {
-      maxWait: 15000,
-      timeout: 30000,
-    });
+        return { user, outlet };
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
+      }
+    );
 
     return {
       success: true,

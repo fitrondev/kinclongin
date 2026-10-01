@@ -239,52 +239,54 @@ export async function redeemLoyaltyRewardAction(input: {
     const newTotal = Math.max(0, subtotalRetail); // Hanya bayar produk ritel jika ada
 
     // Eksekusi transaksi pengurangan poin dan update tiket
-    await prisma.$transaction(async (tx) => {
-      // 1. Update WashTicket diskon dan total bayar
-      await tx.washTicket.update({
-        where: { id: ticketId },
-        data: {
-          discountAmount,
-          totalAmount: newTotal,
-        },
-      });
-
-      // 2. Jika bukan promo kendaraan, potong 10 poin loyalitas
-      if (!isVehiclePromoEligible && isPointsEligible) {
-        const newPointsBalance = Math.max(0, customer.loyaltyPoints - 10);
-        await tx.customer.update({
-          where: { id: customerId },
+    await prisma.$transaction(
+      async (tx) => {
+        // 1. Update WashTicket diskon dan total bayar
+        await tx.washTicket.update({
+          where: { id: ticketId },
           data: {
-            loyaltyPoints: newPointsBalance,
+            discountAmount,
+            totalAmount: newTotal,
           },
         });
 
-        await tx.customerLoyaltyLog.create({
-          data: {
-            customerId,
-            ticketId,
-            pointsChanged: -10,
-            balanceAfter: newPointsBalance,
-            description: `Tukar 10 Poin Cuci Gratis (#${ticket.ticketNumber})`,
-          },
-        });
-      } else {
-        // Catat klaim promo 10x cuci kendaraan (tanpa potong poin)
-        await tx.customerLoyaltyLog.create({
-          data: {
-            customerId,
-            ticketId,
-            pointsChanged: 0,
-            balanceAfter: customer.loyaltyPoints,
-            description: `Klaim Promo Cuci 10x Gratis 1x Plat ${ticket.licensePlate} (#${ticket.ticketNumber})`,
-          },
-        });
+        // 2. Jika bukan promo kendaraan, potong 10 poin loyalitas
+        if (!isVehiclePromoEligible && isPointsEligible) {
+          const newPointsBalance = Math.max(0, customer.loyaltyPoints - 10);
+          await tx.customer.update({
+            where: { id: customerId },
+            data: {
+              loyaltyPoints: newPointsBalance,
+            },
+          });
+
+          await tx.customerLoyaltyLog.create({
+            data: {
+              customerId,
+              ticketId,
+              pointsChanged: -10,
+              balanceAfter: newPointsBalance,
+              description: `Tukar 10 Poin Cuci Gratis (#${ticket.ticketNumber})`,
+            },
+          });
+        } else {
+          // Catat klaim promo 10x cuci kendaraan (tanpa potong poin)
+          await tx.customerLoyaltyLog.create({
+            data: {
+              customerId,
+              ticketId,
+              pointsChanged: 0,
+              balanceAfter: customer.loyaltyPoints,
+              description: `Klaim Promo Cuci 10x Gratis 1x Plat ${ticket.licensePlate} (#${ticket.ticketNumber})`,
+            },
+          });
+        }
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
       }
-    },
-    {
-      maxWait: 15000,
-      timeout: 30000,
-    });
+    );
 
     revalidatePath(`/pos/bayar/${ticketId}`);
     revalidatePath(`/pos/checkout/${ticketId}`);

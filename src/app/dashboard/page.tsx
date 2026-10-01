@@ -61,6 +61,11 @@ export default async function DashboardPage() {
 
   const metrics = await getDashboardMetrics(outlet.id);
 
+  const isOwner = user?.role === "OWNER";
+  const isManager = user?.role === "MANAGER";
+  const isOwnerOrManager = isOwner || isManager;
+  const isCashier = user?.role === "CASHIER";
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -68,13 +73,28 @@ export default async function DashboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
-              Halo, {user?.fullName || "Owner"}! 👋
+              Halo,{" "}
+              {user?.fullName ||
+                (isCashier ? "Kasir" : isManager ? "Manajer" : "Owner")}
+              ! 👋
             </h1>
             <Badge
               variant="outline"
               className="text-primary border-primary/20 text-xs font-bold"
             >
               {outlet.name}
+            </Badge>
+            <Badge
+              variant="secondary"
+              className={`text-[10px] font-bold ${
+                isOwner
+                  ? "border-amber-500/20 bg-amber-500/10 text-amber-600"
+                  : isManager
+                    ? "border-blue-500/20 bg-blue-500/10 text-blue-600"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+              }`}
+            >
+              {isOwner ? "Owner" : isManager ? "Manajer" : "Kasir"}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-0.5 text-xs">
@@ -184,29 +204,54 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* 4. Komisi Washer Tertunda */}
-        <Card className="bg-card border shadow-xs">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
-            <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-              Komisi Belum Dicairkan
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
-              <Users className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-foreground text-2xl font-black">
-              {formatRupiah(metrics.totalUnpaidCommission)}
-            </div>
-            <Link
-              href="/dashboard/komisi"
-              className="text-primary mt-1 flex items-center gap-1 text-xs font-bold hover:underline"
-            >
-              <span>Buka Menu Komisi</span>
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardContent>
-        </Card>
+        {/* 4. Metrik Keempat: Komisi Washer untuk Owner/Manager, atau Status Kasir untuk Kasir */}
+        {isOwnerOrManager ? (
+          <Card className="bg-card border shadow-xs">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
+              <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                Komisi Belum Dicairkan
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+                <Users className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-foreground text-2xl font-black">
+                {formatRupiah(metrics.totalUnpaidCommission)}
+              </div>
+              <Link
+                href="/dashboard/komisi"
+                className="text-primary mt-1 flex items-center gap-1 text-xs font-bold hover:underline"
+              >
+                <span>Buka Menu Komisi</span>
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-card border shadow-xs">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
+              <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                Antrean & Kasir POS
+              </span>
+              <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-xl">
+                <LayoutGrid className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-foreground text-2xl font-black">
+                Mode Kasir
+              </div>
+              <Link
+                href="/pos/antrean"
+                className="text-primary mt-1 flex items-center gap-1 text-xs font-bold hover:underline"
+              >
+                <span>Buka Papan Antrean</span>
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Pusat Akses Cepat Seluruh Fitur Kinclongin */}
@@ -304,21 +349,38 @@ export default async function DashboardPage() {
             </p>
           </Link>
 
-          {/* 6. Payroll & Komisi */}
-          <Link
-            href="/dashboard/komisi"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
-          >
-            <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 transition-colors">
-              <Users className="h-4 w-4" />
-            </div>
-            <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
-              Gaji & Komisi Pekerja
-            </h3>
-            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-              Cairkan komisi pekerja & ekspor file Excel (.xlsx)
-            </p>
-          </Link>
+          {/* 6. Payroll & Komisi (Khusus Owner & Manajer) atau Member & Loyalitas (Kasir) */}
+          {isOwnerOrManager ? (
+            <Link
+              href="/dashboard/komisi"
+              className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            >
+              <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 transition-colors">
+                <Users className="h-4 w-4" />
+              </div>
+              <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
+                Gaji & Komisi Pekerja
+              </h3>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+                Cairkan komisi pekerja & ekspor file Excel (.xlsx)
+              </p>
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard/pelanggan"
+              className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            >
+              <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
+                Member & Loyalitas
+              </h3>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+                Cek poin pelanggan & reward cuci 10x gratis 1x
+              </p>
+            </Link>
+          )}
         </div>
       </div>
 

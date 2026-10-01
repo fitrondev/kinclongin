@@ -49,31 +49,33 @@ export async function restockProductAction(input: {
       return { success: false, error: "Produk ritel tidak ditemukan." };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const updated = await tx.retailProduct.update({
-        where: { id: productId },
-        data: {
-          stock: { increment: quantity },
-        },
-      });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.retailProduct.update({
+          where: { id: productId },
+          data: {
+            stock: { increment: quantity },
+          },
+        });
 
-      await tx.stockMovement.create({
-        data: {
-          outletId: product.outletId,
-          retailProductId: productId,
-          movementType: MovementType.IN_RESTOCK,
-          quantity,
-          balanceAfter: updated.stock,
-          referenceNote: notes || `Restok manual oleh ${user.fullName}`,
-        },
-      });
+        await tx.stockMovement.create({
+          data: {
+            outletId: product.outletId,
+            retailProductId: productId,
+            movementType: MovementType.IN_RESTOCK,
+            quantity,
+            balanceAfter: updated.stock,
+            referenceNote: notes || `Restok manual oleh ${user.fullName}`,
+          },
+        });
 
-      return updated.stock;
-    },
-    {
-      maxWait: 15000,
-      timeout: 30000,
-    });
+        return updated.stock;
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
+      }
+    );
 
     revalidatePath("/dashboard/stok");
     revalidatePath("/dashboard/inventory");
@@ -131,30 +133,32 @@ export async function restockSupplyAction(input: {
     const prevStock = Number(supply.stock);
     const newStock = prevStock + quantity;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.operationalSupply.update({
-        where: { id: supplyId },
-        data: {
-          stock: newStock,
-        },
-      });
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.operationalSupply.update({
+          where: { id: supplyId },
+          data: {
+            stock: newStock,
+          },
+        });
 
-      await tx.stockMovement.create({
-        data: {
-          outletId: supply.outletId,
-          operationalSupplyId: supplyId,
-          movementType: MovementType.IN_RESTOCK,
-          quantity,
-          balanceAfter: newStock,
-          referenceNote:
-            notes || `Restok bahan operasional oleh ${user.fullName}`,
-        },
-      });
-    },
-    {
-      maxWait: 15000,
-      timeout: 30000,
-    });
+        await tx.stockMovement.create({
+          data: {
+            outletId: supply.outletId,
+            operationalSupplyId: supplyId,
+            movementType: MovementType.IN_RESTOCK,
+            quantity,
+            balanceAfter: newStock,
+            referenceNote:
+              notes || `Restok bahan operasional oleh ${user.fullName}`,
+          },
+        });
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
+      }
+    );
 
     revalidatePath("/dashboard/stok");
     revalidatePath("/dashboard/inventory");

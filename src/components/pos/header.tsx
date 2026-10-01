@@ -38,6 +38,7 @@ interface POSHeaderProps {
   outletId?: string;
   outletName?: string;
   cashierName?: string;
+  userRole?: string;
   stats?: {
     queued: number;
     washing: number;
@@ -50,11 +51,13 @@ export function POSHeader({
   outletId = "",
   outletName = "Kinclongin Cabang Pusat",
   cashierName = "Kasir",
+  userRole = "OWNER",
   stats = { queued: 0, washing: 0, drying: 0, ready: 0 },
 }: POSHeaderProps) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const isOwner = userRole === "OWNER";
   const totalActive = stats.queued + stats.washing + stats.drying + stats.ready;
 
   const isDaftarBaruActive =
@@ -96,18 +99,20 @@ export function POSHeader({
             </div>
           </Link>
 
-          {/* Outlet Switcher (Khusus Layar Desktop Luas) */}
-          <div className="hidden xl:block">
-            <OutletSwitcher
-              afterSelectOrganizationUrl="/pos/antrean"
-              appearance={{
-                elements: {
-                  organizationSwitcherTrigger:
-                    "py-1 px-2.5 rounded-lg border bg-muted/40 hover:bg-muted text-[11px] font-semibold gap-1.5",
-                },
-              }}
-            />
-          </div>
+          {/* Outlet Switcher (Khusus Layar Desktop Luas - Khusus Owner) */}
+          {isOwner && (
+            <div className="hidden xl:block">
+              <OutletSwitcher
+                afterSelectOrganizationUrl="/pos/antrean"
+                appearance={{
+                  elements: {
+                    organizationSwitcherTrigger:
+                      "py-1 px-2.5 rounded-lg border bg-muted/40 hover:bg-muted text-[11px] font-semibold gap-1.5",
+                  },
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Sisi Tengah: Indikator Metrik Antrean Adaptif */}
@@ -280,22 +285,24 @@ export function POSHeader({
                   </div>
                 </div>
 
-                {/* Outlet Switcher di dalam Drawer */}
-                <div className="mt-3 border-t pt-2">
-                  <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold uppercase">
-                    Ganti Cabang Outlet
-                  </span>
-                  <OutletSwitcher
-                    afterSelectOrganizationUrl="/pos/antrean"
-                    appearance={{
-                      elements: {
-                        rootBox: "w-full",
-                        organizationSwitcherTrigger:
-                          "w-full justify-between py-2 px-3 rounded-xl border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
-                      },
-                    }}
-                  />
-                </div>
+                {/* Outlet Switcher di dalam Drawer (Khusus Owner) */}
+                {isOwner && (
+                  <div className="mt-3 border-t pt-2">
+                    <span className="text-muted-foreground mb-1.5 block text-[11px] font-bold uppercase">
+                      Ganti Cabang Outlet
+                    </span>
+                    <OutletSwitcher
+                      afterSelectOrganizationUrl="/pos/antrean"
+                      appearance={{
+                        elements: {
+                          rootBox: "w-full",
+                          organizationSwitcherTrigger:
+                            "w-full justify-between py-2 px-3 rounded-xl border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
+                        },
+                      }}
+                    />
+                  </div>
+                )}
               </SheetHeader>
 
               {/* Isi Drawer Menu */}

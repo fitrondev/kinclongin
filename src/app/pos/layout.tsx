@@ -65,6 +65,7 @@ export default async function POSLayout({
         outletId={outlet?.id}
         outletName={outlet?.name || "Kinclongin Cabang Utama"}
         cashierName={user.fullName}
+        userRole={user.role}
         stats={stats}
       />
       <OfflineIndicator />

@@ -61,6 +61,9 @@ export function DashboardSidebar({
   const pathname = usePathname();
 
   const isOwner = userRole === "OWNER";
+  const isManager = userRole === "MANAGER";
+  const canManageStaff = isOwner || isManager;
+  const canViewPayroll = isOwner || isManager;
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -94,20 +97,22 @@ export function DashboardSidebar({
           </div>
         </div>
 
-        {/* Outlet Switcher */}
-        <div className="mt-2 group-data-[collapsible=icon]:hidden">
-          <OutletSwitcher
-            afterSelectOrganizationUrl="/dashboard"
-            afterCreateOrganizationUrl="/dashboard"
-            appearance={{
-              elements: {
-                rootBox: "w-full",
-                organizationSwitcherTrigger:
-                  "w-full justify-between py-1.5 px-2.5 rounded-lg border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
-              },
-            }}
-          />
-        </div>
+        {/* Outlet Switcher (Khusus Owner yang memiliki hak kelola multi-cabang) */}
+        {isOwner && (
+          <div className="mt-2 group-data-[collapsible=icon]:hidden">
+            <OutletSwitcher
+              afterSelectOrganizationUrl="/dashboard"
+              afterCreateOrganizationUrl="/dashboard"
+              appearance={{
+                elements: {
+                  rootBox: "w-full",
+                  organizationSwitcherTrigger:
+                    "w-full justify-between py-1.5 px-2.5 rounded-lg border bg-muted/40 hover:bg-muted text-xs font-semibold gap-2",
+                },
+              }}
+            />
+          </div>
+        )}
       </SidebarHeader>
 
       {/* 2. Content: Semua Fitur Lengkap Kinclongin */}
@@ -271,63 +276,46 @@ export function DashboardSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Penggajian & Komisi Washer */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/dashboard/komisi")}
-                  tooltip="Gaji & Komisi Pekerja Cuci"
-                  className={
-                    pathname.startsWith("/dashboard/komisi")
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/dashboard/komisi">
-                    <Users className="h-4 w-4" />
-                    <span>Gaji & Komisi Pekerja</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {/* Penggajian & Komisi Washer (Khusus Owner & Manajer) */}
+              {canViewPayroll && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/dashboard/komisi")}
+                    tooltip="Gaji & Komisi Pekerja Cuci"
+                    className={
+                      pathname.startsWith("/dashboard/komisi")
+                        ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                        : ""
+                    }
+                  >
+                    <Link href="/dashboard/komisi">
+                      <Users className="h-4 w-4" />
+                      <span>Gaji & Komisi Pekerja</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarSeparator />
-
-        {/* GRUP 3: Langganan SaaS & Pengaturan */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-            Langganan & Multi-Outlet
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* Langganan Member Pelanggan */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/dashboard/membership")}
-                  tooltip="Langganan Member Pelanggan"
-                  className={
-                    pathname.startsWith("/dashboard/membership")
-                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
-                      : ""
-                  }
-                >
-                  <Link href="/dashboard/membership">
-                    <Crown className="h-4 w-4 text-amber-500" />
-                    <span>Langganan Member</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-
-            {/* Quick Action: Tambah Staf Baru Langsung */}
-            <div className="mt-3 px-2 group-data-[collapsible=icon]:hidden">
-              <CreateMemberDialog />
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* GRUP 3: Manajemen Staf & Akses (Hanya untuk Owner & Manajer) */}
+        {canManageStaff && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                Manajemen Staf
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="px-2 pt-1 group-data-[collapsible=icon]:hidden">
+                  <CreateMemberDialog />
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
 
       {/* 3. Footer: User Profile, Theme & Collapse */}
@@ -346,8 +334,17 @@ export function DashboardSidebar({
               <span className="truncate text-xs leading-tight font-bold">
                 {userFullName}
               </span>
-              <span className="text-muted-foreground truncate text-[10px] font-medium">
-                {userRole}
+              <span className="text-muted-foreground flex items-center gap-1.5 truncate text-[10px] font-medium">
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${
+                    isOwner
+                      ? "bg-amber-500"
+                      : isManager
+                        ? "bg-blue-500"
+                        : "bg-emerald-500"
+                  }`}
+                />
+                {isOwner ? "Owner" : isManager ? "Manajer" : "Kasir"}
               </span>
             </div>
           </div>
