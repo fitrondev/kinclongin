@@ -91,17 +91,19 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api || !setApi) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setApi(api);
   }, [api, setApi]);
 
   React.useEffect(() => {
     if (!api) return;
-    onSelect(api);
+    const timer = setTimeout(() => {
+      onSelect(api);
+    }, 0);
     api.on("reInit", onSelect);
     api.on("select", onSelect);
 
     return () => {
+      clearTimeout(timer);
       api?.off("select", onSelect);
     };
   }, [api, onSelect]);
