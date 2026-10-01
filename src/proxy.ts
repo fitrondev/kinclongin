@@ -14,7 +14,8 @@ export default auth((req) => {
     pathname.startsWith("/api/storage/file");
 
   if (!isLoggedIn && !isPublicRoute) {
-    const signInUrl = new URL("/sign-in", req.nextUrl.origin);
+    const signInUrl = req.nextUrl.clone();
+    signInUrl.pathname = "/sign-in";
     signInUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
     return Response.redirect(signInUrl);
   }
