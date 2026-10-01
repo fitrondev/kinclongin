@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { useRouter } from "next/navigation";
+
 import {
   CheckCircle2,
   Coins,
@@ -27,14 +29,26 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatRupiah } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 
 interface MembershipDialogProps {
-  outletId: string;
+  outletId?: string;
+  trigger?: React.ReactNode;
+  className?: string;
+  buttonText?: string;
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
 const MEMBERSHIP_FEE = 50000; // Flat Rp 50.000 biaya pendaftaran member
 
-export function MembershipDialog({ outletId }: MembershipDialogProps) {
+export function MembershipDialog({
+  outletId,
+  trigger,
+  className,
+  buttonText,
+  size = "sm",
+}: MembershipDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -87,21 +101,35 @@ export function MembershipDialog({ outletId }: MembershipDialogProps) {
       setCustomerName("");
       setLicensePlate("");
       setPaymentRef("");
+      router.refresh();
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-10 gap-1.5 border-amber-500/30 bg-amber-500/10 font-bold text-amber-700 shadow-xs hover:bg-amber-500/20 dark:text-amber-300"
-        >
-          <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <span className="hidden sm:inline">Daftar Member (Rp 50rb)</span>
-          <span className="sm:hidden">Member (50k)</span>
-        </Button>
+        {trigger ? (
+          trigger
+        ) : (
+          <Button
+            variant="outline"
+            size={size}
+            className={cn(
+              "h-9 gap-1.5 border-amber-500/30 bg-amber-500/10 font-bold text-amber-700 shadow-xs hover:bg-amber-500/20 sm:h-10 dark:text-amber-300",
+              className
+            )}
+          >
+            <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">
+              {buttonText || "Daftar Member (Rp 50rb)"}
+            </span>
+            <span className="sm:hidden">
+              {buttonText
+                ? buttonText.replace("Daftar Member", "Member")
+                : "Member (50k)"}
+            </span>
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="max-w-md">

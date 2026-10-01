@@ -16,7 +16,7 @@ export type ActionResponse<T = unknown> = {
 };
 
 const registerMembershipSchema = z.object({
-  outletId: z.string().min(1, "ID Cabang wajib diisi"),
+  outletId: z.string().optional(),
   customerPhone: z
     .string()
     .min(8, "Nomor telepon pelanggan minimal 8 karakter")
@@ -41,7 +41,7 @@ const registerMembershipSchema = z.object({
 export type RegisterMembershipInput = z.infer<typeof registerMembershipSchema>;
 
 /**
- * Pendaftaran & Pembayaran Langganan Member Cuci oleh Kasir POS
+ * Pendaftaran & Pembayaran Langganan Member Cuci oleh Kasir POS / Dasbor
  */
 export async function registerCustomerMembershipAction(
   input: RegisterMembershipInput
@@ -73,7 +73,7 @@ export async function registerCustomerMembershipAction(
     }
 
     const {
-      outletId,
+      outletId: inputOutletId,
       customerPhone,
       customerName,
       licensePlate,
@@ -86,6 +86,25 @@ export async function registerCustomerMembershipAction(
       paymentRef,
       notes,
     } = parsed.data;
+
+    let targetOutletId: string;
+    if (inputOutletId) {
+      targetOutletId = inputOutletId;
+    } else if (user.outletId) {
+      targetOutletId = user.outletId;
+    } else {
+      const activeOutlet = await prisma.outlet.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      });
+      if (!activeOutlet) {
+        return {
+          success: false,
+          error: "Cabang outlet aktif tidak ditemukan.",
+        };
+      }
+      targetOutletId = activeOutlet.id;
+    }
 
     const startDate = new Date();
     const endDate = new Date(
@@ -132,7 +151,7 @@ export async function registerCustomerMembershipAction(
         const membership = await tx.customerMembership.create({
           data: {
             customerId: customer.id,
-            outletId,
+            outletId: targetOutletId,
             planName,
             price,
             startDate,

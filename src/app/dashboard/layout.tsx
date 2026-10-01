@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LayoutGrid, PlusCircle, Tablet } from "lucide-react";
 
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
+import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -67,6 +68,11 @@ export default async function DashboardLayout({
 
             {/* Fast Action Shortcuts */}
             <div className="flex shrink-0 items-center gap-2">
+              <MembershipDialog
+                outletId={outlet?.id}
+                buttonText="+ Daftar Member"
+                className="h-8 text-xs font-bold"
+              />
               <Button
                 asChild
                 size="sm"

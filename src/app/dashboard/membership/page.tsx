@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -58,8 +59,8 @@ export default async function DashboardMembershipPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Page Title */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      {/* Page Title & Action */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-foreground flex items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl">
             <Crown className="h-6 w-6 text-amber-500" />
@@ -70,6 +71,13 @@ export default async function DashboardMembershipPage() {
             akumulatif tiap transaksi dan validasi promo terprogram Cuci 10x
             Gratis 1x.
           </p>
+        </div>
+        <div className="shrink-0">
+          <MembershipDialog
+            outletId={outletId || undefined}
+            buttonText="+ Daftarkan Member Baru"
+            className="h-10 px-4 text-xs font-bold"
+          />
         </div>
       </div>
 

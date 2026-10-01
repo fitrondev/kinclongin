@@ -21,6 +21,7 @@ import {
 import { OutletSwitcher } from "@/components/auth/outlet-switcher";
 import { UserButton } from "@/components/auth/user-button";
 import { CreateMemberDialog } from "@/components/dashboard/create-member-dialog";
+import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -157,6 +158,12 @@ export function DashboardHeader({
 
         {/* Right Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Direct Member Registration Dialog (Bisa untuk Owner, Manajer & Kasir) */}
+          <MembershipDialog
+            buttonText="+ Member"
+            className="h-9 text-xs font-bold"
+          />
+
           {/* Direct Staff Addition Dialog (Hanya untuk Owner & Manajer) */}
           {canManageStaff && <CreateMemberDialog />}
 
@@ -282,6 +289,14 @@ export function DashboardHeader({
                       </Link>
                     );
                   })}
+                </div>
+
+                {/* Akses Pendaftaran Member (Semua Role: Owner, Manajer, Kasir) */}
+                <div className="pt-1">
+                  <MembershipDialog
+                    buttonText="+ Daftarkan Member Baru"
+                    className="h-10 w-full justify-center text-xs font-bold"
+                  />
                 </div>
 
                 {/* Akses Cepat Lapangan */}

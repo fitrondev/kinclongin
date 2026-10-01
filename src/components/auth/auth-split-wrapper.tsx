@@ -154,15 +154,6 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-muted-foreground hidden text-xs font-medium sm:inline">
-              {mode === "sign-in" ? "Belum punya akun?" : "Sudah punya akun?"}
-            </span>
-            <Link
-              href={mode === "sign-in" ? "/sign-up" : "/sign-in"}
-              className="text-primary hover:text-primary/80 text-xs font-bold transition-colors"
-            >
-              {mode === "sign-in" ? "Daftar Cabang" : "Masuk"}
-            </Link>
             <ThemeToggle />
           </div>
         </div>

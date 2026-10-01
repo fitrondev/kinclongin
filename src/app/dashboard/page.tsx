@@ -25,6 +25,7 @@ import {
   RevenueTrendChart,
   VehicleCategoryChart,
 } from "@/components/dashboard/analytics-charts";
+import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,7 +104,12 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <MembershipDialog
+            outletId={outlet.id}
+            buttonText="+ Daftar Member"
+            className="h-9 text-xs font-bold shadow-xs"
+          />
           <Button asChild size="sm" className="h-9 gap-1.5 font-bold shadow-xs">
             <Link href="/pos/daftar-baru">
               <PlusCircle className="h-4 w-4" />

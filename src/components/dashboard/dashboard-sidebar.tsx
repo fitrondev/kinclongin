@@ -26,6 +26,7 @@ import {
 import { OutletSwitcher } from "@/components/auth/outlet-switcher";
 import { UserButton } from "@/components/auth/user-button";
 import { CreateMemberDialog } from "@/components/dashboard/create-member-dialog";
+import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -224,6 +225,14 @@ export function DashboardSidebar({
                     <span>Member & Loyalitas</span>
                   </Link>
                 </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Pendaftaran Member Baru (Bisa dilakukan Owner, Manajer & Kasir) */}
+              <SidebarMenuItem className="pt-1 group-data-[collapsible=icon]:hidden">
+                <MembershipDialog
+                  buttonText="+ Daftar Member Baru"
+                  className="h-8 w-full justify-start text-xs font-bold"
+                />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

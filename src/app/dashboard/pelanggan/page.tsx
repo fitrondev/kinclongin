@@ -7,6 +7,7 @@ import {
   CustomerLoyaltyTable,
   CustomerRowData,
 } from "@/components/dashboard/customer-loyalty-table";
+import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -90,7 +91,7 @@ export default async function DashboardPelangganPage() {
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Page Title & Breadcrumb Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-foreground flex items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl">
             <Gift className="h-6 w-6 text-amber-500" />
@@ -100,6 +101,13 @@ export default async function DashboardPelangganPage() {
             Program membership cuci mobil berbasis Nomor WhatsApp otomatis &
             promo Cuci 10x Gratis 1x yang terkunci aman per plat kendaraan.
           </p>
+        </div>
+        <div className="shrink-0">
+          <MembershipDialog
+            outletId={user.outletId || undefined}
+            buttonText="+ Daftarkan Member Baru"
+            className="h-10 px-4 text-xs font-bold"
+          />
         </div>
       </div>
 

@@ -33,16 +33,17 @@ test.describe("Authentication Flow E2E", () => {
     }
   });
 
-  test("Tautan menuju pendaftaran cabang baru /sign-up berfungsi", async ({
+  test("Pendaftaran publik /sign-up dinonaktifkan dan dialihkan ke /sign-in", async ({
     page,
   }) => {
     await page.goto("/sign-in");
 
-    const signUpLink = page.locator('a[href*="/sign-up"]').first();
-    await expect(signUpLink).toBeVisible();
+    // Pastikan tidak ada tautan pendaftaran cabang publik di halaman login
+    const signUpLink = page.locator('a[href*="/sign-up"]');
+    await expect(signUpLink).toHaveCount(0);
 
-    await Promise.all([page.waitForURL(/.*sign-up/), signUpLink.click()]);
-
-    await expect(page.locator("text=Daftar Akun Cabang Baru")).toBeVisible();
+    // Kunjungan langsung ke /sign-up wajib dialihkan ke /sign-in
+    await page.goto("/sign-up");
+    await expect(page).toHaveURL(/.*sign-in/);
   });
 });
