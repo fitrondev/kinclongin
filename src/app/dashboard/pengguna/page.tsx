@@ -18,9 +18,9 @@ export default async function DashboardPenggunaPage() {
     redirect("/sign-in");
   }
 
-  // Khusus OWNER: Manajer, Kasir, atau staf cuci tidak boleh mengakses manajemen akun & role
-  if (user.role !== "OWNER") {
-    redirect(user.role === "CASHIER" ? "/pos/antrean" : "/dashboard");
+  // Khusus OWNER & MANAGER: Kasir atau staf cuci tidak boleh mengakses manajemen akun & role
+  if (user.role !== "OWNER" && user.role !== "MANAGER") {
+    redirect(user.role === "CASHIER" ? "/dashboard" : "/dashboard");
   }
 
   const outlet = user.outletId

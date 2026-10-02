@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 
 import {
   Boxes,
+  Building2,
+  Calendar,
+  Clock,
   Coins,
   CreditCard,
   Crown,
@@ -13,8 +16,10 @@ import {
   ExternalLink,
   Gift,
   HelpCircle,
+  History,
   LayoutDashboard,
   LayoutGrid,
+  MessageSquare,
   PlusCircle,
   Receipt,
   Search,
@@ -22,6 +27,7 @@ import {
   Sparkles,
   Tablet,
   Users,
+  Wallet,
 } from "lucide-react";
 
 import { OutletSwitcher } from "@/components/auth/outlet-switcher";
@@ -65,7 +71,7 @@ export function DashboardSidebar({
   const isManager = userRole === "MANAGER";
   const isWasher = userRole === "WASHER";
   const isCashier = userRole === "CASHIER";
-  const canManageStaff = isOwner; // Khusus Owner: Manajemen akun & role staf
+  const canManageStaff = isOwner || isManager; // Owner & Manajer dapat mengelola akun staf cabang
   const canViewPayroll = isOwner || isManager;
   const canViewAnalytics = isOwner || isManager;
 
@@ -225,6 +231,30 @@ export function DashboardSidebar({
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
+                  {/* Dasbor Shift Kasir (Khusus Kasir) */}
+                  {isCashier && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === "/dashboard"}
+                        tooltip="Dasbor Shift Kasir"
+                        className={
+                          pathname === "/dashboard"
+                            ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold shadow-xs"
+                            : ""
+                        }
+                      >
+                        <Link href="/dashboard">
+                          <LayoutDashboard className="h-4 w-4" />
+                          <span>Dasbor Shift Kasir</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      <SidebarMenuBadge className="border-primary/30 bg-primary/10 text-primary text-[10px] font-bold">
+                        Shift
+                      </SidebarMenuBadge>
+                    </SidebarMenuItem>
+                  )}
+
                   {/* Antrean Cuci Real-time */}
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -408,22 +438,103 @@ export function DashboardSidebar({
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       )}
+
+                      {/* Master Paket & Tarif Layanan Cuci */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith("/dashboard/layanan")}
+                          tooltip="Paket & Tarif Layanan Cuci"
+                          className={
+                            pathname.startsWith("/dashboard/layanan")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/layanan">
+                            <Sparkles className="h-4 w-4 text-cyan-500" />
+                            <span>Paket & Tarif Layanan</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Penjadwalan & Shift Kerja Staf */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith("/dashboard/shift")}
+                          tooltip="Jadwal & Shift Kerja Staf"
+                          className={
+                            pathname.startsWith("/dashboard/shift")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/shift">
+                            <Clock className="h-4 w-4 text-emerald-500" />
+                            <span>Jadwal Shift Kerja</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Manajemen Akun Staf Cabang (Khusus Manajer) */}
+                      {isManager && (
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={pathname.startsWith(
+                              "/dashboard/pengguna"
+                            )}
+                            tooltip="Kelola Akun & PIN Staf Cabang"
+                            className={
+                              pathname.startsWith("/dashboard/pengguna")
+                                ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                                : ""
+                            }
+                          >
+                            <Link href="/dashboard/pengguna">
+                              <ShieldCheck className="h-4 w-4 text-blue-500" />
+                              <span>Akun Staf Cabang</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
               </>
             )}
 
-            {/* GRUP 3: Manajemen Akun, Role & Akses (Hanya untuk Owner) */}
-            {canManageStaff && (
+            {/* GRUP 3: Otoritas Khusus Owner (Superadmin) */}
+            {isOwner && (
               <>
                 <SidebarSeparator />
                 <SidebarGroup>
                   <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                    Akses & Tim
+                    👑 Otoritas Owner
                   </SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
+                      {/* Laporan Arus Kas */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith("/dashboard/arus-kas")}
+                          tooltip="Laporan Arus Kas (Cash Flow)"
+                          className={
+                            pathname.startsWith("/dashboard/arus-kas")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/arus-kas">
+                            <Wallet className="h-4 w-4 text-emerald-500" />
+                            <span>Arus Kas (Cash Flow)</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Manajemen Akun Staf & Role */}
                       <SidebarMenuItem>
                         <SidebarMenuButton
                           asChild
@@ -436,8 +547,71 @@ export function DashboardSidebar({
                           }
                         >
                           <Link href="/dashboard/pengguna">
-                            <ShieldCheck className="h-4 w-4" />
+                            <ShieldCheck className="h-4 w-4 text-blue-500" />
                             <span>Manajemen Akun & Role</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Kelola & Ekspansi Cabang */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(
+                            "/dashboard/pengaturan/cabang"
+                          )}
+                          tooltip="Kelola & Ekspansi Cabang"
+                          className={
+                            pathname.startsWith("/dashboard/pengaturan/cabang")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/pengaturan/cabang">
+                            <Building2 className="h-4 w-4 text-cyan-500" />
+                            <span>Kelola Cabang</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Konfigurasi Webhook & WhatsApp Gateway */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(
+                            "/dashboard/pengaturan/whatsapp"
+                          )}
+                          tooltip="Konfigurasi WhatsApp Gateway"
+                          className={
+                            pathname.startsWith(
+                              "/dashboard/pengaturan/whatsapp"
+                            )
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/pengaturan/whatsapp">
+                            <MessageSquare className="h-4 w-4 text-emerald-500" />
+                            <span>Webhook WhatsApp</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Audit Log Keamanan Sistem */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith("/dashboard/audit")}
+                          tooltip="Audit Log Keamanan"
+                          className={
+                            pathname.startsWith("/dashboard/audit")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/audit">
+                            <History className="h-4 w-4 text-amber-500" />
+                            <span>Audit Log Sistem</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>

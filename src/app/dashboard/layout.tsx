@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { LayoutGrid, PlusCircle, Tablet } from "lucide-react";
+import { CreditCard, LayoutGrid, PlusCircle, Tablet } from "lucide-react";
 
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { MembershipDialog } from "@/components/pos/membership-dialog";
@@ -25,11 +25,6 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
-  // Khusus Peran CASHIER: Seluruh dashboard dilindungi dari kasir (loket depan berada di /pos/antrean)
-  if (user.role === "CASHIER") {
-    redirect("/pos/antrean");
-  }
-
   // Ambil outlet cabang aktif pengguna
   let outlet = user.outletId
     ? await prisma.outlet.findUnique({
@@ -45,6 +40,7 @@ export default async function DashboardLayout({
   }
 
   const isWasher = user.role === "WASHER";
+  const isCashier = user.role === "CASHIER";
 
   return (
     <SidebarProvider defaultOpen>
@@ -70,7 +66,11 @@ export default async function DashboardLayout({
                 </span>
                 <span className="hidden sm:inline">•</span>
                 <span className="hidden sm:inline">
-                  {isWasher ? "Panel Pekerja Cuci" : "Panel Manajemen & POS"}
+                  {isWasher
+                    ? "Panel Pekerja Cuci"
+                    : isCashier
+                      ? "Loket Kasir & POS"
+                      : "Panel Manajemen & POS"}
                 </span>
               </div>
             </div>
@@ -87,6 +87,47 @@ export default async function DashboardLayout({
                     <Link href="/layar-cuci">
                       <Tablet className="h-3.5 w-3.5" />
                       <span>Layar Cuci (Kiosk)</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 text-xs font-bold shadow-xs"
+                  >
+                    <Link href="/pos/antrean">
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Papan Antrean</span>
+                      <span className="sm:hidden">Antrean</span>
+                    </Link>
+                  </Button>
+                </>
+              ) : isCashier ? (
+                <>
+                  <MembershipDialog
+                    outletId={outlet?.id}
+                    buttonText="+ Member"
+                    className="h-8 text-xs font-bold"
+                  />
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 text-xs font-bold shadow-xs"
+                  >
+                    <Link href="/pos/daftar-baru">
+                      <PlusCircle className="text-primary h-3.5 w-3.5" />
+                      <span>+ Daftar Cuci</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 gap-1.5 text-xs font-bold shadow-xs"
+                  >
+                    <Link href="/pos">
+                      <CreditCard className="h-3.5 w-3.5" />
+                      <span>Kasir POS</span>
                     </Link>
                   </Button>
                   <Button

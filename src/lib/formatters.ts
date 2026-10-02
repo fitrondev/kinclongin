@@ -68,6 +68,19 @@ export function formatRelativeDate(date: Date | string): string {
   return formatDistanceToNow(d, { addSuffix: true, locale: id });
 }
 
+/**
+ * Format tanggal lengkap bahasa Indonesia (contoh: "Kamis, 1 Oktober 2026")
+ */
+export function formatTanggalIndo(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(d);
+}
+
 export const VEHICLE_CATEGORY_LABELS: Record<string, string> = {
   MOTOR_KECIL: "Motor Kecil (110-125cc)",
   MOTOR_BESAR: "Motor Besar (150-250cc)",

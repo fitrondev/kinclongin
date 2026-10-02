@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   Boxes,
   CheckCircle2,
+  Download,
   Droplets,
   History,
   Loader2,
@@ -170,6 +171,54 @@ export function InventoryView({ data }: { data: InventoryData }) {
     (s) => s.currentStock <= s.minStockAlert
   ).length;
 
+  const handleExportCSV = () => {
+    let csvHeader = "";
+    let csvRows = "";
+    if (activeTab === "RETAIL") {
+      csvHeader =
+        "Nama Produk,Kategori,Harga Jual,Harga Modal,Stok Saat Ini,Batas Peringatan\n";
+      csvRows = data.products
+        .map(
+          (p) =>
+            `"${p.name}","${p.category}",${p.sellingPrice},${p.costPrice || 0},${p.stock},${p.minStockAlert}`
+        )
+        .join("\n");
+    } else if (activeTab === "SUPPLIES") {
+      csvHeader =
+        "Nama Bahan,Satuan,Stok Saat Ini,Batas Peringatan,Pemakaian Mobil,Pemakaian Motor\n";
+      csvRows = data.supplies
+        .map(
+          (s) =>
+            `"${s.name}","${s.unit}",${s.currentStock},${s.minStockAlert},${s.usagePerCarWash},${s.usagePerMotorWash}`
+        )
+        .join("\n");
+    } else {
+      csvHeader = "Waktu,Item,Jenis Mutasi,Jumlah,Keterangan\n";
+      csvRows = data.movements
+        .map(
+          (m) =>
+            `"${new Date(m.createdAt).toLocaleString("id-ID")}","${m.itemName}","${m.type}",${m.quantity},"${m.notes || "-"}"`
+        )
+        .join("\n");
+    }
+    const blob = new Blob([csvHeader + csvRows], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `laporan-inventaris-${activeTab.toLowerCase()}-${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Laporan inventaris berhasil diekspor ke CSV!");
+  };
+
   return (
     <div className="space-y-6">
       {/* Title */}
@@ -184,52 +233,64 @@ export function InventoryView({ data }: { data: InventoryData }) {
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="bg-card flex items-center gap-1 rounded-xl border p-1 text-xs font-bold shadow-xs">
-          <button
-            type="button"
-            onClick={() => setActiveTab("RETAIL")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
-              activeTab === "RETAIL"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <ShoppingBag className="h-3.5 w-3.5" />
-            <span>Produk Ritel ({data.products.length})</span>
-            {lowStockProductsCount > 0 && (
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-            )}
-          </button>
+        {/* Tab Switcher & Export */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-card flex items-center gap-1 rounded-xl border p-1 text-xs font-bold shadow-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab("RETAIL")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
+                activeTab === "RETAIL"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <ShoppingBag className="h-3.5 w-3.5" />
+              <span>Produk Ritel ({data.products.length})</span>
+              {lowStockProductsCount > 0 && (
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("SUPPLIES")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
-              activeTab === "SUPPLIES"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <Droplets className="h-3.5 w-3.5" />
-            <span>Bahan Cuci ({data.supplies.length})</span>
-            {lowStockSuppliesCount > 0 && (
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("SUPPLIES")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
+                activeTab === "SUPPLIES"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <Droplets className="h-3.5 w-3.5" />
+              <span>Bahan Cuci ({data.supplies.length})</span>
+              {lowStockSuppliesCount > 0 && (
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("HISTORY")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
-              activeTab === "HISTORY"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
+            <button
+              type="button"
+              onClick={() => setActiveTab("HISTORY")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
+                activeTab === "HISTORY"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <History className="h-3.5 w-3.5" />
+              <span>Riwayat Mutasi</span>
+            </button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="h-9 gap-1.5 text-xs font-bold shadow-xs"
           >
-            <History className="h-3.5 w-3.5" />
-            <span>Riwayat Mutasi</span>
-          </button>
+            <Download className="h-3.5 w-3.5" />
+            <span>Ekspor CSV</span>
+          </Button>
         </div>
       </div>
 

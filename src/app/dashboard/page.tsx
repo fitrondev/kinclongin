@@ -7,17 +7,22 @@ import {
   ArrowRight,
   ArrowUpRight,
   Boxes,
+  Building2,
   Car,
   Clock,
   Coins,
   CreditCard,
   Droplets,
+  History,
   LayoutGrid,
+  MessageSquare,
   PlusCircle,
+  ShieldCheck,
   Sparkles,
   Tablet,
   TrendingUp,
   Users,
+  Wallet,
 } from "lucide-react";
 
 import {
@@ -26,6 +31,11 @@ import {
   RevenueTrendChart,
   VehicleCategoryChart,
 } from "@/components/dashboard/analytics-charts";
+import {
+  CashierDashboardView,
+  type CashierPaymentItem,
+  type PendingTicketItem,
+} from "@/components/dashboard/cashier-dashboard-view";
 import {
   WasherDashboardView,
   type WasherJobHistoryItem,
@@ -40,6 +50,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PaymentStatus } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDashboardMetrics } from "@/lib/db/dashboard-queries";
 import { prisma } from "@/lib/db/prisma";
@@ -57,11 +68,6 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  // Khusus Peran CASHIER: Redirect langsung ke antrean POS karena Kasir bertugas di loket depan
-  if (user.role === "CASHIER") {
-    redirect("/pos/antrean");
-  }
-
   const outlet = user?.outletId
     ? await prisma.outlet.findUnique({ where: { id: user.outletId } })
     : await prisma.outlet.findFirst({ where: { isActive: true } });
@@ -71,6 +77,164 @@ export default async function DashboardPage() {
       <div className="text-muted-foreground p-8 text-center">
         Belum ada outlet cabang aktif yang ditemukan.
       </div>
+    );
+  }
+
+  // Khusus Peran CASHIER: Tampilkan Dasbor Khusus Shift Kasir & Laci Kas
+  if (user?.role === "CASHIER") {
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    // 1. Ambil pembayaran yang diproses kasir ini hari ini
+    const todayPayments = await prisma.payment.findMany({
+      where: {
+        cashierId: user.id,
+        outletId: outlet.id,
+        paidAt: { gte: todayStart },
+      },
+      include: {
+        ticket: {
+          include: {
+            servicePackage: true,
+            customer: true,
+          },
+        },
+      },
+      orderBy: { paidAt: "desc" },
+    });
+
+    let todayCashInDrawer = 0;
+    let todayQris = 0;
+    let todayTransfer = 0;
+    let todayTotalAmount = 0;
+
+    for (const p of todayPayments) {
+      const amount = Number(p.totalAmount);
+      todayTotalAmount += amount;
+      if (p.method === "CASH") {
+        todayCashInDrawer += amount;
+      } else if (p.method === "QRIS") {
+        todayQris += amount;
+      } else if (p.method === "BANK_TRANSFER") {
+        todayTransfer += amount;
+      }
+    }
+
+    const todayNonCash = todayQris + todayTransfer;
+    const todayTransactionsCount = todayPayments.length;
+
+    // 2. Tiket cuci yang didaftarkan oleh kasir ini hari ini
+    const todayCreatedTicketsCount = await prisma.washTicket.count({
+      where: {
+        createdById: user.id,
+        outletId: outlet.id,
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    // 3. Pendaftaran member baru oleh kasir ini hari ini
+    const todayMembershipsCount = await prisma.customerMembership.count({
+      where: {
+        cashierId: user.id,
+        outletId: outlet.id,
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    // 4. Ambil tiket antrean aktif di cabang yang belum lunas
+    const pendingTickets = await prisma.washTicket.findMany({
+      where: {
+        outletId: outlet.id,
+        paymentStatus: PaymentStatus.UNPAID,
+        createdAt: { gte: todayStart },
+      },
+      include: {
+        servicePackage: true,
+        customer: true,
+      },
+      orderBy: [{ status: "desc" }, { createdAt: "asc" }],
+      take: 12,
+    });
+
+    const pendingPaymentTickets: PendingTicketItem[] = pendingTickets.map(
+      (t) => ({
+        id: t.id,
+        ticketNumber: t.ticketNumber,
+        licensePlate: t.licensePlate,
+        vehicleCategory: t.vehicleCategory,
+        serviceName: t.servicePackage.name,
+        customerName: t.customer?.fullName || null,
+        totalAmount: Number(t.totalAmount),
+        status: t.status,
+        queuedAt: t.queuedAt,
+      })
+    );
+
+    // 5. Cek jadwal shift kerja kasir hari ini jika ada
+    const shiftAssignment = await prisma.shiftAssignment.findFirst({
+      where: {
+        outletId: outlet.id,
+        date: todayStart,
+        employee: {
+          OR: [
+            { userId: user.id },
+            { fullName: user.fullName, outletId: outlet.id },
+          ],
+        },
+      },
+      include: {
+        shift: true,
+      },
+    });
+
+    const shiftName = shiftAssignment
+      ? `${shiftAssignment.shift.name} (${shiftAssignment.shift.startTime} - ${shiftAssignment.shift.endTime})`
+      : "Shift Kasir Aktif";
+
+    // 6. Format recent payments
+    const recentPayments: CashierPaymentItem[] = todayPayments
+      .slice(0, 20)
+      .map((p) => ({
+        id: p.id,
+        ticketId: p.ticketId,
+        ticketNumber: p.ticket.ticketNumber,
+        licensePlate: p.ticket.licensePlate,
+        vehicleCategory: p.ticket.vehicleCategory,
+        serviceName: p.ticket.servicePackage.name,
+        customerName: p.ticket.customer?.fullName || null,
+        customerPhone: p.ticket.customer?.phone || null,
+        totalAmount: Number(p.totalAmount),
+        method: p.method,
+        cashGiven: p.cashGiven ? Number(p.cashGiven) : null,
+        changeGiven: p.changeGiven ? Number(p.changeGiven) : null,
+        paidAt: p.paidAt,
+        referenceNumber: p.referenceNumber,
+      }));
+
+    return (
+      <CashierDashboardView
+        cashierName={user.fullName || "Kasir"}
+        cashierEmail={user.email}
+        outletName={outlet.name}
+        outletAddress={outlet.address}
+        outletPhone={outlet.phone}
+        outletId={outlet.id}
+        shiftName={shiftName}
+        todayCashInDrawer={todayCashInDrawer}
+        todayNonCash={todayNonCash}
+        todayQris={todayQris}
+        todayTransfer={todayTransfer}
+        todayTotalAmount={todayTotalAmount}
+        todayTransactionsCount={todayTransactionsCount}
+        todayCreatedTicketsCount={todayCreatedTicketsCount}
+        todayMembershipsCount={todayMembershipsCount}
+        recentPayments={recentPayments}
+        pendingPaymentTickets={pendingPaymentTickets}
+      />
     );
   }
 
@@ -367,20 +531,20 @@ export default async function DashboardPage() {
       </div>
 
       {/* Pusat Akses Cepat Seluruh Fitur Kinclongin */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="text-primary h-4 w-4" />
             <h2 className="text-muted-foreground text-xs font-black tracking-wider uppercase">
-              Semua Fitur Kinclongin
+              Operasional & Data Master Cabang
             </h2>
           </div>
           <span className="text-muted-foreground hidden text-xs sm:inline">
-            Akses langsung ke seluruh modul operasional & analitik
+            Akses langsung ke seluruh modul operasional harian
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {/* 1. Kanban Antrean */}
           <Link
             href="/pos/antrean"
@@ -390,10 +554,10 @@ export default async function DashboardPage() {
               <LayoutGrid className="h-4 w-4" />
             </div>
             <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
-              Antrean Cuci
+              Antrean Cuci Live
             </h3>
             <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-              Pantau antrean cuci mobil & motor di hidrolik
+              Pantau antrean cuci mobil & motor di pit hidrolik
             </p>
           </Link>
 
@@ -406,16 +570,16 @@ export default async function DashboardPage() {
               <PlusCircle className="h-4 w-4" />
             </div>
             <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
-              Daftar Cuci Baru
+              Daftar Cuci Baru (&lt;15s)
             </h3>
             <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-              Daftarkan plat nomor cepat & foto baret
+              Daftarkan plat nomor cepat & foto lecet awal
             </p>
           </Link>
 
           {/* 3. Kasir & Transaksi */}
           <Link
-            href="/pos/antrean"
+            href="/pos"
             className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 transition-colors">
@@ -425,7 +589,7 @@ export default async function DashboardPage() {
               Kasir & Pembayaran
             </h3>
             <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-              Checkout split-pay, QRIS, & cetak struk thermal
+              Checkout Tunai, QRIS, cetak struk Bluetooth thermal
             </p>
           </Link>
 
@@ -438,63 +602,196 @@ export default async function DashboardPage() {
               <Tablet className="h-4 w-4" />
             </div>
             <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
-              Layar Cuci
+              Layar Cuci (Kiosk PIN)
             </h3>
             <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-              Layar tablet hidrolik: PIN klaim & komisi cuci
+              Kiosk pengerjaan pit: PIN klaim & komisi washer
             </p>
           </Link>
 
-          {/* 5. Stok & Inventori */}
+          {/* 5. Master Paket Layanan */}
+          <Link
+            href="/dashboard/layanan"
+            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+          >
+            <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 transition-colors">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
+              Paket & Tarif Layanan
+            </h3>
+            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+              Katalog paket cuci, tarif per kategori unit, SLA & komisi
+            </p>
+          </Link>
+
+          {/* 6. Jadwal Shift Kerja */}
+          <Link
+            href="/dashboard/shift"
+            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+          >
+            <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 transition-colors">
+              <Clock className="h-4 w-4" />
+            </div>
+            <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
+              Jadwal Shift Kerja
+            </h3>
+            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+              Roster shift harian staf & jam kerja (Pagi, Siang, Sore)
+            </p>
+          </Link>
+
+          {/* 7. Stok & Inventori */}
           <Link
             href="/dashboard/stok"
             className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
-            <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 transition-colors">
+            <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 transition-colors">
               <Boxes className="h-4 w-4" />
             </div>
             <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
               Stok Bahan & Barang
             </h3>
             <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-              Kontrol shampoo, semir & resep pemakaian
+              Kontrol shampoo, semir ban & produk ritel toko
             </p>
           </Link>
 
-          {/* 6. Payroll & Komisi (Khusus Owner & Manajer) atau Member & Loyalitas (Kasir) */}
-          {isOwnerOrManager ? (
-            <Link
-              href="/dashboard/komisi"
-              className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
-            >
-              <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 transition-colors">
-                <Users className="h-4 w-4" />
-              </div>
-              <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
-                Gaji & Komisi Pekerja
-              </h3>
-              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-                Cairkan komisi pekerja & ekspor file Excel (.xlsx)
-              </p>
-            </Link>
-          ) : (
-            <Link
-              href="/dashboard/pelanggan"
-              className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
-            >
-              <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
-                Member & Loyalitas
-              </h3>
-              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
-                Cek poin pelanggan & reward cuci 10x gratis 1x
-              </p>
-            </Link>
-          )}
+          {/* 8. Gaji & Komisi Pekerja */}
+          <Link
+            href="/dashboard/komisi"
+            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+          >
+            <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 transition-colors">
+              <Users className="h-4 w-4" />
+            </div>
+            <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
+              Gaji & Komisi Pekerja
+            </h3>
+            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+              Rekap unit cuci, validasi pencairan & ekspor Excel
+            </p>
+          </Link>
+
+          {/* 9. Member & Loyalitas */}
+          <Link
+            href="/dashboard/pelanggan"
+            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+          >
+            <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors">
+              <Coins className="h-4 w-4" />
+            </div>
+            <h3 className="text-foreground group-hover:text-primary mt-2.5 text-xs font-black">
+              Member & Loyalitas
+            </h3>
+            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+              Poin pelanggan setia & promo Cuci 10x Gratis 1x
+            </p>
+          </Link>
         </div>
       </div>
+
+      {/* Bagian Khusus: Fitur Eksekutif Owner (Superadmin) */}
+      {isOwner && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base">👑</span>
+              <h2 className="text-muted-foreground text-xs font-black tracking-wider uppercase">
+                Otoritas & Tata Kelola Owner
+              </h2>
+            </div>
+            <Badge
+              variant="outline"
+              className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-600"
+            >
+              Superadmin Only
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {/* O1. Laporan Arus Kas */}
+            <Link
+              href="/dashboard/arus-kas"
+              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-emerald-500/50 hover:shadow-md"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+                <Wallet className="h-4 w-4" />
+              </div>
+              <h3 className="text-foreground mt-2.5 text-xs font-black group-hover:text-emerald-600">
+                Arus Kas (Cash Flow)
+              </h3>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+                Ringkasan kasir tunai vs QRIS, belanja stok & ekspor CSV
+              </p>
+            </Link>
+
+            {/* O2. Audit Log Keamanan */}
+            <Link
+              href="/dashboard/audit"
+              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-blue-500/50 hover:shadow-md"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                <History className="h-4 w-4" />
+              </div>
+              <h3 className="text-foreground mt-2.5 text-xs font-black group-hover:text-blue-600">
+                Audit Log Keamanan
+              </h3>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+                Rekaman forensik jejak mutasi & pembatalan tiket cuci
+              </p>
+            </Link>
+
+            {/* O3. Webhook WhatsApp */}
+            <Link
+              href="/dashboard/pengaturan/whatsapp"
+              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-green-500/50 hover:shadow-md"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-500/10 text-green-600 transition-colors group-hover:bg-green-600 group-hover:text-white">
+                <MessageSquare className="h-4 w-4" />
+              </div>
+              <h3 className="text-foreground mt-2.5 text-xs font-black group-hover:text-green-600">
+                Webhook WhatsApp
+              </h3>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+                API gateway pengirim struk & uji koneksi test-ping
+              </p>
+            </Link>
+
+            {/* O4. Kelola & Ekspansi Cabang */}
+            <Link
+              href="/dashboard/pengaturan/cabang"
+              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-purple-500/50 hover:shadow-md"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 transition-colors group-hover:bg-purple-600 group-hover:text-white">
+                <Building2 className="h-4 w-4" />
+              </div>
+              <h3 className="text-foreground mt-2.5 text-xs font-black group-hover:text-purple-600">
+                Kelola Cabang
+              </h3>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+                Edit profil outlet aktif & buka cabang ekspansi baru
+              </p>
+            </Link>
+
+            {/* O5. Manajemen Akun & Role */}
+            <Link
+              href="/dashboard/pengguna"
+              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-amber-500/50 hover:shadow-md"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors group-hover:bg-amber-600 group-hover:text-white">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <h3 className="text-foreground mt-2.5 text-xs font-black group-hover:text-amber-600">
+                Akun & Hak Akses
+              </h3>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight">
+                Buat akun staf, atur hak role & setel PIN Kiosk
+              </p>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Visualisasi Grafik: 2 Kolom Baris 1 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">

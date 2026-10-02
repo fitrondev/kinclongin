@@ -10,9 +10,13 @@ import { useNetworkStatus } from "@/lib/offline/sync-manager";
 export function OfflineIndicator() {
   const { isOnline, pendingCount, isSyncing, triggerSync } = useNetworkStatus();
 
-  // Register PWA Service Worker
+  // Register PWA Service Worker (hanya di production)
   useEffect(() => {
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    if (process.env.NODE_ENV === "production") {
       window.addEventListener("load", () => {
         navigator.serviceWorker
           .register("/sw.js")
@@ -26,6 +30,18 @@ export function OfflineIndicator() {
             console.warn("Kinclongin SW registration failed:", err);
           });
       });
+    } else {
+      // Di development / localhost: bersihkan service worker & cache agar HMR & hydration tidak korup
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const reg of registrations) {
+          reg.unregister();
+        }
+      });
+      if ("caches" in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((key) => caches.delete(key));
+        });
+      }
     }
   }, []);
 

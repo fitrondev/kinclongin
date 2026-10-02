@@ -23,6 +23,8 @@ async function main() {
 
   // 1. Bersihkan tabel lama agar seeding bersih dan idenpoten
   console.log("\n🧹 1. Membersihkan database lama...");
+  await prisma.shiftAssignment.deleteMany();
+  await prisma.workShift.deleteMany();
   await prisma.whatsAppLog.deleteMany();
   await prisma.customerLoyaltyLog.deleteMany();
   await prisma.payment.deleteMany();
@@ -111,13 +113,50 @@ async function main() {
     data: { outletId: outletMataram.id },
   });
 
+  // Akun Admin Pusat (Alias umum admin@kinclongin.com)
+  const adminUser = await prisma.user.create({
+    data: {
+      email: "admin@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Admin Kinclongin Pusat",
+      role: UserRole.OWNER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+      avatarUrl:
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
+    },
+  });
+
   // Buat Manajer & Kasir Mataram
   console.log("👥 4. Membuat Akun Manajer & Kasir Shift...");
   const managerUser = await prisma.user.create({
     data: {
+      email: "danu.manager@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Danu Prakoso",
+      role: UserRole.MANAGER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  // Alias Manager (manager@kinclongin.com & danu.operasional@kinclongin.com)
+  const managerGeneric = await prisma.user.create({
+    data: {
+      email: "manager@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Manager Operasional Cabang",
+      role: UserRole.MANAGER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  const managerOperasional = await prisma.user.create({
+    data: {
       email: "danu.operasional@kinclongin.com",
       passwordHash: defaultPasswordHash,
-      fullName: "Danu Prakoso (Manajer Operasional)",
+      fullName: "Danu Prakoso (Operasional)",
       role: UserRole.MANAGER,
       status: UserStatus.ACTIVE,
       outletId: outletMataram.id,
@@ -126,9 +165,9 @@ async function main() {
 
   const cashierMorning = await prisma.user.create({
     data: {
-      email: "kasir.mataram@kinclongin.com",
+      email: "kasir.pagi@kinclongin.com",
       passwordHash: defaultPasswordHash,
-      fullName: "Siti Rahma (Kasir Shift Pagi)",
+      fullName: "Siti Rahma",
       role: UserRole.CASHIER,
       status: UserStatus.ACTIVE,
       outletId: outletMataram.id,
@@ -139,7 +178,30 @@ async function main() {
     data: {
       email: "kasir.sore@kinclongin.com",
       passwordHash: defaultPasswordHash,
-      fullName: "Putri Anggraeni (Kasir Shift Sore)",
+      fullName: "Putri Anggraeni",
+      role: UserRole.CASHIER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  // Alias Kasir Umum (kasir@kinclongin.com & kasir.mataram@kinclongin.com)
+  const cashierGeneric = await prisma.user.create({
+    data: {
+      email: "kasir@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Kasir Kinclongin Pusat",
+      role: UserRole.CASHIER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+
+  const cashierMataram = await prisma.user.create({
+    data: {
+      email: "kasir.mataram@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Kasir Cabang Mataram",
       role: UserRole.CASHIER,
       status: UserStatus.ACTIVE,
       outletId: outletMataram.id,
@@ -151,7 +213,7 @@ async function main() {
     data: {
       email: "manager.rembiga@kinclongin.com",
       passwordHash: defaultPasswordHash,
-      fullName: "Rian Saputra (Manajer Rembiga)",
+      fullName: "Rian Saputra",
       role: UserRole.MANAGER,
       status: UserStatus.ACTIVE,
       outletId: outletRembiga.id,
@@ -162,10 +224,22 @@ async function main() {
     data: {
       email: "kasir.rembiga@kinclongin.com",
       passwordHash: defaultPasswordHash,
-      fullName: "Dina Marlina (Kasir Rembiga)",
+      fullName: "Dina Marlina",
       role: UserRole.CASHIER,
       status: UserStatus.ACTIVE,
       outletId: outletRembiga.id,
+    },
+  });
+
+  // Staf Cabang Senggigi
+  const managerSenggigi = await prisma.user.create({
+    data: {
+      email: "manager.senggigi@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Bayu Nugroho",
+      role: UserRole.MANAGER,
+      status: UserStatus.ACTIVE,
+      outletId: outletSenggigi.id,
     },
   });
 
@@ -174,10 +248,115 @@ async function main() {
     data: {
       email: "mantan.kasir@kinclongin.com",
       passwordHash: defaultPasswordHash,
-      fullName: "Hadi Wijaya (Kasir Non-Aktif)",
+      fullName: "Hadi Wijaya",
       role: UserRole.CASHIER,
       status: UserStatus.SUSPENDED,
       outletId: outletMataram.id,
+    },
+  });
+
+  // Buat Employee record untuk Manager & Kasir agar terdaftar di modul roster staf & jadwal shift
+  const empManagerMataram = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      userId: managerUser.id,
+      fullName: "Danu Prakoso",
+      phone: "081922334455",
+      role: UserRole.MANAGER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
+    },
+  });
+
+  const empCashierMorning = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      userId: cashierMorning.id,
+      fullName: "Siti Rahma",
+      phone: "081933445566",
+      role: UserRole.CASHIER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
+    },
+  });
+
+  const empCashierAfternoon = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      userId: cashierAfternoon.id,
+      fullName: "Putri Anggraeni",
+      phone: "081944556677",
+      role: UserRole.CASHIER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
+    },
+  });
+
+  const empManagerGeneric = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      userId: managerGeneric.id,
+      fullName: "Manager Operasional Cabang",
+      phone: "081922334466",
+      role: UserRole.MANAGER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
+    },
+  });
+
+  const empCashierGeneric = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      userId: cashierGeneric.id,
+      fullName: "Kasir Kinclongin Pusat",
+      phone: "081933445588",
+      role: UserRole.CASHIER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
+    },
+  });
+
+  const empManagerRembiga = await prisma.employee.create({
+    data: {
+      outletId: outletRembiga.id,
+      userId: managerRembiga.id,
+      fullName: "Rian Saputra",
+      phone: "081955667788",
+      role: UserRole.MANAGER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
+    },
+  });
+
+  const empCashierRembiga = await prisma.employee.create({
+    data: {
+      outletId: outletRembiga.id,
+      userId: cashierRembiga.id,
+      fullName: "Dina Marlina",
+      phone: "081966778899",
+      role: UserRole.CASHIER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
+    },
+  });
+
+  const empManagerSenggigi = await prisma.employee.create({
+    data: {
+      outletId: outletSenggigi.id,
+      userId: managerSenggigi.id,
+      fullName: "Bayu Nugroho",
+      phone: "081977889900",
+      role: UserRole.MANAGER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 0,
+      isActive: true,
     },
   });
 
@@ -309,7 +488,32 @@ async function main() {
     },
   });
 
-  // Washer 6 (Tidak Aktif - Menguji filter status karyawan)
+  // Washer 6: Zaki Firmansyah (PIN: 4488 - Fixed Rp 10.000)
+  const userWasher6 = await prisma.user.create({
+    data: {
+      email: "zaki.washer@kinclongin.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Zaki Firmansyah",
+      role: UserRole.WASHER,
+      status: UserStatus.ACTIVE,
+      outletId: outletMataram.id,
+    },
+  });
+  const washer6 = await prisma.employee.create({
+    data: {
+      outletId: outletMataram.id,
+      userId: userWasher6.id,
+      fullName: "Zaki Firmansyah",
+      phone: "087765432106",
+      pinCode: "4488",
+      role: UserRole.WASHER,
+      commissionType: CommissionType.FIXED_NOMINAL,
+      commissionRate: 10000,
+      isActive: true,
+    },
+  });
+
+  // Washer 7 (Tidak Aktif - Menguji filter status karyawan & arsip)
   await prisma.employee.create({
     data: {
       outletId: outletMataram.id,
@@ -1753,7 +1957,7 @@ async function main() {
     },
   ];
 
-  const washersList = [washer1, washer2, washer3, washer4, washer5];
+  const washersList = [washer1, washer2, washer3, washer4, washer5, washer6];
 
   for (let daysAgo = 6; daysAgo >= 1; daysAgo--) {
     const targetDate = new Date(
@@ -1894,8 +2098,8 @@ async function main() {
     });
   }
 
-  // 17. WhatsApp Logs & Audit Trail
-  console.log("📲 17. Membuat Log WhatsApp & Audit Trail...");
+  // 17. LOG WHATSAPP NOTIFIKASI
+  console.log("📲 17. Membuat Log Notifikasi WhatsApp Gateway...");
   await prisma.whatsAppLog.create({
     data: {
       ticketId: ticketReady1.id,
@@ -1926,39 +2130,371 @@ async function main() {
     },
   });
 
-  await prisma.auditLog.create({
+  // 18. MASTER TEMPLATE SHIFT & ROSTER JADWAL KERJA KARYAWAN (WORKSHIFT & SHIFTASSIGNMENT)
+  console.log(
+    "⏰ 18. Membuat Master Template Shift & Penugasan Roster Jadwal..."
+  );
+
+  // Master Template Shift: Cabang Pusat Mataram
+  const shiftPagiMataram = await prisma.workShift.create({
     data: {
       outletId: outletMataram.id,
-      actorId: cashierMorning.id,
-      actorRole: "CASHIER",
-      action: "TICKET_CREATED",
-      entityType: "WashTicket",
-      entityId: ticketReady1.id,
-      metadata: {
-        ticketNumber: ticketReady1.ticketNumber,
-        plate: ticketReady1.licensePlate,
-      },
+      name: "Shift Pagi (Buka)",
+      startTime: "07:30",
+      endTime: "15:30",
+      description: "Persiapan buka lapak cuci & pembersihan awal",
+      color: "emerald",
+      isActive: true,
     },
   });
 
-  await prisma.auditLog.create({
+  const shiftSiangMataram = await prisma.workShift.create({
     data: {
       outletId: outletMataram.id,
-      actorId: ownerUser.id,
-      actorRole: "OWNER",
-      action: "COMMISSION_PAID",
-      entityType: "TicketWasher",
-      entityId: washer1.id,
-      metadata: {
-        amount: 150000,
-        period: "Pencairan Komisi Mingguan",
-      },
-      createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+      name: "Shift Siang (Peak)",
+      startTime: "11:00",
+      endTime: "18:30",
+      description: "Jam sibuk antrean kendaraan siang hari",
+      color: "blue",
+      isActive: true,
     },
+  });
+
+  const shiftSoreMataram = await prisma.workShift.create({
+    data: {
+      outletId: outletMataram.id,
+      name: "Shift Sore (Tutup)",
+      startTime: "13:30",
+      endTime: "21:30",
+      description: "Pembersihan pit cuci & serah terima kasir tutup buku",
+      color: "amber",
+      isActive: true,
+    },
+  });
+
+  const shiftLemburMataram = await prisma.workShift.create({
+    data: {
+      outletId: outletMataram.id,
+      name: "Shift Lembur Weekend",
+      startTime: "16:00",
+      endTime: "22:00",
+      description: "Kapasitas penuh malam minggu & detailing",
+      color: "purple",
+      isActive: true,
+    },
+  });
+
+  // Master Template Shift: Cabang Rembiga Express
+  const shiftPagiRembiga = await prisma.workShift.create({
+    data: {
+      outletId: outletRembiga.id,
+      name: "Shift Pagi Express",
+      startTime: "08:00",
+      endTime: "16:00",
+      description: "Operasional pagi jalur express",
+      color: "blue",
+      isActive: true,
+    },
+  });
+
+  const shiftSoreRembiga = await prisma.workShift.create({
+    data: {
+      outletId: outletRembiga.id,
+      name: "Shift Sore Express",
+      startTime: "13:00",
+      endTime: "21:00",
+      description: "Operasional sore dan closing express",
+      color: "emerald",
+      isActive: true,
+    },
+  });
+
+  // Master Template Shift: Cabang Senggigi Detailing
+  await prisma.workShift.create({
+    data: {
+      outletId: outletSenggigi.id,
+      name: "Shift Detailing Reguler",
+      startTime: "08:30",
+      endTime: "17:00",
+      description: "Auto detailing, nano ceramic coating & salon mobil",
+      color: "blue",
+      isActive: true,
+    },
+  });
+
+  // Penugasan Roster Shift Harian (5 Hari: H-2, H-1, HARI INI, H+1, H+2)
+  const rosterDays = [-2, -1, 0, 1, 2];
+
+  for (const offset of rosterDays) {
+    const d = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + offset
+    );
+    const dateStrOnly = d.toISOString().split("T")[0];
+    const dateObj = new Date(dateStrOnly + "T00:00:00.000Z");
+
+    if (offset === 0) {
+      // HARI INI (Mataram Pusat)
+      await prisma.shiftAssignment.createMany({
+        data: [
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftPagiMataram.id,
+            employeeId: empCashierMorning.id,
+            date: dateObj,
+            notes: "Kasir utama shift pagi",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftPagiMataram.id,
+            employeeId: washer1.id,
+            date: dateObj,
+            notes: "Leader bay hidrolik 1 & 2",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftPagiMataram.id,
+            employeeId: washer2.id,
+            date: dateObj,
+            notes: "Washer bay hidrolik 3 & 4",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSiangMataram.id,
+            employeeId: empManagerMataram.id,
+            date: dateObj,
+            notes: "Supervisi operasional & cek stok",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSiangMataram.id,
+            employeeId: washer3.id,
+            date: dateObj,
+            notes: "Spesialis detailing & bodi",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSiangMataram.id,
+            employeeId: washer4.id,
+            date: dateObj,
+            notes: "Washer cuci cepat",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSoreMataram.id,
+            employeeId: empCashierAfternoon.id,
+            date: dateObj,
+            notes: "Kasir shift sore & rekonsiliasi kas laci",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSoreMataram.id,
+            employeeId: washer5.id,
+            date: dateObj,
+            notes: "Washer shift malam & semir ban",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSoreMataram.id,
+            employeeId: washer6.id,
+            date: dateObj,
+            notes: "Washer bay hidrolik sore",
+          },
+        ],
+      });
+
+      // HARI INI (Rembiga Express)
+      await prisma.shiftAssignment.createMany({
+        data: [
+          {
+            outletId: outletRembiga.id,
+            shiftId: shiftPagiRembiga.id,
+            employeeId: empCashierRembiga.id,
+            date: dateObj,
+            notes: "Kasir express pagi",
+          },
+          {
+            outletId: outletRembiga.id,
+            shiftId: shiftPagiRembiga.id,
+            employeeId: washerRembiga1.id,
+            date: dateObj,
+            notes: "Washer jalur express pagi",
+          },
+          {
+            outletId: outletRembiga.id,
+            shiftId: shiftSoreRembiga.id,
+            employeeId: empManagerRembiga.id,
+            date: dateObj,
+            notes: "Supervisi operasional Rembiga",
+          },
+          {
+            outletId: outletRembiga.id,
+            shiftId: shiftSoreRembiga.id,
+            employeeId: washerRembiga2.id,
+            date: dateObj,
+            notes: "Washer jalur express sore",
+          },
+        ],
+      });
+    } else {
+      // Hari kemarin / besok (Mataram Pusat)
+      await prisma.shiftAssignment.createMany({
+        data: [
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftPagiMataram.id,
+            employeeId: empCashierMorning.id,
+            date: dateObj,
+            notes: "Shift reguler pagi",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftPagiMataram.id,
+            employeeId: offset % 2 === 0 ? washer1.id : washer2.id,
+            date: dateObj,
+            notes: "Penanggung jawab pit",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftPagiMataram.id,
+            employeeId: offset % 2 === 0 ? washer3.id : washer4.id,
+            date: dateObj,
+            notes: "Washer cuci pagi",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSoreMataram.id,
+            employeeId: empCashierAfternoon.id,
+            date: dateObj,
+            notes: "Shift reguler sore & closing",
+          },
+          {
+            outletId: outletMataram.id,
+            shiftId: shiftSoreMataram.id,
+            employeeId: offset % 2 === 0 ? washer5.id : washer6.id,
+            date: dateObj,
+            notes: "Washer closing sore",
+          },
+        ],
+      });
+    }
+  }
+
+  // 19. MEMBUAT JEJAK AUDIT SISTEM LENGKAP (AUDIT TRAIL)
+  console.log("🛡️ 19. Membuat Jejak Audit Keamanan Sistem (Audit Trail)...");
+
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        outletId: outletMataram.id,
+        actorId: cashierMorning.id,
+        actorRole: "CASHIER",
+        action: "TICKET_CREATED",
+        entityType: "WashTicket",
+        entityId: ticketReady1.id,
+        metadata: {
+          ticketNumber: ticketReady1.ticketNumber,
+          plate: ticketReady1.licensePlate,
+          package: sMobilKecil.name,
+          price: Number(sMobilKecil.price),
+        },
+        createdAt: new Date(now.getTime() - 40 * 60 * 1000),
+      },
+      {
+        outletId: outletMataram.id,
+        actorId: cashierMorning.id,
+        actorRole: "CASHIER",
+        action: "PAYMENT_RECEIVED",
+        entityType: "Payment",
+        entityId: ticketCompletedToday1.id,
+        metadata: {
+          ticketNumber: ticketCompletedToday1.ticketNumber,
+          method: "QRIS",
+          amount: Number(ticketCompletedToday1.totalAmount),
+          status: "PAID",
+        },
+        createdAt: new Date(now.getTime() - 25 * 60 * 1000),
+      },
+      {
+        outletId: outletMataram.id,
+        actorId: cashierMorning.id,
+        actorRole: "CASHIER",
+        action: "TICKET_CANCELLED",
+        entityType: "WashTicket",
+        entityId: ticketCancelled.id,
+        metadata: {
+          ticketNumber: ticketCancelled.ticketNumber,
+          plate: ticketCancelled.licensePlate,
+          reason: "Pelanggan terburu-buru ada rapat mendadak",
+        },
+        createdAt: new Date(now.getTime() - 90 * 60 * 1000),
+      },
+      {
+        outletId: outletMataram.id,
+        actorId: managerUser.id,
+        actorRole: "MANAGER",
+        action: "SHIFT_ASSIGNED",
+        entityType: "ShiftAssignment",
+        entityId: outletMataram.id,
+        metadata: {
+          targetDate: now.toISOString().split("T")[0],
+          totalStaffAssigned: 9,
+          note: "Penugasan jadwal reguler tim Mataram Pusat",
+        },
+        createdAt: new Date(now.getTime() - 6 * 60 * 60 * 1000),
+      },
+      {
+        outletId: outletMataram.id,
+        actorId: ownerUser.id,
+        actorRole: "OWNER",
+        action: "PRICE_CHANGED",
+        entityType: "ServicePackage",
+        entityId: sMobilSedang.id,
+        metadata: {
+          serviceName: sMobilSedang.name,
+          oldPrice: 45000,
+          newPrice: 50000,
+          reason: "Penyesuaian biaya bahan baku salju & listrik hidrolik",
+        },
+        createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      },
+      {
+        outletId: outletMataram.id,
+        actorId: ownerUser.id,
+        actorRole: "OWNER",
+        action: "COMMISSION_PAID",
+        entityType: "TicketWasher",
+        entityId: washer1.id,
+        metadata: {
+          washerName: washer1.fullName,
+          amount: 250000,
+          period: "Pencairan Komisi Mingguan Periode 1",
+          totalVehicles: 21,
+        },
+        createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+      },
+      {
+        outletId: outletMataram.id,
+        actorId: ownerUser.id,
+        actorRole: "OWNER",
+        action: "WHATSAPP_CONFIGURED",
+        entityType: "Outlet",
+        entityId: outletMataram.id,
+        metadata: {
+          gateway: "SumoPod WA Gateway",
+          senderNumber: "6281912345678",
+          status: "CONNECTED",
+        },
+        createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
+      },
+    ],
   });
 
   console.log("\n=========================================================");
-  console.log("🎉 SEEDING DATA KINCLONGIN BERHASIL DENGAN SEMUA CONTOH!");
+  console.log(
+    "🎉 SEEDING DATA TERBARU KINCLONGIN BERHASIL DENGAN SEMUA MODUL!"
+  );
   console.log("=========================================================");
   console.log(`
   📊 Ringkasan Data Master & Transaksi yang Berhasil Dibuat:
@@ -1968,21 +2504,34 @@ async function main() {
                            - Kinclongin Express Rembiga (Aktif)
                            - Kinclongin Auto Spa & Detailing Senggigi (Aktif)
 
-  2. Akun Pengguna       : 10 Akun Lengkap (Password demo: 123456)
-                           - OWNER: owner@kinclongin.com
-                           - MANAGER: danu.operasional@kinclongin.com, manager.rembiga@kinclongin.com
-                           - CASHIER: kasir.mataram@kinclongin.com, kasir.sore@kinclongin.com, kasir.rembiga@kinclongin.com
-                           - WASHER: agus, budi, rian, ilham, fajar (tertaut ke akun employee)
-                           - STATUS KHUSUS: mantan.kasir@kinclongin.com (SUSPENDED)
+  2. Akun Pengguna Demo  : Akun Lengkap (Password universal: 123456)
+                           - OWNER / ADMIN:
+                             • owner@kinclongin.com / admin@kinclongin.com (Pak H. Ridwan / Admin Pusat)
+                           - MANAGER:
+                             • danu.manager@kinclongin.com (Danu Prakoso)
+                             • manager@kinclongin.com (Manager Operasional)
+                             • danu.operasional@kinclongin.com (Danu Operasional)
+                             • manager.rembiga@kinclongin.com (Rian Saputra - Cabang Rembiga)
+                             • manager.senggigi@kinclongin.com (Bayu Nugroho - Cabang Senggigi)
+                           - CASHIER:
+                             • kasir.pagi@kinclongin.com (Siti Rahma - Shift Pagi Mataram)
+                             • kasir.sore@kinclongin.com (Putri Anggraeni - Shift Sore Mataram)
+                             • kasir@kinclongin.com (Kasir Kinclongin Pusat)
+                             • kasir.mataram@kinclongin.com (Kasir Cabang Mataram)
+                             • kasir.rembiga@kinclongin.com (Dina Marlina - Cabang Rembiga)
+                           - WASHER (PIN Tablet):
+                             • agus.washer@kinclongin.com (Agus Santoso, PIN: 1234)
+                             • budi.washer@kinclongin.com (Budi Pratama, PIN: 5678)
+                             • rian.washer@kinclongin.com (Rian Hidayat, PIN: 9999)
+                             • ilham.washer@kinclongin.com (Ilham Saputra, PIN: 2026)
+                             • fajar.washer@kinclongin.com (Fajar Ramadhan, PIN: 1122)
+                             • zaki.washer@kinclongin.com (Zaki Firmansyah, PIN: 4488)
+                           - STATUS  : mantan.kasir@kinclongin.com (SUSPENDED)
 
-  3. Karyawan Washer Cuci: 7 Staf dengan PIN Tablet Kiosk
-                           - Agus Santoso   (PIN: 1234) - Rp 12.000 / unit
-                           - Budi Pratama   (PIN: 5678) - Rp 12.000 / unit
-                           - Rian Hidayat   (PIN: 9999) - Rp 10.000 / unit
-                           - Ilham Saputra  (PIN: 2026) - Rp 10.000 / unit
-                           - Fajar Ramadhan (PIN: 1122) - Komisi 25% Persentase
-                           - Joko Widodo    (PIN: 4321) - Non-Aktif (Arsip)
-                           - Dadan & Eko    (Cabang Rembiga)
+  3. Karyawan & Roster   : 12 Karyawan Terdaftar (6 Washes, 3 Cashiers, 3 Managers)
+                           - 7 Template Shift (Pagi, Siang, Sore, Lembur di 3 Outlet)
+                           - 40+ Roster Penugasan Shift Harian (H-2 s/d H+2)
+                           - Statistik Roster Hari Ini: 9 Staf Bertugas di Cabang Pusat
 
   4. Paket Layanan Cuci  : 17 Layanan Lengkap (7 Kategori Kendaraan)
                            - MOTOR_KECIL, MOTOR_BESAR, MOTOR_MOGE
@@ -2029,6 +2578,8 @@ async function main() {
 
   10. Transaksi Selesai  : 3 Selesai Hari Ini + 30+ Tiket Historis 6 Hari Terakhir
                            (Grafik Tren 7 Hari, Jam Sibuk, dan Komposisi Omset Otomatis Penuh)
+
+  11. Audit Trail Trail  : 7 Jejak Log Keamanan & Perubahan Sistem
   -----------------------------------------------------------------------
   `);
 }

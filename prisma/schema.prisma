@@ -114,6 +114,8 @@ model Outlet {
   payments             Payment[]
   customerMemberships  CustomerMembership[]
   auditLogs            AuditLog[]
+  workShifts           WorkShift[]
+  shiftAssignments     ShiftAssignment[]
 
   @@index([ownerId])
   @@index([isActive])
@@ -162,7 +164,8 @@ model Employee {
   // Relasi
   outlet          Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
   user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  assignedTickets TicketWasher[]
+  assignedTickets  TicketWasher[]
+  shiftAssignments ShiftAssignment[]
 
   @@index([outletId])
   @@index([role, isActive])
@@ -509,4 +512,47 @@ model CustomerMembership {
   @@index([customerId, status])
   @@index([outletId, endDate])
   @@index([status])
+}
+
+// -------------------------------------------------------------
+// 9. JADWAL & SHIFT KERJA KARYAWAN
+// -------------------------------------------------------------
+
+model WorkShift {
+  id          String   @id @default(cuid())
+  outletId    String
+  name        String   // "Shift Pagi", "Shift Siang", "Shift Sore"
+  startTime   String   // "07:30"
+  endTime     String   // "15:30"
+  description String?
+  color       String?  @default("blue") // blue, emerald, amber, purple
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relasi
+  outlet      Outlet            @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  assignments ShiftAssignment[]
+
+  @@index([outletId, isActive])
+}
+
+model ShiftAssignment {
+  id         String   @id @default(cuid())
+  outletId   String
+  shiftId    String
+  employeeId String
+  date       DateTime @db.Date // Tanggal penugasan shift (YYYY-MM-DD)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relasi
+  outlet   Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  shift    WorkShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([outletId, date])
+  @@index([shiftId])
 }

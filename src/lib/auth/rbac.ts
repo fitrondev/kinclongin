@@ -12,6 +12,7 @@ export { getCurrentUser } from "@/lib/auth/session";
 export const ROLE_PERMISSIONS = {
   OWNER: {
     canViewBusinessAnalytics: true,
+    canViewCashFlow: true, // Khusus Owner: Akses laporan arus kas & neraca pemasukan/pengeluaran
     canManageUsers: true,
     canManageInventory: true,
     canViewPayroll: true,
@@ -20,11 +21,18 @@ export const ROLE_PERMISSIONS = {
     canOperateKiosk: true,
     canManageSubscriptions: true,
     canSwitchOutlet: true,
+    canManageOutlets: true, // Khusus Owner: Pengelolaan profil cabang & ekspansi outlet baru
+    canViewAuditLogs: true, // Khusus Owner: Jejak audit keamanan sistem
+    canConfigureWhatsApp: true, // Khusus Owner: Konfigurasi API gateway WhatsApp
     canViewCustomers: true,
+    canManageServices: true, // Master tarif & paket layanan cuci
+    canManageShifts: true, // Penjadwalan & shift kerja staf
+    canViewCashierDashboard: true,
   },
   MANAGER: {
     canViewBusinessAnalytics: true,
-    canManageUsers: false, // Hanya Owner yang boleh mengelola akun & role pengguna
+    canViewCashFlow: false, // Dilarang melihat arus kas eksekutif
+    canManageUsers: true, // Pengelolaan akun & role staf di cabang sendiri
     canManageInventory: true,
     canViewPayroll: true,
     canDisburseCommissions: true,
@@ -32,10 +40,18 @@ export const ROLE_PERMISSIONS = {
     canOperateKiosk: true,
     canManageSubscriptions: false,
     canSwitchOutlet: false,
+    canManageOutlets: false,
+    canViewAuditLogs: false,
+    canConfigureWhatsApp: false,
     canViewCustomers: true,
+    canManageServices: true, // Master tarif & paket layanan cuci
+    canManageShifts: true, // Penjadwalan & shift kerja staf
+    canViewCashierDashboard: true,
   },
   CASHIER: {
     canViewBusinessAnalytics: false, // Dilarang melihat omset dan profit margin
+    canViewCashFlow: false,
+    canViewCashierDashboard: true, // Dasbor shift, laci kasir, dan performa transaksi
     canManageUsers: false,
     canManageInventory: false,
     canViewPayroll: false,
@@ -44,10 +60,16 @@ export const ROLE_PERMISSIONS = {
     canOperateKiosk: true,
     canManageSubscriptions: false,
     canSwitchOutlet: false,
+    canManageOutlets: false,
+    canViewAuditLogs: false,
+    canConfigureWhatsApp: false,
     canViewCustomers: false, // Hanya via pencarian POS
+    canManageServices: false,
+    canManageShifts: false,
   },
   WASHER: {
     canViewBusinessAnalytics: false,
+    canViewCashFlow: false,
     canViewWasherDashboard: true, // Dashboard personal komisi dan unit diri sendiri
     canManageUsers: false,
     canManageInventory: false,
@@ -57,7 +79,12 @@ export const ROLE_PERMISSIONS = {
     canOperateKiosk: true, // Kiosk pengerjaan cuci dengan PIN
     canManageSubscriptions: false,
     canSwitchOutlet: false,
+    canManageOutlets: false,
+    canViewAuditLogs: false,
+    canConfigureWhatsApp: false,
     canViewCustomers: false,
+    canManageServices: false,
+    canManageShifts: false,
   },
 } as const;
 

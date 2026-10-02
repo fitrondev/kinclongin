@@ -33,15 +33,20 @@ export function SignInForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error("Silakan masukkan email dan password.");
+      toast.error("Silakan masukkan email atau username dan password.");
       return;
     }
 
     setIsLoading(true);
 
+    let cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes("@")) {
+      cleanEmail = `${cleanEmail}@kinclongin.com`;
+    }
+
     try {
       const res = await signIn("credentials", {
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password,
         redirect: false,
       });
@@ -50,7 +55,11 @@ export function SignInForm() {
         toast.error("Email atau kata sandi tidak valid.");
       } else {
         toast.success("Berhasil masuk!");
-        router.push(callbackUrl);
+        const destination =
+          cleanEmail.startsWith("kasir") && callbackUrl === "/dashboard"
+            ? "/pos/antrean"
+            : callbackUrl;
+        router.push(destination);
         router.refresh();
       }
     } catch {
@@ -93,6 +102,8 @@ export function SignInForm() {
     }
   };
 
+  const authError = searchParams.get("error");
+
   return (
     <Card className="border-border/70 bg-card/95 w-full rounded-2xl shadow-xl backdrop-blur-md">
       <CardHeader className="space-y-1.5 pb-4">
@@ -106,19 +117,31 @@ export function SignInForm() {
 
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {authError && (
+            <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 rounded-xl border p-3 text-xs font-semibold">
+              <span>
+                {authError === "CredentialsSignin"
+                  ? "Email/username atau kata sandi tidak cocok. Silakan coba lagi."
+                  : "Terjadi kesalahan saat masuk. Silakan coba lagi."}
+              </span>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label
               htmlFor="email"
               className="text-foreground text-xs font-bold"
             >
-              Email Pengguna
+              Email atau Username
             </Label>
             <div className="relative">
               <Mail className="text-muted-foreground absolute top-3 left-3 h-4 w-4" />
               <Input
                 id="email"
-                type="email"
-                placeholder="nama@kinclongin.com"
+                type="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                placeholder="admin, manager, kasir, atau nama@kinclongin.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -208,7 +231,7 @@ export function SignInForm() {
                 suppressHydrationWarning
                 onClick={() =>
                   handleDemoLogin(
-                    "danu.operasional@kinclongin.com",
+                    "danu.manager@kinclongin.com",
                     "123456",
                     "Manajer",
                     "/dashboard"
@@ -238,7 +261,7 @@ export function SignInForm() {
                 suppressHydrationWarning
                 onClick={() =>
                   handleDemoLogin(
-                    "kasir.mataram@kinclongin.com",
+                    "kasir.pagi@kinclongin.com",
                     "123456",
                     "Kasir",
                     "/pos/antrean"

@@ -25,10 +25,23 @@ export default auth((req) => {
   if (isLoggedIn) {
     const role = req.auth?.user?.role;
 
-    // 1. CASHIER: Terkunci di operasional loket POS, dilarang mengakses ringkasan bisnis & manajemen
-    if (role === "CASHIER" && pathname.startsWith("/dashboard")) {
+    // 1. CASHIER: Boleh mengakses dasbor shift kasir (/dashboard), dilarang mengakses modul manajerial & eksekutif
+    if (
+      role === "CASHIER" &&
+      (pathname.startsWith("/dashboard/stok") ||
+        pathname.startsWith("/dashboard/pelanggan") ||
+        pathname.startsWith("/dashboard/membership") ||
+        pathname.startsWith("/dashboard/komisi") ||
+        pathname.startsWith("/dashboard/pengguna") ||
+        pathname.startsWith("/dashboard/layanan") ||
+        pathname.startsWith("/dashboard/shift") ||
+        pathname.startsWith("/dashboard/admin") ||
+        pathname.startsWith("/dashboard/pengaturan") ||
+        pathname.startsWith("/dashboard/arus-kas") ||
+        pathname.startsWith("/dashboard/audit"))
+    ) {
       const redirectUrl = req.nextUrl.clone();
-      redirectUrl.pathname = "/pos/antrean";
+      redirectUrl.pathname = "/dashboard";
       return Response.redirect(redirectUrl);
     }
 
@@ -52,6 +65,8 @@ export default auth((req) => {
         pathname.startsWith("/dashboard/membership") ||
         pathname.startsWith("/dashboard/komisi") ||
         pathname.startsWith("/dashboard/pengguna") ||
+        pathname.startsWith("/dashboard/layanan") ||
+        pathname.startsWith("/dashboard/shift") ||
         pathname.startsWith("/dashboard/admin") ||
         pathname.startsWith("/dashboard/pengaturan"))
     ) {
@@ -60,10 +75,13 @@ export default auth((req) => {
       return Response.redirect(redirectUrl);
     }
 
-    // 4. MANAGER: Dilarang mengelola akun/role staf (/dashboard/pengguna) & billing SaaS Superadmin
+    // 4. MANAGER: Dilarang mengelola audit log, konfigurasi WhatsApp, pengaturan cabang, dan arus kas eksekutif (Akun & Role Cabang diizinkan)
     if (
       role === "MANAGER" &&
-      (pathname.startsWith("/dashboard/pengguna") ||
+      (pathname.startsWith("/dashboard/audit") ||
+        pathname.startsWith("/dashboard/pengaturan/whatsapp") ||
+        pathname.startsWith("/dashboard/pengaturan/cabang") ||
+        pathname.startsWith("/dashboard/arus-kas") ||
         pathname.startsWith("/dashboard/admin/subscriptions"))
     ) {
       const redirectUrl = req.nextUrl.clone();

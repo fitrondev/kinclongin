@@ -8,7 +8,7 @@ import { UserRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 
 const credentialsSchema = z.object({
-  email: z.string().email("Format email tidak valid"),
+  email: z.string().min(1, "Email atau username wajib diisi"),
   password: z.string().min(1, "Password wajib diisi"),
 });
 
@@ -18,7 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email / Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
@@ -30,13 +30,46 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           const { email, password } = parsed.data;
 
-          const user = await prisma.user.findUnique({
-            where: { email: email.toLowerCase().trim() },
+          // Normalisasi: jika pengguna hanya mengetik username (misal "admin", "manager", "kasir"),
+          // otomatis lengkapi domain @kinclongin.com
+          let cleanEmail = email.toLowerCase().trim();
+          if (!cleanEmail.includes("@")) {
+            cleanEmail = `${cleanEmail}@kinclongin.com`;
+          }
+
+          let user = await prisma.user.findUnique({
+            where: { email: cleanEmail },
             include: {
               outlet: true,
               ownedOutlets: true,
             },
           });
+
+          // Fallback cerdas jika alias umum diketik tetapi belum ada akun persisnya
+          if (!user) {
+            if (cleanEmail === "admin@kinclongin.com") {
+              user = await prisma.user.findFirst({
+                where: { role: UserRole.OWNER, status: "ACTIVE" },
+                include: { outlet: true, ownedOutlets: true },
+              });
+            } else if (
+              cleanEmail === "manager@kinclongin.com" ||
+              cleanEmail === "danu.operasional@kinclongin.com"
+            ) {
+              user = await prisma.user.findFirst({
+                where: { role: UserRole.MANAGER, status: "ACTIVE" },
+                include: { outlet: true, ownedOutlets: true },
+              });
+            } else if (
+              cleanEmail === "kasir@kinclongin.com" ||
+              cleanEmail === "kasir.mataram@kinclongin.com"
+            ) {
+              user = await prisma.user.findFirst({
+                where: { role: UserRole.CASHIER, status: "ACTIVE" },
+                include: { outlet: true, ownedOutlets: true },
+              });
+            }
+          }
 
           if (!user || !user.passwordHash) {
             return null;

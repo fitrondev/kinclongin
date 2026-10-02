@@ -8,16 +8,21 @@ import { usePathname } from "next/navigation";
 
 import {
   Boxes,
+  Building2,
   ChevronRight,
+  Clock,
   Coins,
   Crown,
+  History,
   LayoutDashboard,
   Menu,
+  MessageSquare,
   PlusCircle,
   ShieldCheck,
   Sparkles,
   Tablet,
   Users,
+  Wallet,
 } from "lucide-react";
 
 import { OutletSwitcher } from "@/components/auth/outlet-switcher";
@@ -104,11 +109,46 @@ export function DashboardHeader({
           allowed: canViewPayroll,
         },
         {
-          href: "/dashboard/membership",
-          label: "Langganan Member",
-          icon: Crown,
-          active: pathname.startsWith("/dashboard/membership"),
-          allowed: true,
+          href: "/dashboard/layanan",
+          label: "Paket & Tarif",
+          icon: Sparkles,
+          active: pathname.startsWith("/dashboard/layanan"),
+          allowed: canViewPayroll,
+        },
+        {
+          href: "/dashboard/shift",
+          label: "Shift Kerja",
+          icon: Clock,
+          active: pathname.startsWith("/dashboard/shift"),
+          allowed: canViewPayroll,
+        },
+        {
+          href: "/dashboard/arus-kas",
+          label: "Arus Kas",
+          icon: Wallet,
+          active: pathname.startsWith("/dashboard/arus-kas"),
+          allowed: isOwner,
+        },
+        {
+          href: "/dashboard/audit",
+          label: "Audit Log",
+          icon: History,
+          active: pathname.startsWith("/dashboard/audit"),
+          allowed: isOwner,
+        },
+        {
+          href: "/dashboard/pengaturan/whatsapp",
+          label: "Webhook WA",
+          icon: MessageSquare,
+          active: pathname.startsWith("/dashboard/pengaturan/whatsapp"),
+          allowed: isOwner,
+        },
+        {
+          href: "/dashboard/pengaturan/cabang",
+          label: "Cabang",
+          icon: Building2,
+          active: pathname.startsWith("/dashboard/pengaturan/cabang"),
+          allowed: isOwner,
         },
         {
           href: "/dashboard/pengguna",

@@ -121,29 +121,40 @@ export async function getUsersAction(
       return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
     }
 
-    if (currentUser.role !== UserRole.OWNER) {
+    if (
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.MANAGER
+    ) {
       return {
         success: false,
         error:
-          "Hanya Pemilik Bisnis (Owner) yang memiliki akses ke modul manajemen akun.",
+          "Hanya Pemilik Bisnis (Owner) dan Manajer yang memiliki akses ke modul manajemen akun.",
       };
     }
 
-    const targetOutletId = customOutletId || currentUser.outletId;
+    const isOwner = currentUser.role === UserRole.OWNER;
+    // Manajer hanya boleh melihat cabang miliknya, sedangkan Owner dapat memilih cabang
+    const targetOutletId = isOwner
+      ? customOutletId || currentUser.outletId
+      : currentUser.outletId;
+
     if (!targetOutletId) {
       return { success: false, error: "Cabang outlet aktif tidak ditemukan." };
     }
 
     const users = await prisma.user.findMany({
-      where: {
-        OR: [
-          { outletId: targetOutletId },
-          // Jika owner, sertakan juga owner akun cabang
-          currentUser.role === UserRole.OWNER
-            ? { ownedOutlets: { some: { id: targetOutletId } } }
-            : {},
-        ],
-      },
+      where: isOwner
+        ? {
+            OR: [
+              { outletId: targetOutletId },
+              // Jika owner, sertakan juga owner akun cabang
+              { ownedOutlets: { some: { id: targetOutletId } } },
+            ],
+          }
+        : {
+            // Manajer: HANYA melihat user yang terdaftar pada outlet cabang yang sama
+            outletId: targetOutletId,
+          },
       include: {
         employee: {
           include: {
@@ -212,14 +223,18 @@ export async function createAccountAction(
       return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
     }
 
-    if (currentUser.role !== UserRole.OWNER) {
+    if (
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.MANAGER
+    ) {
       return {
         success: false,
         error:
-          "Hanya Pemilik Bisnis (Owner) yang berhak membuat akun pengguna.",
+          "Hanya Pemilik Bisnis (Owner) dan Manajer Cabang yang berhak membuat akun pengguna.",
       };
     }
 
+    const isOwner = currentUser.role === UserRole.OWNER;
     const outletId = currentUser.outletId;
     if (!outletId) {
       return { success: false, error: "Cabang outlet aktif tidak ditemukan." };
@@ -244,6 +259,15 @@ export async function createAccountAction(
       pinCode,
       commissionRate,
     } = parsed.data;
+
+    // Batasan Keamanan: Manajer DILARANG membuat akun OWNER
+    if (!isOwner && role === "OWNER") {
+      return {
+        success: false,
+        error:
+          "Manajer cabang tidak berhak membuat akun dengan peran Pemilik (Owner).",
+      };
+    }
 
     // Cek apakah email sudah terdaftar
     const existing = await prisma.user.findUnique({
@@ -364,14 +388,18 @@ export async function updateUserRoleAction(
       return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
     }
 
-    if (currentUser.role !== UserRole.OWNER) {
+    if (
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.MANAGER
+    ) {
       return {
         success: false,
         error:
-          "Hanya Pemilik Bisnis (Owner) yang dapat mengubah peran pengguna.",
+          "Hanya Pemilik Bisnis (Owner) dan Manajer yang dapat mengubah peran pengguna.",
       };
     }
 
+    const isOwner = currentUser.role === UserRole.OWNER;
     const parsed = updateUserRoleSchema.safeParse(input);
     if (!parsed.success) {
       return { success: false, error: "Data perubahan peran tidak valid." };
@@ -397,12 +425,44 @@ export async function updateUserRoleAction(
     }
 
     // Batasan untuk Manajer:
-    // 1. Tidak boleh mengubah peran akun OWNER
-    if (targetUser.role === UserRole.OWNER) {
-      return {
-        success: false,
-        error: "Hanya Owner yang dapat mengubah peran sesama akun Owner.",
-      };
+    if (!isOwner) {
+      // 1. Harus berada di cabang yang sama
+      if (targetUser.outletId !== currentUser.outletId) {
+        return {
+          success: false,
+          error:
+            "Anda hanya memiliki wewenang untuk staf di cabang Anda sendiri.",
+        };
+      }
+      // 2. Tidak boleh mengubah peran akun OWNER
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat mengubah peran akun Owner.",
+        };
+      }
+      // 3. Tidak boleh mengubah peran sesama MANAGER
+      if (targetUser.role === UserRole.MANAGER) {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat mengubah peran sesama Manajer.",
+        };
+      }
+      // 4. Tidak boleh mempromosikan menjadi OWNER
+      if (role === "OWNER") {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat menetapkan peran Owner.",
+        };
+      }
+    } else {
+      // Owner tidak boleh mengubah peran akun OWNER
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Hanya Owner utama yang dapat mengelola sesama akun Owner.",
+        };
+      }
     }
 
     const newPrismaRole =
@@ -469,13 +529,18 @@ export async function updateUserStatusAction(
       return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
     }
 
-    if (currentUser.role !== UserRole.OWNER) {
+    if (
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.MANAGER
+    ) {
       return {
         success: false,
-        error: "Hanya Pemilik Bisnis (Owner) yang dapat mengubah status akun.",
+        error:
+          "Hanya Pemilik Bisnis (Owner) dan Manajer yang dapat mengubah status akun.",
       };
     }
 
+    const isOwner = currentUser.role === UserRole.OWNER;
     const parsed = updateUserStatusSchema.safeParse(input);
     if (!parsed.success) {
       return { success: false, error: "Data status tidak valid." };
@@ -497,6 +562,36 @@ export async function updateUserStatusAction(
 
     if (!targetUser) {
       return { success: false, error: "Akun pengguna tidak ditemukan." };
+    }
+
+    // Batasan untuk Manajer:
+    if (!isOwner) {
+      if (targetUser.outletId !== currentUser.outletId) {
+        return {
+          success: false,
+          error:
+            "Anda hanya memiliki wewenang untuk staf di cabang Anda sendiri.",
+        };
+      }
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat mengubah status akun Owner.",
+        };
+      }
+      if (targetUser.role === UserRole.MANAGER) {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat mengubah status sesama Manajer.",
+        };
+      }
+    } else {
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Akun Pemilik (Owner) tidak dapat dinonaktifkan.",
+        };
+      }
     }
 
     const newPrismaStatus =
@@ -547,13 +642,18 @@ export async function updateUserDetailsAction(
       return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
     }
 
-    if (currentUser.role !== UserRole.OWNER) {
+    if (
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.MANAGER
+    ) {
       return {
         success: false,
-        error: "Hanya Pemilik Bisnis (Owner) yang dapat mengubah data akun.",
+        error:
+          "Hanya Pemilik Bisnis (Owner) dan Manajer yang dapat mengubah data akun.",
       };
     }
 
+    const isOwner = currentUser.role === UserRole.OWNER;
     const parsed = updateUserDetailsSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -573,6 +673,33 @@ export async function updateUserDetailsAction(
 
     if (!targetUser) {
       return { success: false, error: "Akun pengguna tidak ditemukan." };
+    }
+
+    // Batasan untuk Manajer:
+    if (!isOwner) {
+      if (targetUser.outletId !== currentUser.outletId) {
+        return {
+          success: false,
+          error:
+            "Anda hanya memiliki wewenang untuk staf di cabang Anda sendiri.",
+        };
+      }
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat mengubah data akun Owner.",
+        };
+      }
+      if (
+        targetUser.role === UserRole.MANAGER &&
+        targetUser.id !== currentUser.id
+      ) {
+        return {
+          success: false,
+          error:
+            "Manajer cabang tidak dapat mengubah data profil sesama Manajer.",
+        };
+      }
     }
 
     // Jika email diubah, pastikan tidak bentrok dengan user lain
@@ -675,14 +802,18 @@ export async function resetUserPasswordAction(
       return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
     }
 
-    if (currentUser.role !== UserRole.OWNER) {
+    if (
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.MANAGER
+    ) {
       return {
         success: false,
         error:
-          "Hanya Pemilik Bisnis (Owner) yang dapat mereset kata sandi akun.",
+          "Hanya Pemilik Bisnis (Owner) dan Manajer yang dapat mereset kata sandi akun.",
       };
     }
 
+    const isOwner = currentUser.role === UserRole.OWNER;
     const parsed = resetUserPasswordSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -699,6 +830,33 @@ export async function resetUserPasswordAction(
 
     if (!targetUser) {
       return { success: false, error: "Akun pengguna tidak ditemukan." };
+    }
+
+    // Batasan untuk Manajer:
+    if (!isOwner) {
+      if (targetUser.outletId !== currentUser.outletId) {
+        return {
+          success: false,
+          error:
+            "Anda hanya memiliki wewenang untuk staf di cabang Anda sendiri.",
+        };
+      }
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat mereset kata sandi akun Owner.",
+        };
+      }
+      if (
+        targetUser.role === UserRole.MANAGER &&
+        targetUser.id !== currentUser.id
+      ) {
+        return {
+          success: false,
+          error:
+            "Manajer cabang tidak dapat mereset kata sandi sesama Manajer.",
+        };
+      }
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -734,14 +892,18 @@ export async function deleteUserAction(
       return { success: false, error: "Sesi berakhir. Silakan masuk kembali." };
     }
 
-    if (currentUser.role !== UserRole.OWNER) {
+    if (
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.MANAGER
+    ) {
       return {
         success: false,
         error:
-          "Hanya Pemilik Bisnis (Owner) yang memiliki izin menghapus akun.",
+          "Hanya Pemilik Bisnis (Owner) dan Manajer yang memiliki izin menghapus akun.",
       };
     }
 
+    const isOwner = currentUser.role === UserRole.OWNER;
     const parsed = deleteUserSchema.safeParse(input);
     if (!parsed.success) {
       return { success: false, error: "Parameter tidak valid." };
@@ -780,12 +942,35 @@ export async function deleteUserAction(
       return { success: false, error: "Akun pengguna tidak ditemukan." };
     }
 
-    // Tidak boleh menghapus akun OWNER
-    if (targetUser.role === UserRole.OWNER) {
-      return {
-        success: false,
-        error: "Akun Pemilik (Owner) tidak dapat dihapus dari sistem.",
-      };
+    // Batasan untuk Manajer:
+    if (!isOwner) {
+      if (targetUser.outletId !== currentUser.outletId) {
+        return {
+          success: false,
+          error:
+            "Anda hanya memiliki wewenang untuk staf di cabang Anda sendiri.",
+        };
+      }
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Akun Pemilik (Owner) tidak dapat dihapus.",
+        };
+      }
+      if (targetUser.role === UserRole.MANAGER) {
+        return {
+          success: false,
+          error: "Manajer cabang tidak dapat menghapus akun sesama Manajer.",
+        };
+      }
+    } else {
+      // Tidak boleh menghapus akun OWNER
+      if (targetUser.role === UserRole.OWNER) {
+        return {
+          success: false,
+          error: "Akun Pemilik (Owner) tidak dapat dihapus dari sistem.",
+        };
+      }
     }
 
     // Integritas audit: Cek apakah user memiliki riwayat tiket atau pembayaran
