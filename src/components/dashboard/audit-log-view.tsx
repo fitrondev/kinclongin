@@ -6,6 +6,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Crown,
   Download,
   Eye,
   Filter,
@@ -161,18 +162,19 @@ export function AuditLogView({ initialLogs, outletName }: AuditLogViewProps) {
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-foreground flex items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
-              <History className="text-primary h-6 w-6" />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-foreground flex flex-wrap items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
+              <History className="text-primary h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
               <span>Audit Log & Jejak Keamanan Sistem</span>
             </h1>
             <Badge
               variant="outline"
-              className="border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
+              className="shrink-0 items-center gap-1 border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
             >
-              👑 Khusus Owner
+              <Crown className="h-3 w-3 text-amber-600" />
+              <span>Khusus Owner</span>
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
@@ -181,11 +183,11 @@ export function AuditLogView({ initialLogs, outletName }: AuditLogViewProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Button
             onClick={exportCSV}
             variant="outline"
-            className="h-10 gap-2 rounded-xl text-xs font-bold shadow-xs"
+            className="h-10 w-full gap-2 rounded-xl text-xs font-bold shadow-xs sm:w-auto"
           >
             <Download className="h-4 w-4" />
             <span>Ekspor CSV</span>
@@ -195,8 +197,8 @@ export function AuditLogView({ initialLogs, outletName }: AuditLogViewProps) {
 
       {/* Main Table Card */}
       <Card className="border-border bg-card shadow-xs">
-        <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <CardHeader className="flex flex-col gap-4 pb-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
             <CardTitle className="text-foreground text-base font-bold">
               Riwayat Jejak Audit ({filteredLogs.length})
             </CardTitle>
@@ -205,21 +207,21 @@ export function AuditLogView({ initialLogs, outletName }: AuditLogViewProps) {
             </CardDescription>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
+            <div className="relative flex-1 sm:w-64">
               <Search className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
               <Input
                 placeholder="Cari aktor / aksi / ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-9 w-48 rounded-xl pl-9 text-xs sm:w-64"
+                className="h-9 w-full rounded-xl pl-9 text-xs"
               />
             </div>
 
             <select
               value={selectedAction}
               onChange={(e) => setSelectedAction(e.target.value)}
-              className="border-input bg-background h-9 rounded-xl border px-3 text-xs font-semibold"
+              className="border-input bg-background h-9 w-full rounded-xl border px-3 text-xs font-semibold sm:w-auto"
             >
               <option value="ALL">Semua Aksi</option>
               <option value="WHATSAPP_CONFIG_UPDATE">

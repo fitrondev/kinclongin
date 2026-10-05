@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   Building2,
   CheckCircle2,
+  Crown,
   ExternalLink,
   MapPin,
   Phone,
@@ -165,18 +166,19 @@ export function OutletManagementView({
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-foreground flex items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
-              <Building2 className="text-primary h-6 w-6" />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-foreground flex flex-wrap items-center gap-2 text-xl font-black tracking-tight sm:text-2xl">
+              <Building2 className="text-primary h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
               <span>Pengelolaan & Ekspansi Cabang Outlet</span>
             </h1>
             <Badge
               variant="outline"
-              className="border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
+              className="shrink-0 items-center gap-1 border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
             >
-              👑 Khusus Owner
+              <Crown className="h-3 w-3 text-amber-600" />
+              <span>Khusus Owner</span>
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
@@ -188,7 +190,7 @@ export function OutletManagementView({
         {/* Tombol Tambah Cabang Dialog */}
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button className="h-10 gap-2 rounded-xl text-xs font-bold shadow-sm">
+            <Button className="h-10 w-full shrink-0 gap-2 rounded-xl text-xs font-bold shadow-sm sm:w-auto">
               <Plus className="h-4 w-4" />
               <span>+ Tambah Cabang Baru</span>
             </Button>
@@ -264,15 +266,26 @@ export function OutletManagementView({
 
       {/* Tabs */}
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="bg-muted/60 h-10 rounded-xl p-1">
-          <TabsTrigger value="profile" className="rounded-lg text-xs font-bold">
-            Profil Cabang Aktif ({currentOutlet.name})
+        <TabsList className="bg-muted/60 grid h-auto w-full grid-cols-2 gap-1 rounded-xl p-1 group-data-horizontal/tabs:h-auto sm:inline-flex sm:h-10 sm:w-auto sm:gap-1.5">
+          <TabsTrigger
+            value="profile"
+            className="h-9 gap-1.5 px-2 text-xs font-bold data-active:shadow-xs sm:gap-2 sm:px-3"
+          >
+            <Building2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Profil Cabang</span>
+            <span className="text-muted-foreground hidden max-w-40 truncate text-[11px] font-normal md:inline">
+              ({currentOutlet.name})
+            </span>
           </TabsTrigger>
           <TabsTrigger
             value="branches"
-            className="rounded-lg text-xs font-bold"
+            className="h-9 gap-1.5 px-2 text-xs font-bold data-active:shadow-xs sm:gap-2 sm:px-3"
           >
-            Daftar Seluruh Cabang ({allOutlets.length})
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Semua Cabang</span>
+            <span className="text-muted-foreground shrink-0 font-mono text-[10px] sm:text-xs">
+              ({allOutlets.length})
+            </span>
           </TabsTrigger>
         </TabsList>
 
@@ -363,7 +376,7 @@ export function OutletManagementView({
                 <Button
                   type="submit"
                   disabled={isUpdating}
-                  className="h-10 gap-2 rounded-xl text-xs font-bold shadow-xs"
+                  className="h-10 w-full gap-2 rounded-xl text-xs font-bold shadow-xs sm:w-auto"
                 >
                   <Save className="h-4 w-4" />
                   <span>
@@ -377,7 +390,7 @@ export function OutletManagementView({
 
         {/* Tab 2: Daftar Seluruh Cabang (Multi-Outlet) */}
         <TabsContent value="branches">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {allOutlets.map((outlet) => (
               <Card
                 key={outlet.id}

@@ -88,11 +88,11 @@ export function WasherDashboardView({
   return (
     <div className="space-y-6">
       {/* 1. Welcome Banner Khusus Washer */}
-      <div className="bg-card flex flex-col items-start justify-between gap-4 rounded-2xl border p-5 shadow-xs sm:flex-row sm:items-center">
+      <div className="bg-card flex flex-col items-start justify-between gap-4 rounded-2xl border p-4 shadow-xs sm:p-5 xl:flex-row xl:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
-              Halo, {washerName}! 🧽
+            <h1 className="text-foreground text-lg font-black tracking-tight sm:text-xl md:text-2xl">
+              Halo, {washerName}!
             </h1>
             <Badge
               variant="outline"
@@ -114,10 +114,10 @@ export function WasherDashboardView({
         </div>
 
         {/* Quick Actions untuk Washer */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <Button
             asChild
-            className="h-10 gap-2 bg-cyan-600 font-bold text-white shadow-xs hover:bg-cyan-700"
+            className="h-10 w-full justify-center gap-2 bg-cyan-600 font-bold text-white shadow-xs hover:bg-cyan-700 sm:w-auto"
           >
             <Link href="/layar-cuci">
               <Tablet className="h-4 w-4" />
@@ -125,7 +125,11 @@ export function WasherDashboardView({
             </Link>
           </Button>
 
-          <Button asChild variant="outline" className="h-10 gap-1.5 font-bold">
+          <Button
+            asChild
+            variant="outline"
+            className="h-10 w-full justify-center gap-1.5 font-bold sm:w-auto"
+          >
             <Link href="/pos/antrean">
               <LayoutGrid className="h-4 w-4" />
               <span>Papan Antrean</span>
@@ -136,13 +140,13 @@ export function WasherDashboardView({
 
       {/* 2. Kartu Identitas PIN Tablet Kiosk Pekerja */}
       <Card className="border-cyan-500/30 bg-cyan-500/5 shadow-xs">
-        <CardContent className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
+        <CardContent className="flex flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
           <div className="flex items-start gap-3.5">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
               <KeyRound className="h-6 w-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-foreground text-sm font-bold sm:text-base">
                   PIN Tablet Kiosk Anda
                 </span>
@@ -166,7 +170,7 @@ export function WasherDashboardView({
             </div>
           </div>
 
-          <div className="bg-card flex shrink-0 items-center gap-2 rounded-2xl border-2 border-cyan-500/40 px-5 py-2.5 shadow-xs">
+          <div className="bg-card flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-cyan-500/40 px-5 py-2.5 shadow-xs sm:w-auto">
             <span className="text-muted-foreground text-xs font-semibold uppercase">
               PIN:
             </span>
@@ -177,20 +181,20 @@ export function WasherDashboardView({
         </CardContent>
       </Card>
 
-      {/* 3. Kartu Metrik KPI Personal Washer */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 3. Kartu Metrik KPI Personal Washer (2 kolom di tablet, 4 kolom di desktop XL) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Unit Dicuci Hari Ini */}
-        <Card className="bg-card border shadow-xs">
+        <Card className="bg-card min-w-0 border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
             <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
               Dicuci Hari Ini
             </span>
-            <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
+            <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
               <Droplets className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-foreground text-2xl font-black sm:text-3xl">
+            <div className="text-foreground truncate text-xl font-black sm:text-2xl">
               {todayWashedCount}{" "}
               <span className="text-muted-foreground text-xs font-normal">
                 unit
@@ -203,17 +207,17 @@ export function WasherDashboardView({
         </Card>
 
         {/* Estimasi Komisi Hari Ini */}
-        <Card className="bg-card border shadow-xs">
+        <Card className="bg-card min-w-0 border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
             <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
               Komisi Hari Ini
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
               <Coins className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-foreground text-2xl font-black sm:text-3xl">
+            <div className="text-foreground truncate text-xl font-black sm:text-2xl">
               {formatRupiah(todayCommission)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -223,17 +227,17 @@ export function WasherDashboardView({
         </Card>
 
         {/* Komisi Siap Cair (Pending) */}
-        <Card className="border-amber-500/30 bg-amber-500/5 shadow-xs">
+        <Card className="min-w-0 border-amber-500/30 bg-amber-500/5 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
             <span className="text-xs font-bold tracking-wider text-amber-700 uppercase dark:text-amber-300">
               Komisi Belum Dicairkan
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600">
               <Clock className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-black text-amber-700 sm:text-3xl dark:text-amber-300">
+            <div className="truncate text-xl font-black text-amber-700 sm:text-2xl dark:text-amber-300">
               {formatRupiah(unpaidCommission)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -243,17 +247,17 @@ export function WasherDashboardView({
         </Card>
 
         {/* Komisi Sudah Diterima (Lunas) */}
-        <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-xs">
+        <Card className="min-w-0 border-emerald-500/30 bg-emerald-500/5 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
             <span className="text-xs font-bold tracking-wider text-emerald-700 uppercase dark:text-emerald-300">
               Komisi Sudah Diterima
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600">
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-black text-emerald-700 sm:text-3xl dark:text-emerald-300">
+            <div className="truncate text-xl font-black text-emerald-700 sm:text-2xl dark:text-emerald-300">
               {formatRupiah(paidCommission)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -265,9 +269,9 @@ export function WasherDashboardView({
 
       {/* 4. Tabel Riwayat Pekerjaan Saya */}
       <Card className="bg-card shadow-xs">
-        <CardHeader className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <CardTitle className="text-foreground text-lg font-black tracking-tight">
+            <CardTitle className="text-foreground text-base font-black tracking-tight sm:text-lg">
               Riwayat Pengerjaan Unit Saya
             </CardTitle>
             <CardDescription className="text-xs">
@@ -279,7 +283,7 @@ export function WasherDashboardView({
             asChild
             size="sm"
             variant="outline"
-            className="h-8 gap-1 text-xs font-bold"
+            className="h-8 w-full justify-center gap-1 text-xs font-bold sm:w-auto"
           >
             <Link href="/layar-cuci">
               <span>Ambil Job di Layar Cuci</span>
@@ -302,25 +306,25 @@ export function WasherDashboardView({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-160">
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead className="text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
                       Tiket & Plat
                     </TableHead>
-                    <TableHead className="text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
                       Paket Layanan
                     </TableHead>
-                    <TableHead className="text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
                       Tipe Pengerjaan
                     </TableHead>
-                    <TableHead className="text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
                       Komisi Unit
                     </TableHead>
-                    <TableHead className="text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
                       Waktu Mulai
                     </TableHead>
-                    <TableHead className="text-right text-xs font-bold">
+                    <TableHead className="text-right text-xs font-bold whitespace-nowrap">
                       Status Komisi
                     </TableHead>
                   </TableRow>
@@ -341,7 +345,7 @@ export function WasherDashboardView({
 
                     return (
                       <TableRow key={job.id} className="hover:bg-muted/40">
-                        <TableCell className="py-3">
+                        <TableCell className="py-3 whitespace-nowrap">
                           <div className="font-mono text-sm font-black">
                             {formatLicensePlate(job.licensePlate)}
                           </div>
@@ -350,7 +354,7 @@ export function WasherDashboardView({
                           </div>
                         </TableCell>
 
-                        <TableCell className="py-3">
+                        <TableCell className="py-3 whitespace-nowrap">
                           <div className="text-foreground text-xs font-bold">
                             {job.serviceName}
                           </div>
@@ -362,7 +366,7 @@ export function WasherDashboardView({
                           </Badge>
                         </TableCell>
 
-                        <TableCell className="py-3">
+                        <TableCell className="py-3 whitespace-nowrap">
                           {job.isTandem ? (
                             <Badge
                               variant="secondary"
@@ -382,15 +386,15 @@ export function WasherDashboardView({
                           )}
                         </TableCell>
 
-                        <TableCell className="py-3 font-mono text-sm font-black text-amber-600 dark:text-amber-400">
+                        <TableCell className="py-3 font-mono text-sm font-black whitespace-nowrap text-amber-600 dark:text-amber-400">
                           {formatRupiah(job.commissionAmount)}
                         </TableCell>
 
-                        <TableCell className="text-muted-foreground py-3 text-xs">
+                        <TableCell className="text-muted-foreground py-3 text-xs whitespace-nowrap">
                           {formattedDate}
                         </TableCell>
 
-                        <TableCell className="py-3 text-right">
+                        <TableCell className="py-3 text-right whitespace-nowrap">
                           {job.isPaidToWasher ? (
                             <Badge
                               variant="secondary"

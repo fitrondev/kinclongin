@@ -54,9 +54,27 @@ async function fetchDashboardMetricsFromDB(
 
   const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
   const yesterdayEnd = todayStart;
+  const sevenDaysAgoStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - 6
+  );
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-  // 1. Omset Hari Ini vs Kemarin
-  const [todayPayments, yesterdayPayments] = await Promise.all([
+  // Jalankan seluruh kueri database secara paralel via Promise.all (menghilangkan sequential waterfalls)
+  const [
+    todayPayments,
+    yesterdayPayments,
+    todayCompletedCount,
+    yesterdayCompletedCount,
+    completedTicketsWithTimes,
+    unpaidCommissions,
+    sevenDaysTickets,
+    recentTicketsTimes,
+    categoryCounts,
+    recentTickets,
+  ] = await Promise.all([
+    // 1a. Omset Hari Ini
     prisma.payment.aggregate({
       where: {
         outletId,
@@ -64,12 +82,86 @@ async function fetchDashboardMetricsFromDB(
       },
       _sum: { totalAmount: true },
     }),
+    // 1b. Omset Kemarin
     prisma.payment.aggregate({
       where: {
         outletId,
         paidAt: { gte: yesterdayStart, lt: yesterdayEnd },
       },
       _sum: { totalAmount: true },
+    }),
+    // 2a. Selesai Hari Ini
+    prisma.washTicket.count({
+      where: {
+        outletId,
+        status: { in: ["READY", "COMPLETED"] },
+        createdAt: { gte: todayStart, lt: todayEnd },
+      },
+    }),
+    // 2b. Selesai Kemarin
+    prisma.washTicket.count({
+      where: {
+        outletId,
+        status: { in: ["READY", "COMPLETED"] },
+        createdAt: { gte: yesterdayStart, lt: yesterdayEnd },
+      },
+    }),
+    // 3. Durasi Cuci 7 Hari Terakhir
+    prisma.washTicket.findMany({
+      where: {
+        outletId,
+        washingStartedAt: { not: null },
+        readyAt: { not: null },
+        createdAt: { gte: sevenDaysAgoStart },
+      },
+      select: {
+        washingStartedAt: true,
+        readyAt: true,
+      },
+    }),
+    // 4. Komisi Belum Dicairkan
+    prisma.ticketWasher.aggregate({
+      where: {
+        ticket: { outletId },
+        paidAt: null,
+      },
+      _sum: { commissionAmount: true },
+    }),
+    // 5. Tiket 7 Hari Terakhir (Single Batch Range Query menggantikan 7 query berulang)
+    prisma.washTicket.findMany({
+      where: {
+        outletId,
+        createdAt: { gte: sevenDaysAgoStart, lt: todayEnd },
+      },
+      select: {
+        createdAt: true,
+        subtotalServices: true,
+        subtotalRetail: true,
+        totalAmount: true,
+      },
+    }),
+    // 6. Jam Sibuk (14 Hari Terakhir)
+    prisma.washTicket.findMany({
+      where: {
+        outletId,
+        createdAt: { gte: fourteenDaysAgo },
+      },
+      select: { createdAt: true },
+    }),
+    // 7. Distribusi Kategori Kendaraan
+    prisma.washTicket.groupBy({
+      by: ["vehicleCategory"],
+      where: { outletId },
+      _count: { id: true },
+    }),
+    // 8. Tiket Terbaru
+    prisma.washTicket.findMany({
+      where: { outletId },
+      include: {
+        servicePackage: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
     }),
   ]);
 
@@ -82,24 +174,6 @@ async function fetchDashboardMetricsFromDB(
           ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
         );
 
-  // 2. Jumlah Kendaraan Selesai Hari Ini
-  const [todayCompletedCount, yesterdayCompletedCount] = await Promise.all([
-    prisma.washTicket.count({
-      where: {
-        outletId,
-        status: { in: ["READY", "COMPLETED"] },
-        createdAt: { gte: todayStart, lt: todayEnd },
-      },
-    }),
-    prisma.washTicket.count({
-      where: {
-        outletId,
-        status: { in: ["READY", "COMPLETED"] },
-        createdAt: { gte: yesterdayStart, lt: yesterdayEnd },
-      },
-    }),
-  ]);
-
   const completedChangePercent =
     yesterdayCompletedCount === 0
       ? 100
@@ -108,20 +182,6 @@ async function fetchDashboardMetricsFromDB(
             yesterdayCompletedCount) *
             100
         );
-
-  // 3. Rata-rata Durasi Cuci (Waktu dari washingStartedAt s/d readyAt atau completedAt)
-  const completedTicketsWithTimes = await prisma.washTicket.findMany({
-    where: {
-      outletId,
-      washingStartedAt: { not: null },
-      readyAt: { not: null },
-      createdAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) },
-    },
-    select: {
-      washingStartedAt: true,
-      readyAt: true,
-    },
-  });
 
   let averageMinutes = 28; // Default wajar jika belum ada data durasi
   if (completedTicketsWithTimes.length > 0) {
@@ -137,19 +197,11 @@ async function fetchDashboardMetricsFromDB(
     );
   }
 
-  // 4. Total Komisi Belum Dicairkan
-  const unpaidCommissions = await prisma.ticketWasher.aggregate({
-    where: {
-      ticket: { outletId },
-      paidAt: null,
-    },
-    _sum: { commissionAmount: true },
-  });
   const totalUnpaidCommission = Number(
     unpaidCommissions._sum.commissionAmount || 0
   );
 
-  // 5. Tren Omset 7 Hari Terakhir
+  // In-memory aggregation untuk tren 7 hari (zero DB query)
   const sevenDaysTrend: DashboardMetrics["sevenDaysTrend"] = [];
   const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
@@ -165,17 +217,9 @@ async function fetchDashboardMetricsFromDB(
       now.getDate() - i + 1
     );
 
-    const ticketsInDay = await prisma.washTicket.findMany({
-      where: {
-        outletId,
-        createdAt: { gte: dStart, lt: dEnd },
-      },
-      select: {
-        subtotalServices: true,
-        subtotalRetail: true,
-        totalAmount: true,
-      },
-    });
+    const ticketsInDay = sevenDaysTickets.filter(
+      (t) => t.createdAt >= dStart && t.createdAt < dEnd
+    );
 
     const services = ticketsInDay.reduce(
       (acc, t) => acc + Number(t.subtotalServices),
@@ -198,19 +242,11 @@ async function fetchDashboardMetricsFromDB(
     });
   }
 
-  // 6. Grafik Jam Sibuk (08:00 - 21:00) 14 hari terakhir
+  // Grafik Jam Sibuk (08:00 - 21:00) 14 hari terakhir
   const peakHoursMap = new Map<number, number>();
   for (let h = 8; h <= 21; h++) {
     peakHoursMap.set(h, 0);
   }
-
-  const recentTicketsTimes = await prisma.washTicket.findMany({
-    where: {
-      outletId,
-      createdAt: { gte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) },
-    },
-    select: { createdAt: true },
-  });
 
   for (const t of recentTicketsTimes) {
     const hour = t.createdAt.getHours();
@@ -226,7 +262,7 @@ async function fetchDashboardMetricsFromDB(
     })
   );
 
-  // 7. Komposisi Omset: Jasa Cuci vs Penjualan Ritel
+  // Komposisi Omset: Jasa Cuci vs Penjualan Ritel
   const totalServicesAll = sevenDaysTrend.reduce(
     (acc, d) => acc + d.services,
     0
@@ -246,13 +282,6 @@ async function fetchDashboardMetricsFromDB(
     },
   ];
 
-  // 8. Distribusi Kategori Kendaraan
-  const categoryCounts = await prisma.washTicket.groupBy({
-    by: ["vehicleCategory"],
-    where: { outletId },
-    _count: { id: true },
-  });
-
   const categoryLabels: Record<string, string> = {
     MOTOR_KECIL: "Motor Kecil",
     MOTOR_BESAR: "Motor Bebek/Matic",
@@ -267,16 +296,6 @@ async function fetchDashboardMetricsFromDB(
     name: categoryLabels[c.vehicleCategory] || c.vehicleCategory,
     count: c._count.id,
   }));
-
-  // 9. 5 Tiket Terbaru
-  const recentTickets = await prisma.washTicket.findMany({
-    where: { outletId },
-    include: {
-      servicePackage: { select: { name: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 6,
-  });
 
   return {
     todayRevenue,

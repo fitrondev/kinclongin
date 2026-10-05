@@ -216,8 +216,9 @@ export function TrackingView({ initialData }: { initialData: TrackingData }) {
                 </Badge>
               )}
               {data.status === "READY" && (
-                <Badge className="animate-bounce border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                  ✨ Bersih Kinclong & Siap Diambil!
+                <Badge className="animate-bounce items-center gap-1.5 border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Bersih Kinclong & Siap Diambil!</span>
                 </Badge>
               )}
               {data.status === "COMPLETED" && (

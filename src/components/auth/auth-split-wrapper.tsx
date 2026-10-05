@@ -159,7 +159,7 @@ export function AuthSplitWrapper({ children, mode }: AuthSplitWrapperProps) {
                 className="h-6 w-6 object-contain"
               />
             </div>
-            <span className="text-foreground font-mono text-xl font-black tracking-tight uppercase">
+            <span className="text-foreground hidden font-mono text-xl font-black tracking-tight uppercase sm:inline">
               Kinclongin
             </span>
           </div>

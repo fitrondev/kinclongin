@@ -7,6 +7,7 @@ import {
   ArrowUpCircle,
   Coins,
   CreditCard,
+  Crown,
   DollarSign,
   Download,
   Filter,
@@ -102,19 +103,20 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
               Laporan Arus Kas (Cash Flow)
             </h1>
             <Badge
               variant="outline"
-              className="border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
+              className="shrink-0 items-center gap-1 border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
             >
-              👑 Khusus Owner
+              <Crown className="h-3 w-3 text-amber-600" />
+              <span>Khusus Owner</span>
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
@@ -123,11 +125,11 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Button
             onClick={exportCSV}
             variant="outline"
-            className="h-10 gap-2 rounded-xl text-xs font-bold shadow-xs"
+            className="h-10 w-full justify-center gap-2 rounded-xl text-xs font-bold shadow-xs sm:w-auto"
           >
             <Download className="h-4 w-4" />
             <span>Ekspor CSV</span>
@@ -136,19 +138,19 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
       </div>
 
       {/* 4 Kartu KPI Arus Kas */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Total Kas Masuk */}
-        <Card className="border-emerald-500/20 bg-emerald-500/5 shadow-xs">
+        <Card className="min-w-0 border-emerald-500/20 bg-emerald-500/5 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-bold text-emerald-700 uppercase dark:text-emerald-300">
               Total Kas Masuk
             </CardTitle>
-            <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600">
+            <div className="shrink-0 rounded-xl bg-emerald-500/10 p-2 text-emerald-600">
               <ArrowDownCircle className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-black tracking-tight text-emerald-700 sm:text-2xl dark:text-emerald-300">
+            <div className="truncate text-xl font-black tracking-tight text-emerald-700 sm:text-2xl dark:text-emerald-300">
               {formatRupiah(data.totalInflow)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -158,17 +160,17 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
         </Card>
 
         {/* Total Kas Keluar */}
-        <Card className="border-destructive/20 bg-destructive/5 shadow-xs">
+        <Card className="border-destructive/20 bg-destructive/5 min-w-0 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-destructive text-xs font-bold uppercase">
               Total Kas Keluar
             </CardTitle>
-            <div className="bg-destructive/10 text-destructive rounded-xl p-2">
+            <div className="bg-destructive/10 text-destructive shrink-0 rounded-xl p-2">
               <ArrowUpCircle className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-destructive text-xl font-black tracking-tight sm:text-2xl">
+            <div className="text-destructive truncate text-xl font-black tracking-tight sm:text-2xl">
               {formatRupiah(data.totalOutflow)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -179,7 +181,7 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
 
         {/* Arus Kas Bersih (Net Cash Flow) */}
         <Card
-          className={`shadow-xs ${
+          className={`min-w-0 shadow-xs ${
             data.netCashFlow >= 0
               ? "border-blue-500/20 bg-blue-500/5"
               : "border-destructive/30 bg-destructive/10"
@@ -189,13 +191,13 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
             <CardTitle className="text-xs font-bold text-blue-700 uppercase dark:text-blue-300">
               Arus Kas Bersih (Net)
             </CardTitle>
-            <div className="rounded-xl bg-blue-500/10 p-2 text-blue-600">
+            <div className="shrink-0 rounded-xl bg-blue-500/10 p-2 text-blue-600">
               <Wallet className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
             <div
-              className={`text-xl font-black tracking-tight sm:text-2xl ${
+              className={`truncate text-xl font-black tracking-tight sm:text-2xl ${
                 data.netCashFlow >= 0
                   ? "text-blue-700 dark:text-blue-300"
                   : "text-destructive"
@@ -210,17 +212,17 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
         </Card>
 
         {/* Kas Tunai Fisik */}
-        <Card className="border-border bg-card shadow-xs">
+        <Card className="border-border bg-card min-w-0 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-foreground text-xs font-bold uppercase">
               Uang Tunai di Laci Kas
             </CardTitle>
-            <div className="bg-muted text-muted-foreground rounded-xl p-2">
+            <div className="bg-muted text-muted-foreground shrink-0 rounded-xl p-2">
               <Coins className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
+            <div className="text-foreground truncate text-xl font-black tracking-tight sm:text-2xl">
               {formatRupiah(data.cashBreakdown.cashIn)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -234,7 +236,7 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
       </div>
 
       {/* Rincian Komposisi Arus Kas */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card className="border-border bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-foreground text-sm font-bold">
@@ -247,28 +249,28 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground flex items-center gap-2">
-                <Coins className="h-4 w-4 text-emerald-500" />
+                <Coins className="h-4 w-4 shrink-0 text-emerald-500" />
                 Uang Tunai (Cash)
               </span>
-              <span className="font-bold text-emerald-600">
+              <span className="font-bold whitespace-nowrap text-emerald-600">
                 {formatRupiah(data.cashBreakdown.cashIn)}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-blue-500" />
+                <CreditCard className="h-4 w-4 shrink-0 text-blue-500" />
                 Scan QRIS Dinamis
               </span>
-              <span className="font-bold text-blue-600">
+              <span className="font-bold whitespace-nowrap text-blue-600">
                 {formatRupiah(data.cashBreakdown.qrisIn)}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-purple-500" />
+                <DollarSign className="h-4 w-4 shrink-0 text-purple-500" />
                 Transfer Bank Langsung
               </span>
-              <span className="font-bold text-purple-600">
+              <span className="font-bold whitespace-nowrap text-purple-600">
                 {formatRupiah(data.cashBreakdown.bankTransferIn)}
               </span>
             </div>
@@ -287,19 +289,19 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground flex items-center gap-2">
-                <Receipt className="text-destructive h-4 w-4" />
+                <Receipt className="text-destructive h-4 w-4 shrink-0" />
                 Pencairan Komisi Pekerja Cuci
               </span>
-              <span className="text-destructive font-bold">
+              <span className="text-destructive font-bold whitespace-nowrap">
                 {formatRupiah(data.outflowBreakdown.commissionsPaid)}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-amber-500" />
+                <Receipt className="h-4 w-4 shrink-0 text-amber-500" />
                 Belanja Stok & Bahan Operasional
               </span>
-              <span className="font-bold text-amber-600">
+              <span className="font-bold whitespace-nowrap text-amber-600">
                 {formatRupiah(data.outflowBreakdown.materialExpenses)}
               </span>
             </div>
@@ -319,19 +321,19 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
             </CardDescription>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <Input
               placeholder="Cari deskripsi / kategori..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 w-48 rounded-xl text-xs sm:w-64"
+              className="h-9 w-full rounded-xl text-xs sm:w-64"
             />
 
-            <div className="flex items-center gap-1 rounded-xl border p-1 text-xs">
+            <div className="flex flex-wrap items-center gap-1 rounded-xl border p-1 text-xs">
               <button
                 type="button"
                 onClick={() => setFilterType("ALL")}
-                className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                   filterType === "ALL"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted"
@@ -342,7 +344,7 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
               <button
                 type="button"
                 onClick={() => setFilterType("INFLOW")}
-                className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                   filterType === "INFLOW"
                     ? "bg-emerald-600 text-white"
                     : "text-muted-foreground hover:bg-muted"
@@ -353,7 +355,7 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
               <button
                 type="button"
                 onClick={() => setFilterType("OUTFLOW")}
-                className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                   filterType === "OUTFLOW"
                     ? "bg-destructive text-white"
                     : "text-muted-foreground hover:bg-muted"
@@ -372,23 +374,25 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-160">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-24 text-xs font-bold">
+                    <TableHead className="w-24 text-xs font-bold whitespace-nowrap">
                       Waktu
                     </TableHead>
-                    <TableHead className="w-28 text-xs font-bold">
+                    <TableHead className="w-28 text-xs font-bold whitespace-nowrap">
                       Tipe
                     </TableHead>
-                    <TableHead className="text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
                       Kategori
                     </TableHead>
-                    <TableHead className="text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
                       Deskripsi
                     </TableHead>
-                    <TableHead className="text-xs font-bold">Metode</TableHead>
-                    <TableHead className="text-right text-xs font-bold">
+                    <TableHead className="text-xs font-bold whitespace-nowrap">
+                      Metode
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-bold whitespace-nowrap">
                       Nominal
                     </TableHead>
                   </TableRow>
@@ -404,7 +408,7 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
                           minute: "2-digit",
                         })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {t.type === "INFLOW" ? (
                           <Badge
                             variant="outline"
@@ -421,17 +425,17 @@ export function CashFlowView({ initialData, outletName }: CashFlowViewProps) {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-foreground text-xs font-semibold">
+                      <TableCell className="text-foreground text-xs font-semibold whitespace-nowrap">
                         {t.category}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
+                      <TableCell className="text-muted-foreground min-w-45 text-xs">
                         {t.description}
                       </TableCell>
-                      <TableCell className="text-muted-foreground font-mono text-[11px] uppercase">
+                      <TableCell className="text-muted-foreground font-mono text-[11px] whitespace-nowrap uppercase">
                         {t.paymentMethod}
                       </TableCell>
                       <TableCell
-                        className={`text-right font-mono text-xs font-black ${
+                        className={`text-right font-mono text-xs font-black whitespace-nowrap ${
                           t.type === "INFLOW"
                             ? "text-emerald-600"
                             : "text-destructive"

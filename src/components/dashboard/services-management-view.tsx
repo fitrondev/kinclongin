@@ -2,22 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
-import {
-  Bike,
-  Car,
-  CheckCircle2,
-  Clock,
-  Coins,
-  Edit2,
-  Filter,
-  Plus,
-  Power,
-  Search,
-  Sparkles,
-  Trash2,
-  Truck,
-  XCircle,
-} from "lucide-react";
+import { Bike, Car, Filter, Plus, Search, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -32,83 +17,18 @@ import {
 } from "@/actions/services";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { CommissionType, VehicleCategory } from "@/generated/prisma/enums";
-import { formatRupiah } from "@/lib/formatters";
 
-export const CATEGORY_INFO: Record<
-  VehicleCategory,
-  { label: string; sub: string; icon: typeof Car; color: string }
-> = {
-  MOTOR_KECIL: {
-    label: "Motor Kecil",
-    sub: "Beat, Mio, Vario 125",
-    icon: Bike,
-    color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
-  },
-  MOTOR_BESAR: {
-    label: "Motor Besar",
-    sub: "NMax, PCX, Vespa, 150-250cc",
-    icon: Bike,
-    color: "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",
-  },
-  MOTOR_MOGE: {
-    label: "Motor Moge",
-    sub: "250cc+, Harley, Trail",
-    icon: Bike,
-    color: "text-purple-500 bg-purple-500/10 border-purple-500/20",
-  },
-  MOBIL_KECIL: {
-    label: "Mobil Kecil",
-    sub: "Brio, Agya, Yaris, Hatchback",
-    icon: Car,
-    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
-  },
-  MOBIL_SEDANG: {
-    label: "Mobil Sedang",
-    sub: "Avanza, Xpander, HR-V, Sedan",
-    icon: Car,
-    color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20",
-  },
-  MOBIL_BESAR: {
-    label: "Mobil Besar",
-    sub: "Pajero, Fortuner, Alphard",
-    icon: Car,
-    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
-  },
-  KENDARAAN_LAIN: {
-    label: "Kendaraan Lain",
-    sub: "Pick-up, Truk Engkel, Box",
-    icon: Truck,
-    color: "text-rose-500 bg-rose-500/10 border-rose-500/20",
-  },
-};
+import { DeleteServiceDialog } from "./services/delete-service-dialog";
+import { ServiceCardItem } from "./services/service-card-item";
+import { CATEGORY_INFO } from "./services/service-constants";
+import { ServicePackageDialog } from "./services/service-package-dialog";
+import { ServiceStatsCards } from "./services/service-stats-cards";
+
+export { CATEGORY_INFO };
 
 interface ServicesManagementViewProps {
   initialData: ServicePackagesSummary;
@@ -158,7 +78,6 @@ export function ServicesManagementView({
   // Filter list
   const filteredPackages = useMemo(() => {
     return packages.filter((pkg) => {
-      // Filter kategori tab
       if (selectedTab === "MOBIL") {
         if (!pkg.vehicleCategory.startsWith("MOBIL")) return false;
       } else if (selectedTab === "MOTOR") {
@@ -169,7 +88,6 @@ export function ServicesManagementView({
         if (pkg.vehicleCategory !== selectedTab) return false;
       }
 
-      // Filter pencarian
       if (searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase();
         const matchName = pkg.name.toLowerCase().includes(query);
@@ -276,7 +194,6 @@ export function ServicesManagementView({
 
   const handleToggleStatus = (pkg: ServicePackageItem) => {
     const nextStatus = !pkg.isActive;
-    // Optimistic UI
     setPackages((prev) =>
       prev.map((p) => (p.id === pkg.id ? { ...p, isActive: nextStatus } : p))
     );
@@ -294,7 +211,6 @@ export function ServicesManagementView({
             : `Paket "${pkg.name}" telah DINONAKTIFKAN.`
         );
       } else {
-        // Rollback
         setPackages((prev) =>
           prev.map((p) =>
             p.id === pkg.id ? { ...p, isActive: !nextStatus } : p
@@ -340,20 +256,20 @@ export function ServicesManagementView({
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* 1. Header & Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-black tracking-tight sm:text-2xl lg:text-3xl">
               Master Paket & Tarif Layanan
             </h1>
             <Badge
               variant="outline"
-              className="border-primary/20 bg-primary/10 text-primary text-xs font-bold"
+              className="border-primary/20 bg-primary/10 text-primary shrink-0 text-xs font-bold"
             >
               Manajer & Owner
             </Badge>
           </div>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="text-muted-foreground text-xs sm:text-sm">
             Atur katalog layanan, tarif per kategori kendaraan, durasi SLA, dan
             skema komisi pekerja cabang{" "}
             <span className="text-foreground font-semibold">{outletName}</span>.
@@ -363,7 +279,7 @@ export function ServicesManagementView({
         {isOwnerOrManager && (
           <Button
             onClick={handleOpenCreate}
-            className="h-11 gap-2 font-bold shadow-sm"
+            className="h-10 w-full shrink-0 gap-2 font-bold shadow-sm sm:h-11 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             <span>Tambah Paket Layanan</span>
@@ -371,106 +287,36 @@ export function ServicesManagementView({
         )}
       </div>
 
-      {/* 2. 4 Stat Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        <Card className="border">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-semibold">
-                Total Paket Layanan
-              </span>
-              <Sparkles className="text-primary h-4 w-4" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black tracking-tight">
-                {stats.totalPackages}
-              </span>
-              <span className="text-muted-foreground text-xs font-medium">
-                ({stats.activePackages} aktif)
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-semibold">
-                Kategori Kendaraan
-              </span>
-              <Car className="h-4 w-4 text-emerald-500" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black tracking-tight">
-                {stats.totalCategoriesCovered}
-              </span>
-              <span className="text-muted-foreground text-xs font-medium">
-                tipe unit
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-semibold">
-                Rata-rata Durasi SLA
-              </span>
-              <Clock className="h-4 w-4 text-blue-500" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black tracking-tight">
-                {stats.averageMinutes}
-              </span>
-              <span className="text-muted-foreground text-xs font-medium">
-                Menit / mobil
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-semibold">
-                Rata-rata Komisi Cuci
-              </span>
-              <Coins className="h-4 w-4 text-amber-500" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-lg font-black tracking-tight sm:text-xl">
-                {formatRupiah(stats.averageCommission)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* 2. Stat Cards */}
+      <ServiceStatsCards stats={stats} />
 
       {/* 3. Filter Bar & Tabs */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <Tabs
           value={selectedTab}
           onValueChange={setSelectedTab}
-          className="w-full sm:w-auto"
+          className="w-full md:w-auto"
         >
           <TabsList className="grid grid-cols-4 sm:flex">
             <TabsTrigger value="ALL" className="text-xs font-bold">
               Semua
             </TabsTrigger>
-            <TabsTrigger value="MOBIL" className="text-xs font-bold">
-              🚗 Mobil
+            <TabsTrigger value="MOBIL" className="gap-1.5 text-xs font-bold">
+              <Car className="h-3.5 w-3.5 shrink-0" />
+              <span>Mobil</span>
             </TabsTrigger>
-            <TabsTrigger value="MOTOR" className="text-xs font-bold">
-              🛵 Motor
+            <TabsTrigger value="MOTOR" className="gap-1.5 text-xs font-bold">
+              <Bike className="h-3.5 w-3.5 shrink-0" />
+              <span>Motor</span>
             </TabsTrigger>
-            <TabsTrigger value="LAINNYA" className="text-xs font-bold">
-              🚚 Lainnya
+            <TabsTrigger value="LAINNYA" className="gap-1.5 text-xs font-bold">
+              <Truck className="h-3.5 w-3.5 shrink-0" />
+              <span>Lainnya</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full md:w-72">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             value={searchQuery}
@@ -506,356 +352,53 @@ export function ServicesManagementView({
           )}
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredPackages.map((pkg) => {
-            const cat = CATEGORY_INFO[pkg.vehicleCategory];
-            const CatIcon = cat?.icon || Car;
-
-            return (
-              <Card
-                key={pkg.id}
-                className={`relative flex flex-col justify-between border transition-all ${
-                  !pkg.isActive
-                    ? "bg-muted/30 opacity-60"
-                    : "hover:border-primary/50 shadow-xs"
-                }`}
-              >
-                <CardHeader className="p-4 sm:p-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <Badge
-                      variant="outline"
-                      className={`gap-1.5 px-2 py-0.5 text-[11px] font-bold ${
-                        cat?.color || "text-muted-foreground"
-                      }`}
-                    >
-                      <CatIcon className="h-3 w-3" />
-                      <span>{cat?.label || pkg.vehicleCategory}</span>
-                    </Badge>
-
-                    {/* Switch Aktif / Nonaktif */}
-                    {isOwnerOrManager && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-muted-foreground text-[10px] font-semibold">
-                          {pkg.isActive ? "Aktif" : "Nonaktif"}
-                        </span>
-                        <Switch
-                          checked={pkg.isActive}
-                          onCheckedChange={() => handleToggleStatus(pkg)}
-                          disabled={isPending}
-                          className="scale-75"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <CardTitle className="mt-2 text-lg font-black tracking-tight">
-                    {pkg.name}
-                  </CardTitle>
-
-                  <CardDescription className="line-clamp-2 min-h-8 text-xs">
-                    {pkg.description ||
-                      "Layanan pencucian standar berkualitas tinggi."}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5">
-                  {/* Harga Jasa & Komisi Pekerja */}
-                  <div className="bg-muted/50 flex items-baseline justify-between rounded-lg p-2.5">
-                    <div>
-                      <span className="text-muted-foreground block text-[10px] font-semibold tracking-wider uppercase">
-                        Tarif Pelanggan
-                      </span>
-                      <span className="text-primary font-mono text-xl font-black">
-                        {formatRupiah(pkg.price)}
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-muted-foreground block text-[10px] font-semibold tracking-wider uppercase">
-                        Komisi Pekerja
-                      </span>
-                      <span className="font-mono text-sm font-bold text-amber-600 dark:text-amber-400">
-                        {pkg.commissionType === CommissionType.PERCENTAGE
-                          ? `${pkg.defaultCommission}%`
-                          : formatRupiah(pkg.defaultCommission)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* SLA & Riwayat Pengerjaan */}
-                  <div className="text-muted-foreground flex items-center justify-between pt-1 text-xs font-medium">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-blue-500" />
-                      <span>SLA: {pkg.estimatedMinutes} Menit</span>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <span>{pkg.ticketsCount} unit dikerjakan</span>
-                    </div>
-                  </div>
-
-                  {/* Tombol Aksi */}
-                  {isOwnerOrManager && (
-                    <div className="flex items-center gap-2 border-t pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenEdit(pkg)}
-                        className="h-8 flex-1 gap-1.5 text-xs font-bold"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                        <span>Edit Tarif</span>
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteTarget(pkg)}
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-2.5 text-xs"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredPackages.map((pkg) => (
+            <ServiceCardItem
+              key={pkg.id}
+              pkg={pkg}
+              isOwnerOrManager={isOwnerOrManager}
+              isPending={isPending}
+              onEdit={handleOpenEdit}
+              onDelete={(target) => setDeleteTarget(target)}
+              onToggleStatus={handleToggleStatus}
+            />
+          ))}
         </div>
       )}
 
       {/* 5. Dialog Form Tambah / Edit */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-black">
-              {editingPackage
-                ? "Edit Paket Layanan Cuci"
-                : "Tambah Paket Layanan Baru"}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Tentukan nama paket, kategori kendaraan, tarif pelanggan, SLA
-              menit, dan komisi pekerja cuci.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Nama Layanan */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">Nama Paket Layanan *</Label>
-              <Input
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="Contoh: Cuci Salju + Hidrolik + Semir Ban"
-                className="text-xs font-semibold"
-              />
-            </div>
-
-            {/* Kategori Kendaraan */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">Kategori Kendaraan *</Label>
-              <Select
-                value={formCategory}
-                onValueChange={(val) => setFormCategory(val as VehicleCategory)}
-              >
-                <SelectTrigger className="text-xs font-semibold">
-                  <SelectValue placeholder="Pilih kategori kendaraan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(CATEGORY_INFO).map(([key, info]) => {
-                    const Icon = info.icon;
-                    return (
-                      <SelectItem key={key} value={key} className="text-xs">
-                        <div className="flex items-center gap-2">
-                          <Icon className="text-muted-foreground h-3.5 w-3.5" />
-                          <span className="font-bold">{info.label}</span>
-                          <span className="text-muted-foreground text-[11px]">
-                            ({info.sub})
-                          </span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Harga & SLA */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Tarif Harga (Rp) *</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={1000}
-                  value={formPrice}
-                  onChange={(e) => setFormPrice(Number(e.target.value))}
-                  className="font-mono text-xs font-bold"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">
-                  Estimasi SLA (Menit) *
-                </Label>
-                <Input
-                  type="number"
-                  min={5}
-                  step={5}
-                  value={formMinutes}
-                  onChange={(e) => setFormMinutes(Number(e.target.value))}
-                  className="font-mono text-xs font-bold"
-                />
-              </div>
-            </div>
-
-            {/* Skema Komisi Pekerja */}
-            <div className="bg-muted/30 space-y-3 rounded-lg border p-3">
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-1.5 text-xs font-bold">
-                  <Coins className="h-3.5 w-3.5 text-amber-500" />
-                  <span>Skema Komisi Tukang Cuci</span>
-                </Label>
-
-                <div className="flex items-center gap-2 text-xs">
-                  <span
-                    onClick={() =>
-                      setFormCommissionType(CommissionType.FIXED_NOMINAL)
-                    }
-                    className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-bold ${
-                      formCommissionType === CommissionType.FIXED_NOMINAL
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    Nominal (Rp)
-                  </span>
-                  <span
-                    onClick={() =>
-                      setFormCommissionType(CommissionType.PERCENTAGE)
-                    }
-                    className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-bold ${
-                      formCommissionType === CommissionType.PERCENTAGE
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    Persentase (%)
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-muted-foreground text-[11px] font-medium">
-                  {formCommissionType === CommissionType.PERCENTAGE
-                    ? "Nilai Persentase Komisi (%)"
-                    : "Nominal Rupiah per Unit (Rp)"}
-                </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={formCommissionRate}
-                  onChange={(e) =>
-                    setFormCommissionRate(Number(e.target.value))
-                  }
-                  className="font-mono text-xs font-bold"
-                />
-              </div>
-            </div>
-
-            {/* Deskripsi */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">
-                Deskripsi Layanan (Opsional)
-              </Label>
-              <Textarea
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Rincian bagian pengerjaan: bodi luar, kolong hidrolik, vakum interior, semir ban..."
-                rows={2}
-                className="text-xs"
-              />
-            </div>
-
-            {/* Status Aktif */}
-            <div className="flex items-center justify-between pt-1">
-              <div className="space-y-0.5">
-                <Label className="text-xs font-bold">Status Paket Aktif</Label>
-                <p className="text-muted-foreground text-[11px]">
-                  Paket aktif dapat langsung dipilih oleh kasir saat pendaftaran
-                  tiket.
-                </p>
-              </div>
-              <Switch
-                checked={formIsActive}
-                onCheckedChange={setFormIsActive}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setIsDialogOpen(false)}
-              disabled={isPending}
-              className="text-xs font-bold"
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={handleSavePackage}
-              disabled={isPending}
-              className="text-xs font-bold"
-            >
-              {isPending ? "Menyimpan..." : "Simpan Paket"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ServicePackageDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        editingPackage={editingPackage}
+        formName={formName}
+        setFormName={setFormName}
+        formDescription={formDescription}
+        setFormDescription={setFormDescription}
+        formCategory={formCategory}
+        setFormCategory={setFormCategory}
+        formPrice={formPrice}
+        setFormPrice={setFormPrice}
+        formMinutes={formMinutes}
+        setFormMinutes={setFormMinutes}
+        formCommissionType={formCommissionType}
+        setFormCommissionType={setFormCommissionType}
+        formCommissionRate={formCommissionRate}
+        setFormCommissionRate={setFormCommissionRate}
+        formIsActive={formIsActive}
+        setFormIsActive={setFormIsActive}
+        isPending={isPending}
+        onSave={handleSavePackage}
+      />
 
       {/* 6. Dialog Konfirmasi Hapus */}
-      <Dialog
-        open={Boolean(deleteTarget)}
+      <DeleteServiceDialog
+        deleteTarget={deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-destructive flex items-center gap-2 text-base font-black">
-              <Trash2 className="h-5 w-5" />
-              <span>Hapus Paket Layanan?</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Apakah Anda yakin ingin menghapus paket{" "}
-              <span className="text-foreground font-bold">
-                &ldquo;{deleteTarget?.name}&rdquo;
-              </span>
-              ? Jika sudah pernah ada transaksi tiket dengan paket ini, paket
-              akan otomatis dinonaktifkan agar rekap data historis tetap aman.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteTarget(null)}
-              disabled={isPending}
-              className="text-xs font-bold"
-            >
-              Batal
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-              disabled={isPending}
-              className="text-xs font-bold"
-            >
-              {isPending ? "Menghapus..." : "Ya, Hapus Paket"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        isPending={isPending}
+        onConfirmDelete={handleDelete}
+      />
     </div>
   );
 }

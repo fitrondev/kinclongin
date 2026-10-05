@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   CheckCircle2,
+  Crown,
   ExternalLink,
   Info,
   Key,
@@ -116,17 +117,18 @@ export function WhatsAppSettingsView({
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
               Konfigurasi Webhook & WhatsApp Gateway
             </h1>
             <Badge
               variant="outline"
-              className="border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
+              className="shrink-0 items-center gap-1 border-amber-500/30 bg-amber-500/10 text-xs font-bold text-amber-600"
             >
-              👑 Khusus Owner
+              <Crown className="h-3 w-3 text-amber-600" />
+              <span>Khusus Owner</span>
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
@@ -136,7 +138,7 @@ export function WhatsAppSettingsView({
         </div>
 
         {/* Status Badge */}
-        <div>
+        <div className="shrink-0">
           {isConfigured ? (
             <Badge className="gap-1.5 border-emerald-500/30 bg-emerald-500/15 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4" />

@@ -78,15 +78,15 @@ export function DashboardSidebar({
   return (
     <Sidebar collapsible="icon" className="border-r">
       {/* 1. Header: Branding & Multi-Tenant Organization Switcher */}
-      <SidebarHeader className="border-b p-3 sm:p-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl p-1.5 shadow-sm">
+      <SidebarHeader className="border-b p-3 transition-all group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1.5 sm:p-4">
+        <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
+          <div className="bg-primary/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl p-1 shadow-sm transition-all group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8">
             <Image
               src="/logoipsum.svg"
               alt="Kinclongin Logo"
               width={32}
               height={32}
-              className="h-7 w-7 object-contain"
+              className="h-6 w-6 object-contain group-data-[collapsible=icon]:h-5 group-data-[collapsible=icon]:w-5"
             />
           </div>
           <div className="flex min-w-0 flex-1 flex-col group-data-[collapsible=icon]:hidden">
@@ -359,13 +359,15 @@ export function DashboardSidebar({
                     </SidebarMenuItem>
                   )}
 
-                  {/* Pendaftaran Member Baru (Bisa dilakukan Owner, Manajer & Kasir) */}
-                  <SidebarMenuItem className="pt-1 group-data-[collapsible=icon]:hidden">
-                    <MembershipDialog
-                      buttonText="+ Daftar Member Baru"
-                      className="h-8 w-full justify-start text-xs font-bold"
-                    />
-                  </SidebarMenuItem>
+                  {/* Pendaftaran Member Baru (Khusus Owner & Manajer) */}
+                  {canViewAnalytics && (
+                    <SidebarMenuItem className="pt-1 group-data-[collapsible=icon]:hidden">
+                      <MembershipDialog
+                        buttonText="+ Daftar Member Baru"
+                        className="h-8 w-full justify-start text-xs font-bold"
+                      />
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -510,8 +512,9 @@ export function DashboardSidebar({
               <>
                 <SidebarSeparator />
                 <SidebarGroup>
-                  <SidebarGroupLabel className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                    👑 Otoritas Owner
+                  <SidebarGroupLabel className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-wider uppercase">
+                    <Crown className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Otoritas Owner</span>
                   </SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
@@ -625,9 +628,9 @@ export function DashboardSidebar({
       </SidebarContent>
 
       {/* 3. Footer: User Profile, Theme & Collapse */}
-      <SidebarFooter className="border-t p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 overflow-hidden">
+      <SidebarFooter className="border-t p-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
+        <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:justify-center">
+          <div className="flex items-center gap-2.5 overflow-hidden group-data-[collapsible=icon]:justify-center">
             <UserButton
               appearance={{
                 elements: {

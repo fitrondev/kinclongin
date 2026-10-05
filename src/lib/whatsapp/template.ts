@@ -35,12 +35,12 @@ export function formatWhatsAppReceiptMessage(
     loyaltyPoints = 0,
   } = params;
 
-  return `✨ *STRUK DIGITAL — ${outletName.toUpperCase()}* ✨
+  return `*STRUK DIGITAL — ${outletName.toUpperCase()}*
 ${outletAddress}
 
 Halo, *${customerName || "Sahabat Kinclong"}*! Terima kasih telah mencuci kendaraan Anda di ${outletName}.
 
-📄 *DETAIL TRANSAKSI:*
+*DETAIL TRANSAKSI:*
 • No. Tiket: *#${ticketNumber}*
 • Kendaraan: *${licensePlate}* ${vehicleDesc ? `(${vehicleDesc})` : ""}
 • Layanan: *${packageName}*
@@ -48,7 +48,7 @@ Halo, *${customerName || "Sahabat Kinclong"}*! Terima kasih telah mencuci kendar
 • Total Bayar: *${formatRupiah(totalAmount)}* (LUNAS)
 • Saldo Poin: *${loyaltyPoints} Poin*
 
-🔗 *Pantau E-Nota & Status Kendaraan:*
+*Pantau E-Nota & Status Kendaraan:*
 https://kinclongin.com/lacak/${params.ticketId}
 
 _Kendaraan Kinclong, Perjalanan Menyenangkan!_

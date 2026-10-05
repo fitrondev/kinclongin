@@ -91,7 +91,7 @@ export function LayarCuciHeader({
               className="h-8 w-8 object-contain"
             />
           </div>
-          <div>
+          <div className="hidden sm:block">
             <div className="flex items-center gap-2">
               <span className="text-foreground text-base font-black tracking-tight sm:text-lg">
                 LAYAR CUCI

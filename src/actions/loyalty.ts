@@ -137,9 +137,9 @@ export async function lookupCustomerLoyaltyAction(
         isRewardEligible,
         nextRewardInVisits: 10 - (customer.totalVisits % 10),
         rewardDescription: hasVehicleReward
-          ? "🎉 Plat kendaraan terdaftar telah mencapai kelipatan 10 kunjungan (Cuci 10x Gratis 1x)!"
+          ? "Plat kendaraan terdaftar telah mencapai kelipatan 10 kunjungan (Cuci 10x Gratis 1x)!"
           : customer.loyaltyPoints >= 10
-            ? "✨ Saldo poin mencukupi untuk klaim diskon cuci gratis!"
+            ? "Saldo poin mencukupi untuk klaim diskon cuci gratis!"
             : undefined,
         vehicles: formattedVehicles,
         recentLogs: customer.loyaltyLogs.map((log) => ({

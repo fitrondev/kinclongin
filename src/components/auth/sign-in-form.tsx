@@ -5,7 +5,17 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { ArrowRight, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Briefcase,
+  CreditCard,
+  Crown,
+  Droplets,
+  Loader2,
+  Lock,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -210,8 +220,9 @@ export function SignInForm() {
                 className="flex cursor-pointer items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-left transition-all hover:bg-amber-500/20 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
-                    👑 Owner
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                    <Crown className="h-3.5 w-3.5 shrink-0" />
+                    <span>Owner</span>
                   </p>
                   <p className="text-muted-foreground truncate text-[10px]">
                     Pak H. Ridwan
@@ -240,8 +251,9 @@ export function SignInForm() {
                 className="flex cursor-pointer items-center justify-between rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-left transition-all hover:bg-blue-500/20 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-blue-700 dark:text-blue-400">
-                    👔 Manajer
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-400">
+                    <Briefcase className="h-3.5 w-3.5 shrink-0" />
+                    <span>Manajer</span>
                   </p>
                   <p className="text-muted-foreground truncate text-[10px]">
                     Danu Prakoso
@@ -270,8 +282,9 @@ export function SignInForm() {
                 className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-left transition-all hover:bg-emerald-500/20 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                    💳 Kasir
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                    <span>Kasir</span>
                   </p>
                   <p className="text-muted-foreground truncate text-[10px]">
                     Siti Rahma
@@ -300,8 +313,9 @@ export function SignInForm() {
                 className="ring-primary/40 flex cursor-pointer items-center justify-between rounded-xl border border-purple-500/40 bg-purple-500/15 p-2.5 text-left shadow-xs ring-1 transition-all hover:bg-purple-500/25 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1 text-xs font-bold text-purple-700 dark:text-purple-300">
-                    🧽 Washer (Agus)
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+                    <Droplets className="h-3.5 w-3.5 shrink-0" />
+                    <span>Washer (Agus)</span>
                   </p>
                   <p className="truncate text-[10px] font-medium text-purple-600/90 dark:text-purple-300/90">
                     PIN: 1234 • Ke Dasbor

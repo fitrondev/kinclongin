@@ -5,11 +5,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import {
+  Banknote,
+  Building2,
   CheckCircle2,
   Coins,
   Crown,
   Gift,
   Loader2,
+  QrCode,
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -94,7 +97,7 @@ export function MembershipDialog({
       }
 
       toast.success(
-        `👑 Pendaftaran Member ${res.data.customerName} berhasil diaktifkan!`
+        `Pendaftaran Member ${res.data.customerName} berhasil diaktifkan!`
       );
       setOpen(false);
       setCustomerPhone("");
@@ -246,24 +249,28 @@ export function MembershipDialog({
             <div className="grid grid-cols-3 gap-2">
               {(
                 [
-                  { id: "CASH", label: "💵 Tunai" },
-                  { id: "QRIS", label: "📱 QRIS" },
-                  { id: "BANK_TRANSFER", label: "🏦 Transfer" },
+                  { id: "CASH", label: "Tunai", icon: Banknote },
+                  { id: "QRIS", label: "QRIS", icon: QrCode },
+                  { id: "BANK_TRANSFER", label: "Transfer", icon: Building2 },
                 ] as const
-              ).map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setPaymentMethod(m.id)}
-                  className={`rounded-xl border py-2.5 text-center text-xs font-bold transition-all ${
-                    paymentMethod === m.id
-                      ? "border-primary bg-primary text-primary-foreground shadow-xs"
-                      : "border-border hover:bg-muted/50 text-foreground"
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
+              ).map((m) => {
+                const Icon = m.icon;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.id)}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-center text-xs font-bold transition-all ${
+                      paymentMethod === m.id
+                        ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                        : "border-border hover:bg-muted/50 text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{m.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {paymentMethod !== "CASH" && (

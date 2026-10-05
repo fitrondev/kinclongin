@@ -296,7 +296,7 @@ export function VehicleCategoryChart({ data }: { data: CategoryData[] }) {
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 10, right: 20, left: 35, bottom: 0 }}
+          margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
         >
           <XAxis
             type="number"
@@ -311,6 +311,7 @@ export function VehicleCategoryChart({ data }: { data: CategoryData[] }) {
             fontSize={11}
             tickLine={false}
             axisLine={false}
+            width={100}
           />
           <Tooltip
             formatter={(val?: unknown) => [

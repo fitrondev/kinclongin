@@ -67,10 +67,10 @@ export default async function DashboardMembershipPage() {
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Page Title & Action */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-foreground flex items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl">
-            <Crown className="h-6 w-6 text-amber-500" />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-foreground flex flex-wrap items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl">
+            <Crown className="h-5 w-5 shrink-0 text-amber-500 sm:h-6 sm:w-6" />
             <span>Keanggotaan & Loyalitas Member Pelanggan</span>
           </h1>
           <p className="text-muted-foreground text-xs sm:text-sm">
@@ -79,11 +79,11 @@ export default async function DashboardMembershipPage() {
             Gratis 1x.
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="w-full shrink-0 sm:w-auto">
           <MembershipDialog
             outletId={outletId || undefined}
             buttonText="+ Daftarkan Member Baru"
-            className="h-10 px-4 text-xs font-bold"
+            className="h-10 w-full px-4 text-xs font-bold sm:w-auto"
           />
         </div>
       </div>

@@ -87,7 +87,7 @@ export function POSHeader({
                 priority
               />
             </div>
-            <div className="flex flex-col">
+            <div className="hidden flex-col sm:flex">
               <div className="flex items-center gap-1.5">
                 <span className="font-mono text-sm font-black tracking-tight uppercase sm:text-base">
                   KINCLONGIN

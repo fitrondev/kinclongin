@@ -62,7 +62,7 @@ export function UserButton({ appearance }: UserButtonProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`focus-visible:ring-primary flex cursor-pointer items-center justify-center rounded-xl transition-transform hover:opacity-90 focus:outline-hidden focus-visible:ring-2 ${
+          className={`focus-visible:ring-primary flex shrink-0 cursor-pointer items-center justify-center rounded-xl transition-transform hover:opacity-90 focus:outline-hidden focus-visible:ring-2 ${
             appearance?.elements?.userButtonAvatarBox ||
             "border-primary/20 h-9 w-9 border-2"
           }`}

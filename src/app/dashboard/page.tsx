@@ -12,6 +12,7 @@ import {
   Clock,
   Coins,
   CreditCard,
+  Crown,
   Droplets,
   History,
   LayoutGrid,
@@ -89,23 +90,78 @@ export default async function DashboardPage() {
       now.getDate()
     );
 
-    // 1. Ambil pembayaran yang diproses kasir ini hari ini
-    const todayPayments = await prisma.payment.findMany({
-      where: {
-        cashierId: user.id,
-        outletId: outlet.id,
-        paidAt: { gte: todayStart },
-      },
-      include: {
-        ticket: {
-          include: {
-            servicePackage: true,
-            customer: true,
+    // Ambil data kasir secara paralel untuk menghindari sequential waterfall
+    const [
+      todayPayments,
+      todayCreatedTicketsCount,
+      todayMembershipsCount,
+      pendingTickets,
+      shiftAssignment,
+    ] = await Promise.all([
+      // 1. Ambil pembayaran yang diproses kasir ini hari ini
+      prisma.payment.findMany({
+        where: {
+          cashierId: user.id,
+          outletId: outlet.id,
+          paidAt: { gte: todayStart },
+        },
+        include: {
+          ticket: {
+            include: {
+              servicePackage: true,
+              customer: true,
+            },
           },
         },
-      },
-      orderBy: { paidAt: "desc" },
-    });
+        orderBy: { paidAt: "desc" },
+      }),
+      // 2. Tiket cuci yang didaftarkan oleh kasir ini hari ini
+      prisma.washTicket.count({
+        where: {
+          createdById: user.id,
+          outletId: outlet.id,
+          createdAt: { gte: todayStart },
+        },
+      }),
+      // 3. Pendaftaran member baru oleh kasir ini hari ini
+      prisma.customerMembership.count({
+        where: {
+          cashierId: user.id,
+          outletId: outlet.id,
+          createdAt: { gte: todayStart },
+        },
+      }),
+      // 4. Ambil tiket antrean aktif di cabang yang belum lunas
+      prisma.washTicket.findMany({
+        where: {
+          outletId: outlet.id,
+          paymentStatus: PaymentStatus.UNPAID,
+          createdAt: { gte: todayStart },
+        },
+        include: {
+          servicePackage: true,
+          customer: true,
+        },
+        orderBy: [{ status: "desc" }, { createdAt: "asc" }],
+        take: 12,
+      }),
+      // 5. Cek jadwal shift kerja kasir hari ini jika ada
+      prisma.shiftAssignment.findFirst({
+        where: {
+          outletId: outlet.id,
+          date: todayStart,
+          employee: {
+            OR: [
+              { userId: user.id },
+              { fullName: user.fullName, outletId: outlet.id },
+            ],
+          },
+        },
+        include: {
+          shift: true,
+        },
+      }),
+    ]);
 
     let todayCashInDrawer = 0;
     let todayQris = 0;
@@ -127,39 +183,6 @@ export default async function DashboardPage() {
     const todayNonCash = todayQris + todayTransfer;
     const todayTransactionsCount = todayPayments.length;
 
-    // 2. Tiket cuci yang didaftarkan oleh kasir ini hari ini
-    const todayCreatedTicketsCount = await prisma.washTicket.count({
-      where: {
-        createdById: user.id,
-        outletId: outlet.id,
-        createdAt: { gte: todayStart },
-      },
-    });
-
-    // 3. Pendaftaran member baru oleh kasir ini hari ini
-    const todayMembershipsCount = await prisma.customerMembership.count({
-      where: {
-        cashierId: user.id,
-        outletId: outlet.id,
-        createdAt: { gte: todayStart },
-      },
-    });
-
-    // 4. Ambil tiket antrean aktif di cabang yang belum lunas
-    const pendingTickets = await prisma.washTicket.findMany({
-      where: {
-        outletId: outlet.id,
-        paymentStatus: PaymentStatus.UNPAID,
-        createdAt: { gte: todayStart },
-      },
-      include: {
-        servicePackage: true,
-        customer: true,
-      },
-      orderBy: [{ status: "desc" }, { createdAt: "asc" }],
-      take: 12,
-    });
-
     const pendingPaymentTickets: PendingTicketItem[] = pendingTickets.map(
       (t) => ({
         id: t.id,
@@ -173,23 +196,6 @@ export default async function DashboardPage() {
         queuedAt: t.queuedAt,
       })
     );
-
-    // 5. Cek jadwal shift kerja kasir hari ini jika ada
-    const shiftAssignment = await prisma.shiftAssignment.findFirst({
-      where: {
-        outletId: outlet.id,
-        date: todayStart,
-        employee: {
-          OR: [
-            { userId: user.id },
-            { fullName: user.fullName, outletId: outlet.id },
-          ],
-        },
-      },
-      include: {
-        shift: true,
-      },
-    });
 
     const shiftName = shiftAssignment
       ? `${shiftAssignment.shift.name} (${shiftAssignment.shift.startTime} - ${shiftAssignment.shift.endTime})`
@@ -343,44 +349,50 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-card flex flex-col items-start justify-between gap-4 rounded-2xl border p-5 shadow-xs sm:flex-row sm:items-center">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
-              Halo, {user.fullName || (isManager ? "Manajer" : "Owner")}! 👋
+      <div className="bg-card flex flex-col items-start justify-between gap-4 rounded-2xl border p-4 shadow-xs sm:p-5 xl:flex-row xl:items-center">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <h1 className="text-foreground text-lg font-black tracking-tight wrap-break-word sm:text-2xl">
+              Halo, {user.fullName || (isManager ? "Manajer" : "Owner")}!
             </h1>
-            <Badge
-              variant="outline"
-              className="text-primary border-primary/20 text-xs font-bold"
-            >
-              {outlet.name}
-            </Badge>
-            <Badge
-              variant="secondary"
-              className={`text-[10px] font-bold ${
-                isOwner
-                  ? "border-amber-500/20 bg-amber-500/10 text-amber-600"
-                  : isManager
-                    ? "border-blue-500/20 bg-blue-500/10 text-blue-600"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
-              }`}
-            >
-              {isOwner ? "Owner" : isManager ? "Manajer" : "Kasir"}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className="text-primary border-primary/20 max-w-full text-xs font-bold break-all sm:break-normal"
+              >
+                {outlet.name}
+              </Badge>
+              <Badge
+                variant="secondary"
+                className={`text-[10px] font-bold ${
+                  isOwner
+                    ? "border-amber-500/20 bg-amber-500/10 text-amber-600"
+                    : isManager
+                      ? "border-blue-500/20 bg-blue-500/10 text-blue-600"
+                      : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+                }`}
+              >
+                {isOwner ? "Owner" : isManager ? "Manajer" : "Kasir"}
+              </Badge>
+            </div>
           </div>
-          <p className="text-muted-foreground mt-0.5 text-xs">
+          <p className="text-muted-foreground text-xs leading-relaxed sm:text-sm">
             Berikut ringkasan performa operasional dan pendapatan cuci cabang
             hari ini.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <MembershipDialog
             outletId={outlet.id}
             buttonText="+ Daftar Member"
-            className="h-9 text-xs font-bold shadow-xs"
+            className="h-9 w-full justify-center text-xs font-bold shadow-xs sm:w-auto"
           />
-          <Button asChild size="sm" className="h-9 gap-1.5 font-bold shadow-xs">
+          <Button
+            asChild
+            size="sm"
+            className="h-9 w-full justify-center gap-1.5 font-bold shadow-xs sm:w-auto"
+          >
             <Link href="/pos/daftar-baru">
               <PlusCircle className="h-4 w-4" />
               <span>Daftar Kendaraan Baru</span>
@@ -390,7 +402,7 @@ export default async function DashboardPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 gap-1.5 font-bold shadow-xs"
+            className="h-9 w-full justify-center gap-1.5 font-bold shadow-xs sm:w-auto"
           >
             <Link href="/pos/antrean">
               <span>Buka Antrean Cuci</span>
@@ -400,10 +412,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* 4 Kartu Metrik KPI Utama */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 4 Kartu Metrik KPI Utama (2 kolom di tablet & tablet-landscape saat sidebar buka, 4 kolom di desktop XL) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* 1. Omset Hari Ini */}
-        <Card className="bg-card border shadow-xs">
+        <Card className="bg-card min-w-0 border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
             <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
               Omset Hari Ini
@@ -413,7 +425,7 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-foreground text-2xl font-black">
+            <div className="text-foreground truncate text-xl font-black sm:text-2xl">
               {formatRupiah(metrics.todayRevenue)}
             </div>
             <div className="mt-1 flex items-center gap-1 text-xs">
@@ -434,7 +446,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* 2. Kendaraan Selesai */}
-        <Card className="bg-card border shadow-xs">
+        <Card className="bg-card min-w-0 border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
             <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
               Kendaraan Selesai
@@ -444,7 +456,7 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-foreground text-2xl font-black">
+            <div className="text-foreground text-xl font-black sm:text-2xl">
               {metrics.todayCompletedCount}{" "}
               <span className="text-muted-foreground text-sm font-semibold">
                 Unit
@@ -458,7 +470,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* 3. SLA Rata-rata Durasi Cuci */}
-        <Card className="bg-card border shadow-xs">
+        <Card className="bg-card min-w-0 border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
             <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
               Rata-rata Durasi
@@ -468,7 +480,7 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-foreground text-2xl font-black">
+            <div className="text-foreground text-xl font-black sm:text-2xl">
               {metrics.averageMinutes}{" "}
               <span className="text-muted-foreground text-sm font-semibold">
                 Menit
@@ -482,7 +494,7 @@ export default async function DashboardPage() {
 
         {/* 4. Metrik Keempat: Komisi Washer untuk Owner/Manager, atau Status Kasir untuk Kasir */}
         {isOwnerOrManager ? (
-          <Card className="bg-card border shadow-xs">
+          <Card className="bg-card min-w-0 border shadow-xs">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
               <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
                 Komisi Belum Dicairkan
@@ -492,7 +504,7 @@ export default async function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <div className="text-foreground text-2xl font-black">
+              <div className="text-foreground truncate text-xl font-black sm:text-2xl">
                 {formatRupiah(metrics.totalUnpaidCommission)}
               </div>
               <Link
@@ -505,7 +517,7 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="bg-card border shadow-xs">
+          <Card className="bg-card min-w-0 border shadow-xs">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
               <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
                 Antrean & Kasir POS
@@ -515,7 +527,7 @@ export default async function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <div className="text-foreground text-2xl font-black">
+              <div className="text-foreground text-xl font-black sm:text-2xl">
                 Mode Kasir
               </div>
               <Link
@@ -548,7 +560,7 @@ export default async function DashboardPage() {
           {/* 1. Kanban Antrean */}
           <Link
             href="/pos/antrean"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors">
               <LayoutGrid className="h-4 w-4" />
@@ -564,7 +576,7 @@ export default async function DashboardPage() {
           {/* 2. Walk-In Baru */}
           <Link
             href="/pos/daftar-baru"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 transition-colors">
               <PlusCircle className="h-4 w-4" />
@@ -580,7 +592,7 @@ export default async function DashboardPage() {
           {/* 3. Kasir & Transaksi */}
           <Link
             href="/pos"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 transition-colors">
               <CreditCard className="h-4 w-4" />
@@ -596,7 +608,7 @@ export default async function DashboardPage() {
           {/* 4. Layar Cuci PIN */}
           <Link
             href="/layar-cuci"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 transition-colors">
               <Tablet className="h-4 w-4" />
@@ -612,7 +624,7 @@ export default async function DashboardPage() {
           {/* 5. Master Paket Layanan */}
           <Link
             href="/dashboard/layanan"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 transition-colors">
               <Sparkles className="h-4 w-4" />
@@ -628,7 +640,7 @@ export default async function DashboardPage() {
           {/* 6. Jadwal Shift Kerja */}
           <Link
             href="/dashboard/shift"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 transition-colors">
               <Clock className="h-4 w-4" />
@@ -644,7 +656,7 @@ export default async function DashboardPage() {
           {/* 7. Stok & Inventori */}
           <Link
             href="/dashboard/stok"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 transition-colors">
               <Boxes className="h-4 w-4" />
@@ -660,7 +672,7 @@ export default async function DashboardPage() {
           {/* 8. Gaji & Komisi Pekerja */}
           <Link
             href="/dashboard/komisi"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 transition-colors">
               <Users className="h-4 w-4" />
@@ -676,7 +688,7 @@ export default async function DashboardPage() {
           {/* 9. Member & Loyalitas */}
           <Link
             href="/dashboard/pelanggan"
-            className="group bg-card hover:border-primary/50 rounded-2xl border p-3.5 transition-all hover:shadow-md"
+            className="group bg-card hover:border-primary/50 min-w-0 rounded-2xl border p-3.5 transition-all hover:shadow-md"
           >
             <div className="group-hover:bg-primary group-hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors">
               <Coins className="h-4 w-4" />
@@ -696,7 +708,7 @@ export default async function DashboardPage() {
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-base">👑</span>
+              <Crown className="h-4 w-4 text-amber-500" />
               <h2 className="text-muted-foreground text-xs font-black tracking-wider uppercase">
                 Otoritas & Tata Kelola Owner
               </h2>
@@ -713,7 +725,7 @@ export default async function DashboardPage() {
             {/* O1. Laporan Arus Kas */}
             <Link
               href="/dashboard/arus-kas"
-              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-emerald-500/50 hover:shadow-md"
+              className="group bg-card min-w-0 rounded-2xl border p-3.5 transition-all hover:border-emerald-500/50 hover:shadow-md"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
                 <Wallet className="h-4 w-4" />
@@ -729,7 +741,7 @@ export default async function DashboardPage() {
             {/* O2. Audit Log Keamanan */}
             <Link
               href="/dashboard/audit"
-              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-blue-500/50 hover:shadow-md"
+              className="group bg-card min-w-0 rounded-2xl border p-3.5 transition-all hover:border-blue-500/50 hover:shadow-md"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
                 <History className="h-4 w-4" />
@@ -745,7 +757,7 @@ export default async function DashboardPage() {
             {/* O3. Webhook WhatsApp */}
             <Link
               href="/dashboard/pengaturan/whatsapp"
-              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-green-500/50 hover:shadow-md"
+              className="group bg-card min-w-0 rounded-2xl border p-3.5 transition-all hover:border-green-500/50 hover:shadow-md"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-500/10 text-green-600 transition-colors group-hover:bg-green-600 group-hover:text-white">
                 <MessageSquare className="h-4 w-4" />
@@ -761,7 +773,7 @@ export default async function DashboardPage() {
             {/* O4. Kelola & Ekspansi Cabang */}
             <Link
               href="/dashboard/pengaturan/cabang"
-              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-purple-500/50 hover:shadow-md"
+              className="group bg-card min-w-0 rounded-2xl border p-3.5 transition-all hover:border-purple-500/50 hover:shadow-md"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 transition-colors group-hover:bg-purple-600 group-hover:text-white">
                 <Building2 className="h-4 w-4" />
@@ -777,7 +789,7 @@ export default async function DashboardPage() {
             {/* O5. Manajemen Akun & Role */}
             <Link
               href="/dashboard/pengguna"
-              className="group bg-card rounded-2xl border p-3.5 transition-all hover:border-amber-500/50 hover:shadow-md"
+              className="group bg-card min-w-0 rounded-2xl border p-3.5 transition-all hover:border-amber-500/50 hover:shadow-md"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors group-hover:bg-amber-600 group-hover:text-white">
                 <ShieldCheck className="h-4 w-4" />
@@ -793,15 +805,15 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Visualisasi Grafik: 2 Kolom Baris 1 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Tren Omset 7 Hari (8 Kolom) */}
-        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-8">
-          <CardHeader className="p-5 pb-2">
+      {/* Visualisasi Grafik: 2 Kolom Baris 1 (Stacked di tablet & tablet-landscape saat sidebar buka, 8+4 di desktop XL) */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        {/* Tren Omset 7 Hari (8 Kolom di desktop XL) */}
+        <Card className="bg-card min-w-0 border shadow-xs xl:col-span-8">
+          <CardHeader className="p-4 pb-2 sm:p-5">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2 text-base font-extrabold">
-                  <TrendingUp className="text-primary h-4 w-4" />
+                <CardTitle className="flex items-center gap-2 text-sm font-extrabold sm:text-base">
+                  <TrendingUp className="text-primary h-4 w-4 shrink-0" />
                   <span>Tren Pendapatan 7 Hari Terakhir</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -811,57 +823,57 @@ export default async function DashboardPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="min-w-0 p-5 pt-2">
+          <CardContent className="min-w-0 p-4 pt-2 sm:p-5">
             <RevenueTrendChart data={metrics.sevenDaysTrend} />
           </CardContent>
         </Card>
 
-        {/* Komposisi Omset: Jasa vs Ritel (4 Kolom) */}
-        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-4">
-          <CardHeader className="p-5 pb-2">
-            <CardTitle className="text-base font-extrabold">
+        {/* Komposisi Omset: Jasa vs Ritel (4 Kolom di desktop XL) */}
+        <Card className="bg-card min-w-0 border shadow-xs xl:col-span-4">
+          <CardHeader className="p-4 pb-2 sm:p-5">
+            <CardTitle className="text-sm font-extrabold sm:text-base">
               Komposisi Pendapatan
             </CardTitle>
             <CardDescription className="text-xs">
               Perbandingan omset jasa cuci vs barang ritel.
             </CardDescription>
           </CardHeader>
-          <CardContent className="min-w-0 p-5 pt-0">
+          <CardContent className="min-w-0 p-4 pt-0 sm:p-5">
             <RevenueCompositionChart data={metrics.revenueComposition} />
           </CardContent>
         </Card>
       </div>
 
       {/* Visualisasi Grafik Baris 2: Jam Sibuk & Kategori Kendaraan */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Jam Sibuk Peak Hours (7 Kolom) */}
-        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-7">
-          <CardHeader className="p-5 pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-extrabold">
-              <Clock className="text-primary h-4 w-4" />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        {/* Jam Sibuk Peak Hours (7 Kolom di desktop XL) */}
+        <Card className="bg-card min-w-0 border shadow-xs xl:col-span-7">
+          <CardHeader className="p-4 pb-2 sm:p-5">
+            <CardTitle className="flex items-center gap-2 text-sm font-extrabold sm:text-base">
+              <Clock className="text-primary h-4 w-4 shrink-0" />
               <span>Grafik Jam Sibuk (Peak Hours 08:00 - 21:00)</span>
             </CardTitle>
             <CardDescription className="text-xs">
               Distribusi kedatangan kendaraan untuk optimasi jadwal kerja staf.
             </CardDescription>
           </CardHeader>
-          <CardContent className="min-w-0 p-5 pt-2">
+          <CardContent className="min-w-0 p-4 pt-2 sm:p-5">
             <PeakHoursChart data={metrics.peakHours} />
           </CardContent>
         </Card>
 
-        {/* Distribusi Kategori Kendaraan (5 Kolom) */}
-        <Card className="bg-card min-w-0 border shadow-xs lg:col-span-5">
-          <CardHeader className="p-5 pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-extrabold">
-              <Car className="h-4 w-4 text-purple-600" />
+        {/* Distribusi Kategori Kendaraan (5 Kolom di desktop XL) */}
+        <Card className="bg-card min-w-0 border shadow-xs xl:col-span-5">
+          <CardHeader className="p-4 pb-2 sm:p-5">
+            <CardTitle className="flex items-center gap-2 text-sm font-extrabold sm:text-base">
+              <Car className="h-4 w-4 shrink-0 text-purple-600" />
               <span>Kategori Kendaraan Tercuci</span>
             </CardTitle>
             <CardDescription className="text-xs">
               Perbandingan motor vs tipe mobil di outlet.
             </CardDescription>
           </CardHeader>
-          <CardContent className="min-w-0 p-5 pt-2">
+          <CardContent className="min-w-0 p-4 pt-2 sm:p-5">
             <VehicleCategoryChart data={metrics.vehicleCategories} />
           </CardContent>
         </Card>
@@ -869,8 +881,8 @@ export default async function DashboardPage() {
 
       {/* Tabel 5 Transaksi Tiket Terbaru */}
       <Card className="bg-card border shadow-xs">
-        <CardHeader className="p-5 pb-3">
-          <div className="flex items-center justify-between">
+        <CardHeader className="p-4 pb-3 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-base font-extrabold">
                 Aktivitas Tiket Terkini
@@ -883,7 +895,7 @@ export default async function DashboardPage() {
               asChild
               variant="outline"
               size="sm"
-              className="h-8 text-xs font-semibold"
+              className="h-8 w-full justify-center text-xs font-semibold sm:w-auto"
             >
               <Link href="/pos/antrean">Lihat Seluruh Antrean</Link>
             </Button>
@@ -891,16 +903,20 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-160 text-left text-xs">
               <thead className="bg-muted/50 text-muted-foreground border-y text-[10px] font-bold uppercase">
                 <tr>
-                  <th className="px-5 py-3">No. Tiket</th>
-                  <th className="px-5 py-3">Plat Kendaraan</th>
-                  <th className="px-5 py-3">Paket Layanan</th>
-                  <th className="px-5 py-3">Total Tagihan</th>
-                  <th className="px-5 py-3">Status Cuci</th>
-                  <th className="px-5 py-3">Pembayaran</th>
-                  <th className="px-5 py-3 text-right">Aksi</th>
+                  <th className="px-5 py-3 whitespace-nowrap">No. Tiket</th>
+                  <th className="px-5 py-3 whitespace-nowrap">
+                    Plat Kendaraan
+                  </th>
+                  <th className="px-5 py-3 whitespace-nowrap">Paket Layanan</th>
+                  <th className="px-5 py-3 whitespace-nowrap">Total Tagihan</th>
+                  <th className="px-5 py-3 whitespace-nowrap">Status Cuci</th>
+                  <th className="px-5 py-3 whitespace-nowrap">Pembayaran</th>
+                  <th className="px-5 py-3 text-right whitespace-nowrap">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -909,17 +925,19 @@ export default async function DashboardPage() {
                     key={t.id}
                     className="hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-5 py-3.5 font-mono font-bold">
+                    <td className="px-5 py-3.5 font-mono font-bold whitespace-nowrap">
                       #{t.ticketNumber}
                     </td>
-                    <td className="text-foreground px-5 py-3.5 font-mono font-extrabold">
+                    <td className="text-foreground px-5 py-3.5 font-mono font-extrabold whitespace-nowrap">
                       {formatLicensePlate(t.licensePlate)}
                     </td>
-                    <td className="px-5 py-3.5 font-medium">{t.serviceName}</td>
-                    <td className="text-primary px-5 py-3.5 font-bold">
+                    <td className="px-5 py-3.5 font-medium whitespace-nowrap">
+                      {t.serviceName}
+                    </td>
+                    <td className="text-primary px-5 py-3.5 font-bold whitespace-nowrap">
                       {formatRupiah(t.totalAmount)}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       <span
                         className={`rounded px-2 py-0.5 text-[11px] font-bold ${
                           t.status === "READY"
@@ -934,7 +952,7 @@ export default async function DashboardPage() {
                         {t.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       <Badge
                         variant={
                           t.paymentStatus === "PAID" ? "default" : "outline"
@@ -944,7 +962,7 @@ export default async function DashboardPage() {
                         {t.paymentStatus === "PAID" ? "Lunas" : "Belum Bayar"}
                       </Badge>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
                       <Button
                         asChild
                         size="sm"

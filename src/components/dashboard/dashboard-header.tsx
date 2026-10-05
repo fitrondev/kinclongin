@@ -176,7 +176,7 @@ export function DashboardHeader({
                 className="h-6 w-6 object-contain"
               />
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="hidden items-center gap-1.5 sm:flex">
               <span className="font-mono text-sm font-black tracking-tight uppercase">
                 KINCLONGIN
               </span>
@@ -229,12 +229,21 @@ export function DashboardHeader({
           })}
         </nav>
 
-        {/* Right Action Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Right Action Buttons (4 Tombol Responsif di Mobile: Member, Theme, User, Menu) */}
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {/* Direct Member Registration Dialog (Bisa untuk Owner, Manajer & Kasir) */}
           <MembershipDialog
-            buttonText="+ Member"
-            className="h-9 text-xs font-bold"
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-9 shrink-0 border-amber-500/30 bg-amber-500/10 p-0 font-bold text-amber-700 shadow-xs hover:bg-amber-500/20 sm:w-auto sm:gap-1.5 sm:px-2.5 dark:text-amber-300"
+                title="Daftar Member Baru (Rp 50.000)"
+              >
+                <Crown className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span className="hidden sm:inline">+ Member</span>
+              </Button>
+            }
           />
 
           {/* Quick links to POS */}
@@ -264,12 +273,12 @@ export function DashboardHeader({
 
           <div className="bg-border mx-1 hidden h-5 w-px sm:block" />
 
-          <ThemeToggle />
+          <ThemeToggle className="shrink-0" />
           <UserButton
             appearance={{
               elements: {
                 userButtonAvatarBox:
-                  "h-9 w-9 rounded-xl border-2 border-primary/20",
+                  "h-9 w-9 rounded-xl border-2 border-primary/20 shrink-0",
               },
             }}
           />
@@ -280,7 +289,7 @@ export function DashboardHeader({
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 cursor-pointer rounded-xl xl:hidden"
+                className="h-9 w-9 shrink-0 cursor-pointer rounded-xl xl:hidden"
                 aria-label="Buka Menu Navigasi Dasbor"
               >
                 <Menu className="h-4 w-4" />

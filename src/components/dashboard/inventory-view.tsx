@@ -222,7 +222,7 @@ export function InventoryView({ data }: { data: InventoryData }) {
   return (
     <div className="space-y-6">
       {/* Title */}
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
         <div>
           <h1 className="text-foreground text-xl font-black tracking-tight sm:text-2xl">
             Kontrol Stok & Bahan Operasional
@@ -234,8 +234,8 @@ export function InventoryView({ data }: { data: InventoryData }) {
         </div>
 
         {/* Tab Switcher & Export */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="bg-card flex items-center gap-1 rounded-xl border p-1 text-xs font-bold shadow-xs">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+          <div className="bg-card flex flex-wrap items-center gap-1 rounded-xl border p-1 text-xs font-bold shadow-xs">
             <button
               type="button"
               onClick={() => setActiveTab("RETAIL")}
@@ -286,7 +286,7 @@ export function InventoryView({ data }: { data: InventoryData }) {
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
-            className="h-9 gap-1.5 text-xs font-bold shadow-xs"
+            className="h-9 w-full gap-1.5 text-xs font-bold shadow-xs sm:w-auto"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Ekspor CSV</span>
