@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { isAuthorizedForOutlet } from "@/lib/auth/rbac";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getSafeRedirectUrl } from "@/lib/security/redirect";
 
@@ -52,6 +53,55 @@ describe("Security & Validation Unit Tests", () => {
       });
       expect(blocked.success).toBe(false);
       expect(blocked.remaining).toBe(0);
+    });
+  });
+  describe("isAuthorizedForOutlet (Multi-Tenant IDOR Protection)", () => {
+    it("mengizinkan akses staf jika outletId cocok dengan cabang aktif", () => {
+      const user = {
+        role: "CASHIER",
+        outletId: "outlet-surabaya-01",
+        ownedOutlets: [],
+      };
+      expect(isAuthorizedForOutlet(user, "outlet-surabaya-01")).toBe(true);
+    });
+
+    it("menolak akses staf jika mencoba memanipulasi outlet cabang lain", () => {
+      const user = {
+        role: "CASHIER",
+        outletId: "outlet-surabaya-01",
+        ownedOutlets: [],
+      };
+      expect(isAuthorizedForOutlet(user, "outlet-malang-02")).toBe(false);
+    });
+
+    it("mengizinkan Owner mengakses seluruh cabang yang dimilikinya", () => {
+      const owner = {
+        role: "OWNER",
+        outletId: "outlet-surabaya-01",
+        ownedOutlets: [
+          { id: "outlet-surabaya-01" },
+          { id: "outlet-malang-02" },
+        ],
+      };
+      expect(isAuthorizedForOutlet(owner, "outlet-surabaya-01")).toBe(true);
+      expect(isAuthorizedForOutlet(owner, "outlet-malang-02")).toBe(true);
+      expect(isAuthorizedForOutlet(owner, "outlet-jakarta-99")).toBe(false);
+    });
+
+    it("selalu mengizinkan Superadmin mengakses seluruh tenant dan cabang", () => {
+      const superadmin = {
+        role: "SUPERADMIN",
+        outletId: null,
+        ownedOutlets: [],
+      };
+      expect(isAuthorizedForOutlet(superadmin, "any-outlet-id")).toBe(true);
+    });
+
+    it("menolak pengguna yang tidak memiliki sesi login (null/undefined)", () => {
+      expect(isAuthorizedForOutlet(null, "outlet-surabaya-01")).toBe(false);
+      expect(isAuthorizedForOutlet(undefined, "outlet-surabaya-01")).toBe(
+        false
+      );
     });
   });
 });

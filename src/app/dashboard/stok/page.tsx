@@ -56,7 +56,7 @@ export default async function DashboardStokPage() {
         operationalSupply: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 50,
     }),
   ]);
 
@@ -75,6 +75,7 @@ export default async function DashboardStokPage() {
       id: s.id,
       name: s.name,
       unit: s.unit,
+      sku: s.sku,
       currentStock: Number(s.stock),
       minStockAlert: Number(s.minStockAlert),
       usagePerCarWash: Number(s.usagePerCarWash),

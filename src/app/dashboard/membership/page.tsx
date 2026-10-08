@@ -1,10 +1,14 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
+  ArrowRight,
   CheckCircle2,
   Clock,
   Crown,
+  Gift,
+  Info,
   Sparkles,
   TrendingUp,
   Users,
@@ -12,15 +16,16 @@ import {
 
 import { MembershipDialog } from "@/components/pos/membership-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { formatRupiah } from "@/lib/formatters";
 
 export const metadata: Metadata = {
-  title: "Langganan Member Pelanggan | Kinclongin POS",
+  title: "Loyalty & Keanggotaan Pelanggan | Kinclongin POS",
   description:
-    "Kelola paket langganan cuci bulanan member, pantau sisa kuota cuci pelanggan, dan riwayat pendapatan membership.",
+    "Kelola paket kuota cuci berkala, diskon detailing, dan program loyalitas pelanggan tempat cuci Anda.",
 };
 
 export default async function DashboardMembershipPage() {
@@ -66,17 +71,43 @@ export default async function DashboardMembershipPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Notice Pemisahan: Loyalty Pelanggan vs Sewa Lisensi */}
+      <aside
+        aria-label="Informasi sewa sistem platform"
+        className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-xs text-blue-900 sm:flex-row sm:items-center sm:justify-between dark:text-blue-200"
+      >
+        <div className="flex items-center gap-2.5">
+          <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+          <span>
+            Halaman ini khusus mengelola{" "}
+            <strong>Loyalty & Kuota Cuci Pelanggan</strong>. Untuk pembayaran
+            sewa software POS cabang Rp 50.000/bulan ke platform Kinclongin,
+            silakan buka menu <strong>Tagihan & Lisensi Cabang</strong>.
+          </span>
+        </div>
+        <Button
+          asChild
+          size="sm"
+          variant="outline"
+          className="bg-background h-7 shrink-0 gap-1 text-xs font-bold"
+        >
+          <Link href="/dashboard/pengaturan/langganan">
+            <span>Buka Lisensi Cabang</span>
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </Button>
+      </aside>
+
       {/* Page Title & Action */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
           <h1 className="text-foreground flex flex-wrap items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl">
             <Crown className="h-5 w-5 shrink-0 text-amber-500 sm:h-6 sm:w-6" />
-            <span>Keanggotaan & Loyalitas Member Pelanggan</span>
+            <span>Keanggotaan & Loyalitas Pelanggan Cuci</span>
           </h1>
           <p className="text-muted-foreground text-xs sm:text-sm">
-            Pendaftaran member flat Rp 50.000 via Nomor WhatsApp: Poin
-            akumulatif tiap transaksi dan validasi promo terprogram Cuci 10x
-            Gratis 1x.
+            Program retensi pelanggan setia tempat cuci Anda: Paket kuota cuci
+            berkala, poin loyalitas transaksi, dan promo apresiasi pelanggan.
           </p>
         </div>
         <div className="w-full shrink-0 sm:w-auto">
@@ -147,19 +178,19 @@ export default async function DashboardMembershipPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-primary/20 bg-primary/5 shadow-xs">
+        <Card className="border-purple-500/20 bg-purple-500/5 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-primary text-xs font-bold uppercase">
-              Penambahan Cabang
+            <CardTitle className="text-xs font-bold text-purple-700 uppercase dark:text-purple-300">
+              Program Loyalitas
             </CardTitle>
-            <CheckCircle2 className="text-primary h-4 w-4" />
+            <Gift className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-foreground text-2xl font-black">
-              100% Gratis
+              Diskon & Kuota
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
-              Buka cabang baru tanpa biaya langganan SaaS
+              Tingkatkan repeat order cuci mobil & motor
             </p>
           </CardContent>
         </Card>

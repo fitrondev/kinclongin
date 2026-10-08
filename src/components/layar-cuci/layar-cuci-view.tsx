@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
+  CheckCircle2,
   Clock,
   Droplets,
   Layers,
@@ -20,6 +21,7 @@ import {
 import { LayarCuciHeader } from "@/components/layar-cuci/layar-cuci-header";
 import { PinModal } from "@/components/layar-cuci/pin-modal";
 import { RekapShiftModal } from "@/components/layar-cuci/rekap-shift-modal";
+import { OfflineIndicator } from "@/components/pos/offline-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +29,7 @@ interface LayarCuciViewProps {
   initialTickets: LayarCuciItem[];
   outletId: string;
   outletName: string;
+  outletLogo?: string | null;
   userRole?: string | null;
 }
 
@@ -34,12 +37,13 @@ export function LayarCuciView({
   initialTickets,
   outletId,
   outletName,
+  outletLogo,
   userRole,
 }: LayarCuciViewProps) {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "ALL" | "QUEUED" | "WASHING" | "DRYING"
+    "ALL" | "QUEUED" | "WASHING" | "DRYING" | "READY"
   >("ALL");
   const [selectedTicketForPin, setSelectedTicketForPin] =
     useState<LayarCuciItem | null>(null);
@@ -74,14 +78,17 @@ export function LayarCuciView({
   const dryingCount = initialTickets.filter(
     (t) => t.status === "DRYING"
   ).length;
+  const readyCount = initialTickets.filter((t) => t.status === "READY").length;
 
   return (
     <div className="bg-background flex min-h-screen flex-col">
       <LayarCuciHeader
         outletName={outletName}
+        outletLogo={outletLogo}
         onOpenShiftSummary={() => setShowShiftModal(true)}
         userRole={userRole}
       />
+      <OfflineIndicator />
 
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-5 p-4 sm:p-6">
         {/* Tab Filter & Live Counter */}
@@ -136,6 +143,19 @@ export function LayarCuciView({
             >
               <Wind className="h-4 w-4" />
               <span>Lap & Pengeringan ({dryingCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("READY")}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold whitespace-nowrap transition-colors sm:text-sm ${
+                activeTab === "READY"
+                  ? "bg-emerald-600 font-black text-white shadow-xs"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Siap Ambil ({readyCount})</span>
             </button>
           </div>
 

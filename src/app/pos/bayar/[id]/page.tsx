@@ -103,6 +103,11 @@ export default async function POSBayarPage({
       name: ticket.outlet.name,
       address: ticket.outlet.address,
       phone: ticket.outlet.phone,
+      logoUrl: ticket.outlet.logoUrl,
+      slogan: ticket.outlet.slogan,
+      receiptHeader: ticket.outlet.receiptHeader,
+      receiptFooter: ticket.outlet.receiptFooter,
+      contactPhone: ticket.outlet.contactPhone,
     },
   };
 

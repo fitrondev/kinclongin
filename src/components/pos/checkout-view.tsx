@@ -54,6 +54,11 @@ export interface CheckoutTicketData {
     name: string;
     address: string;
     phone: string;
+    logoUrl?: string | null;
+    slogan?: string | null;
+    receiptHeader?: string | null;
+    receiptFooter?: string | null;
+    contactPhone?: string | null;
   };
 }
 
@@ -238,6 +243,10 @@ export function CheckoutView({
         outletName: ticket.outlet.name,
         outletAddress: ticket.outlet.address,
         outletPhone: ticket.outlet.phone,
+        slogan: ticket.outlet.slogan,
+        receiptHeader: ticket.outlet.receiptHeader,
+        receiptFooter: ticket.outlet.receiptFooter,
+        contactPhone: ticket.outlet.contactPhone,
         ticketNumber: ticket.ticketNumber,
         dateStr: new Date().toLocaleDateString("id-ID", {
           day: "2-digit",
@@ -384,6 +393,7 @@ export function CheckoutView({
                 grandTotal={grandTotal}
                 changeGiven={changeGiven}
                 isPending={isPending}
+                outletName={ticket.outlet.name}
                 onProcessCheckout={handleProcessCheckout}
               />
             </CardContent>

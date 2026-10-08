@@ -69,6 +69,16 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
+  // Khusus Peran SUPERADMIN Platform: Arahkan langsung ke Portal Platform Provider
+  // Superadmin tidak mengelola operasional cuci cabang (tidak ada fasilitas cuci lokal)
+  if (
+    user.role === "SUPERADMIN" ||
+    user.email?.toLowerCase() === "superadmin@kinclongin.com" ||
+    user.email?.toLowerCase() === "admin@kinclongin.com"
+  ) {
+    redirect("/dashboard/admin");
+  }
+
   const outlet = user?.outletId
     ? await prisma.outlet.findUnique({ where: { id: user.outletId } })
     : await prisma.outlet.findFirst({ where: { isActive: true } });
@@ -97,6 +107,7 @@ export default async function DashboardPage() {
       todayMembershipsCount,
       pendingTickets,
       shiftAssignment,
+      openingFloatLog,
     ] = await Promise.all([
       // 1. Ambil pembayaran yang diproses kasir ini hari ini
       prisma.payment.findMany({
@@ -161,7 +172,29 @@ export default async function DashboardPage() {
           shift: true,
         },
       }),
+      // 6. Cek modal awal kasir hari ini jika ada di AuditLog
+      prisma.auditLog.findFirst({
+        where: {
+          outletId: outlet.id,
+          actorId: user.id,
+          action: "DRAWER_OPENING_FLOAT",
+          createdAt: { gte: todayStart },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
+
+    let openingCashFloat = 0;
+    if (
+      openingFloatLog?.metadata &&
+      typeof openingFloatLog.metadata === "object" &&
+      !Array.isArray(openingFloatLog.metadata)
+    ) {
+      const meta = openingFloatLog.metadata as Record<string, unknown>;
+      if (typeof meta.openingAmount === "number") {
+        openingCashFloat = meta.openingAmount;
+      }
+    }
 
     let todayCashInDrawer = 0;
     let todayQris = 0;
@@ -228,8 +261,13 @@ export default async function DashboardPage() {
         outletName={outlet.name}
         outletAddress={outlet.address}
         outletPhone={outlet.phone}
+        outletSlogan={outlet.slogan}
+        outletReceiptHeader={outlet.receiptHeader}
+        outletReceiptFooter={outlet.receiptFooter}
+        outletContactPhone={outlet.contactPhone}
         outletId={outlet.id}
         shiftName={shiftName}
+        openingCashFloat={openingCashFloat}
         todayCashInDrawer={todayCashInDrawer}
         todayNonCash={todayNonCash}
         todayQris={todayQris}
@@ -703,7 +741,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Bagian Khusus: Fitur Eksekutif Owner (Superadmin) */}
+      {/* Bagian Khusus: Fitur Eksekutif Owner Bisnis */}
       {isOwner && (
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
@@ -717,7 +755,7 @@ export default async function DashboardPage() {
               variant="outline"
               className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-600"
             >
-              Superadmin Only
+              Owner Only
             </Badge>
           </div>
 

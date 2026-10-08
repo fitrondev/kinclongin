@@ -65,7 +65,20 @@ export async function canAccessStorageFile(
       select: { id: true },
     });
 
-    return !!memberPayment;
+    if (memberPayment) {
+      return true;
+    }
+
+    // Cek bukti pembayaran langganan lisensi cabang outlet
+    const tenantPayment = await prisma.tenantSubscriptionPayment.findFirst({
+      where: {
+        paymentProofUrl: { contains: cleanKey },
+        outletId: user.outletId ?? undefined,
+      },
+      select: { id: true },
+    });
+
+    return !!tenantPayment;
   }
 
   return false;

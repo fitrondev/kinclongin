@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { WalkInForm } from "@/components/pos/walk-in-form";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { getActiveServicePackages } from "@/lib/db/queries";
+import { getActiveServicePackages, getActiveWashers } from "@/lib/db/queries";
 
 export const metadata: Metadata = {
   title: "Daftar Cuci Baru (<15 Detik) | Kinclongin POS",
@@ -39,7 +39,10 @@ export default async function POSDaftarBaruPage() {
     );
   }
 
-  const rawPackages = await getActiveServicePackages(outletId);
+  const [rawPackages, activeWashers] = await Promise.all([
+    getActiveServicePackages(outletId),
+    getActiveWashers(outletId),
+  ]);
 
   const servicePackages = rawPackages.map((p) => ({
     id: p.id,
@@ -48,6 +51,12 @@ export default async function POSDaftarBaruPage() {
     vehicleCategory: p.vehicleCategory,
     price: Number(p.price),
     estimatedMinutes: p.estimatedMinutes,
+  }));
+
+  const washers = activeWashers.map((w) => ({
+    id: w.id,
+    fullName: w.fullName,
+    role: w.role,
   }));
 
   return (
@@ -62,7 +71,11 @@ export default async function POSDaftarBaruPage() {
         </p>
       </div>
 
-      <WalkInForm outletId={outletId} servicePackages={servicePackages} />
+      <WalkInForm
+        outletId={outletId}
+        servicePackages={servicePackages}
+        washers={washers}
+      />
     </div>
   );
 }

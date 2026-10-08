@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="sparkle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with rounded corners -->
+  <rect width="192" height="192" rx="42" fill="url(#bg)"/>
+  
+  <!-- Car Silhouette / Water Droplet & Sparkle Badge -->
+  <g transform="translate(24, 28)">
+    <!-- Droplet Base -->
+    <path d="M72 10 C72 10, 114 65, 114 96 A42 42 0 1 1 30 96 C30 65, 72 10, 72 10 Z" fill="#ffffff" fill-opacity="0.2"/>
+    
+    <!-- Sparkles -->
+    <!-- Primary Big Sparkle -->
+    <path d="M72 45 Q72 72 45 72 Q72 72 72 99 Q72 72 99 72 Q72 72 72 45 Z" fill="url(#sparkle)"/>
+    
+    <!-- Secondary Small Sparkle -->
+    <path d="M108 30 Q108 44 94 44 Q108 44 108 58 Q108 44 122 44 Q108 44 108 30 Z" fill="#ffffff"/>
+    
+    <!-- Tertiary Small Sparkle -->
+    <path d="M38 98 Q38 108 28 108 Q38 108 38 118 Q38 108 48 108 Q38 108 38 98 Z" fill="#38bdf8"/>
+    
+    <!-- Speed/Clean Horizontal Waves -->
+    <path d="M20 120 C40 114, 60 126, 80 120 C100 114, 120 124, 130 120" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" fill="none" opacity="0.9"/>
+    <path d="M30 132 C50 126, 70 138, 90 132 C110 126, 120 134, 125 132" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8"/>
+  </g>
+</svg>

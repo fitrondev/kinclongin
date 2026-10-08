@@ -13,6 +13,7 @@ export interface WhatsAppReceiptTemplateParams {
   outletName: string;
   outletAddress: string;
   outletPhone: string;
+  slogan?: string | null;
   loyaltyPoints?: number;
 }
 
@@ -32,13 +33,23 @@ export function formatWhatsAppReceiptMessage(
     paymentMethod,
     outletName,
     outletAddress,
+    slogan,
     loyaltyPoints = 0,
   } = params;
+
+  const appUrl =
+    typeof process !== "undefined" && process.env?.NEXT_PUBLIC_APP_URL
+      ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
+      : "https://kinclongin.com";
+
+  const closingSlogan = slogan
+    ? `_${slogan}_`
+    : `_Kendaraan Bersih, Perjalanan Menyenangkan!_`;
 
   return `*STRUK DIGITAL — ${outletName.toUpperCase()}*
 ${outletAddress}
 
-Halo, *${customerName || "Sahabat Kinclong"}*! Terima kasih telah mencuci kendaraan Anda di ${outletName}.
+Halo, *${customerName || `Pelanggan Setia ${outletName}`}*! Terima kasih telah mencuci kendaraan Anda di ${outletName}.
 
 *DETAIL TRANSAKSI:*
 • No. Tiket: *#${ticketNumber}*
@@ -49,8 +60,8 @@ Halo, *${customerName || "Sahabat Kinclong"}*! Terima kasih telah mencuci kendar
 • Saldo Poin: *${loyaltyPoints} Poin*
 
 *Pantau E-Nota & Status Kendaraan:*
-https://kinclongin.com/lacak/${params.ticketId}
+${appUrl}/lacak/${params.ticketId}
 
-_Kendaraan Kinclong, Perjalanan Menyenangkan!_
+${closingSlogan}
 =================================`;
 }

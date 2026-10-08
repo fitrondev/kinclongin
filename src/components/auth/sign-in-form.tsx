@@ -15,6 +15,7 @@ import {
   Lock,
   Mail,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,11 +65,15 @@ export function SignInForm() {
       if (res?.error) {
         toast.error("Email atau kata sandi tidak valid.");
       } else {
-        toast.success("Berhasil masuk!");
+        const isSuperAdminEmail =
+          cleanEmail.startsWith("superadmin") ||
+          cleanEmail === "admin@kinclongin.com";
         const destination =
           cleanEmail.startsWith("kasir") && callbackUrl === "/dashboard"
             ? "/pos/antrean"
-            : callbackUrl;
+            : isSuperAdminEmail && callbackUrl === "/dashboard"
+              ? "/dashboard/admin"
+              : callbackUrl;
         router.push(destination);
         router.refresh();
       }
@@ -151,7 +156,7 @@ export function SignInForm() {
                 type="text"
                 autoCapitalize="none"
                 autoCorrect="off"
-                placeholder="admin, manager, kasir, atau nama@kinclongin.com"
+                placeholder="superadmin, owner, manager, kasir, atau nama@kinclongin.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -203,55 +208,122 @@ export function SignInForm() {
               </span>
             </div>
 
+            {/* 0. Superadmin Platform (Platform Provider) */}
+            <button
+              type="button"
+              disabled={isLoading}
+              suppressHydrationWarning
+              onClick={() =>
+                handleDemoLogin(
+                  "superadmin@kinclongin.com",
+                  "123456",
+                  "Superadmin",
+                  "/dashboard/admin/subscriptions"
+                )
+              }
+              className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-indigo-500/40 bg-indigo-500/10 p-2.5 text-left transition-all hover:bg-indigo-500/20 disabled:opacity-50"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                    Superadmin Platform
+                  </span>
+                  <span className="rounded-md bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 uppercase dark:text-indigo-300">
+                    Platform Provider
+                  </span>
+                </div>
+                <p className="text-muted-foreground truncate text-[10px]">
+                  Approval Sewa 50k & Kelola Semua Tempat Cuci
+                </p>
+              </div>
+              {loggingInRole === "Superadmin" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+              ) : (
+                <ArrowRight className="h-3.5 w-3.5 text-indigo-600/70" />
+              )}
+            </button>
+
             <div className="grid grid-cols-2 gap-2" suppressHydrationWarning>
-              {/* 1. Owner */}
+              {/* 1. Owner 1 (AutoClean Group) */}
               <button
                 type="button"
                 disabled={isLoading}
                 suppressHydrationWarning
                 onClick={() =>
                   handleDemoLogin(
-                    "owner@kinclongin.com",
+                    "ridwan.owner@autoclean.com",
                     "123456",
-                    "Owner",
+                    "Owner 1",
                     "/dashboard"
                   )
                 }
-                className="flex cursor-pointer items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-left transition-all hover:bg-amber-500/20 disabled:opacity-50"
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-2 text-left transition-all hover:bg-amber-500/20 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                  <p className="flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-amber-400">
                     <Crown className="h-3.5 w-3.5 shrink-0" />
-                    <span>Owner</span>
+                    <span>Owner 1</span>
                   </p>
                   <p className="text-muted-foreground truncate text-[10px]">
-                    Pak H. Ridwan
+                    H. Ridwan (2 Cabang)
                   </p>
                 </div>
-                {loggingInRole === "Owner" ? (
+                {loggingInRole === "Owner 1" ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600" />
                 ) : (
                   <ArrowRight className="h-3.5 w-3.5 text-amber-600/70" />
                 )}
               </button>
 
-              {/* 2. Manajer */}
+              {/* 2. Owner 2 (Kilap & Star) */}
               <button
                 type="button"
                 disabled={isLoading}
                 suppressHydrationWarning
                 onClick={() =>
                   handleDemoLogin(
-                    "danu.manager@kinclongin.com",
+                    "dewi.owner@kilapglossy.com",
+                    "123456",
+                    "Owner 2",
+                    "/dashboard"
+                  )
+                }
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-2 text-left transition-all hover:bg-rose-500/20 disabled:opacity-50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1 text-xs font-bold text-rose-700 dark:text-rose-400">
+                    <Crown className="h-3.5 w-3.5 shrink-0" />
+                    <span>Owner 2</span>
+                  </p>
+                  <p className="text-muted-foreground truncate text-[10px]">
+                    Dewi A. (2 Cabang)
+                  </p>
+                </div>
+                {loggingInRole === "Owner 2" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-600" />
+                ) : (
+                  <ArrowRight className="h-3.5 w-3.5 text-rose-600/70" />
+                )}
+              </button>
+
+              {/* 3. Manajer */}
+              <button
+                type="button"
+                disabled={isLoading}
+                suppressHydrationWarning
+                onClick={() =>
+                  handleDemoLogin(
+                    "danu.manager@autoclean.com",
                     "123456",
                     "Manajer",
                     "/dashboard"
                   )
                 }
-                className="flex cursor-pointer items-center justify-between rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-left transition-all hover:bg-blue-500/20 disabled:opacity-50"
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-blue-500/30 bg-blue-500/10 p-2 text-left transition-all hover:bg-blue-500/20 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-400">
+                  <p className="flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-400">
                     <Briefcase className="h-3.5 w-3.5 shrink-0" />
                     <span>Manajer</span>
                   </p>
@@ -266,23 +338,23 @@ export function SignInForm() {
                 )}
               </button>
 
-              {/* 3. Kasir */}
+              {/* 4. Kasir */}
               <button
                 type="button"
                 disabled={isLoading}
                 suppressHydrationWarning
                 onClick={() =>
                   handleDemoLogin(
-                    "kasir.pagi@kinclongin.com",
+                    "siti.kasir@autoclean.com",
                     "123456",
                     "Kasir",
                     "/pos/antrean"
                   )
                 }
-                className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-left transition-all hover:bg-emerald-500/20 disabled:opacity-50"
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2 text-left transition-all hover:bg-emerald-500/20 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <p className="flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                     <CreditCard className="h-3.5 w-3.5 shrink-0" />
                     <span>Kasir</span>
                   </p>
@@ -297,20 +369,20 @@ export function SignInForm() {
                 )}
               </button>
 
-              {/* 4. Washer (Agus) -> Langsung Masuk ke Dashboard Washer */}
+              {/* 5. Washer (Agus) -> Langsung Masuk ke Dashboard Washer */}
               <button
                 type="button"
                 disabled={isLoading}
                 suppressHydrationWarning
                 onClick={() =>
                   handleDemoLogin(
-                    "agus.washer@kinclongin.com",
+                    "agus.washer@autoclean.com",
                     "123456",
-                    "Washer (Agus)",
+                    "Washer",
                     "/dashboard"
                   )
                 }
-                className="ring-primary/40 flex cursor-pointer items-center justify-between rounded-xl border border-purple-500/40 bg-purple-500/15 p-2.5 text-left shadow-xs ring-1 transition-all hover:bg-purple-500/25 disabled:opacity-50"
+                className="col-span-2 flex cursor-pointer items-center justify-between rounded-xl border border-purple-500/40 bg-purple-500/15 p-2 text-left shadow-xs transition-all hover:bg-purple-500/25 disabled:opacity-50"
               >
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300">
@@ -318,10 +390,10 @@ export function SignInForm() {
                     <span>Washer (Agus)</span>
                   </p>
                   <p className="truncate text-[10px] font-medium text-purple-600/90 dark:text-purple-300/90">
-                    PIN: 1234 • Ke Dasbor
+                    PIN Tablet: 1234 • AutoClean Express
                   </p>
                 </div>
-                {loggingInRole === "Washer (Agus)" ? (
+                {loggingInRole === "Washer" ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600" />
                 ) : (
                   <ArrowRight className="h-3.5 w-3.5 text-purple-600" />

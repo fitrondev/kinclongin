@@ -97,6 +97,18 @@ export async function registerCustomerMembershipAction(
 
     let targetOutletId: string;
     if (inputOutletId) {
+      const isOwner = user.ownedOutlets?.some((o) => o.id === inputOutletId);
+      if (
+        user.role !== "SUPERADMIN" &&
+        user.outletId &&
+        inputOutletId !== user.outletId &&
+        !isOwner
+      ) {
+        return {
+          success: false,
+          error: "Akses ditolak: Anda tidak memiliki wewenang pada cabang ini.",
+        };
+      }
       targetOutletId = inputOutletId;
     } else if (user.outletId) {
       targetOutletId = user.outletId;

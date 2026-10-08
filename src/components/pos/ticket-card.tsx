@@ -159,7 +159,7 @@ export function TicketCard({ ticket, onStatusChanged }: TicketCardProps) {
 
   return (
     <>
-      <Card className="group bg-card relative overflow-hidden border shadow-xs transition-shadow hover:shadow-md">
+      <Card className="group bg-card relative overflow-hidden border shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
         {/* Top bar indicator */}
         <div className="flex items-center justify-between border-b px-3.5 pt-3 pb-1 text-[11px]">
           <div className="flex items-center gap-1.5">
@@ -306,6 +306,26 @@ export function TicketCard({ ticket, onStatusChanged }: TicketCardProps) {
                 <ArrowRight className="ml-auto h-3.5 w-3.5" />
               </Link>
             </Button>
+          )}
+
+          {ticket.status === "COMPLETED" && (
+            <div className="flex w-full items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <CheckCircle className="h-4 w-4" />
+                <span>Selesai & Lunas</span>
+              </div>
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs font-semibold"
+              >
+                <Link href={`/pos/bayar/${ticket.id}`}>
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Struk</span>
+                </Link>
+              </Button>
+            </div>
           )}
         </CardFooter>
       </Card>

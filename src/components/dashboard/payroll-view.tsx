@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -11,8 +11,10 @@ import {
   Download,
   Eye,
   FileSpreadsheet,
+  FileText,
   Filter,
   Loader2,
+  Printer,
   Search,
   Sparkles,
   Users,
@@ -34,7 +36,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { formatLicensePlate, formatRupiah } from "@/lib/formatters";
+import {
+  formatLicensePlate,
+  formatRupiah,
+  formatTanggalIndo,
+} from "@/lib/formatters";
 
 interface PayrollViewProps {
   initialSummary: {
@@ -55,6 +61,12 @@ export function PayrollView({ initialSummary, outletName }: PayrollViewProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [activeWasherDetail, setActiveWasherDetail] =
     useState<WasherPayrollSummary | null>(null);
+
+  // State Dialog Cetak Slip Komisi (Task 6.5)
+  const [slipTarget, setSlipTarget] = useState<WasherPayrollSummary | null>(
+    null
+  );
+  const slipPrintRef = useRef<HTMLDivElement>(null);
 
   // Filter washer
   const filteredWashers = useMemo(() => {
@@ -91,11 +103,18 @@ export function PayrollView({ initialSummary, outletName }: PayrollViewProps) {
           washer.unpaidAmount
         )} (${res.data?.count} tiket) berhasil ditandai telah dibayar!`
       );
+      // Buka otomatis slip pencairan komisi untuk dicetak
+      setSlipTarget(washer);
       router.refresh();
       if (activeWasherDetail?.washerId === washer.washerId) {
         setActiveWasherDetail(null);
       }
     });
+  };
+
+  // Handler cetak slip
+  const handlePrintSlip = () => {
+    window.print();
   };
 
   // Ekspor Rekapitulasi ke Excel (.xlsx) dengan dynamic import
@@ -151,7 +170,7 @@ export function PayrollView({ initialSummary, outletName }: PayrollViewProps) {
           </h1>
           <p className="text-muted-foreground mt-0.5 text-xs">
             Laporan transparansi bagi hasil pengerjaan cuci mandiri dan tandem
-            berbasis PIN.
+            berbasis PIN, pencairan komisi, dan cetak slip tanda terima.
           </p>
         </div>
 
@@ -335,7 +354,7 @@ export function PayrollView({ initialSummary, outletName }: PayrollViewProps) {
                         {formatRupiah(w.unpaidAmount)}
                       </td>
                       <td className="px-5 py-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -344,6 +363,16 @@ export function PayrollView({ initialSummary, outletName }: PayrollViewProps) {
                           >
                             <Eye className="h-3.5 w-3.5" />
                             <span>Rincian</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSlipTarget(w)}
+                            className="h-8 gap-1 text-xs font-semibold"
+                            title="Cetak Slip Komisi"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                            <span>Slip</span>
                           </Button>
                           <Button
                             size="sm"
@@ -369,7 +398,9 @@ export function PayrollView({ initialSummary, outletName }: PayrollViewProps) {
         </CardContent>
       </Card>
 
-      {/* Modal Detail Tiket Pengerjaan Pekerja */}
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL DETAIL TIKET PENGERJAAN PEKERJA */}
+      {/* ------------------------------------------------------------- */}
       {activeWasherDetail && (
         <Dialog
           open={!!activeWasherDetail}
@@ -456,17 +487,182 @@ export function PayrollView({ initialSummary, outletName }: PayrollViewProps) {
               >
                 Tutup
               </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSlipTarget(activeWasherDetail);
+                    setActiveWasherDetail(null);
+                  }}
+                  className="gap-1.5 font-bold"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Lihat Slip Komisi</span>
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={isPending || activeWasherDetail.unpaidAmount === 0}
+                  onClick={() => handlePayWasher(activeWasherDetail)}
+                  className="w-full gap-1.5 bg-amber-600 font-bold text-white hover:bg-amber-700 sm:w-auto"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>
+                    Cairkan {formatRupiah(activeWasherDetail.unpaidAmount)}{" "}
+                    Sekarang
+                  </span>
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL CETAK SLIP KOMISI WASHER (TASK 6.5) */}
+      {/* ------------------------------------------------------------- */}
+      {slipTarget && (
+        <Dialog
+          open={!!slipTarget}
+          onOpenChange={(open) => !open && setSlipTarget(null)}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base font-black">
+                <FileText className="text-primary h-5 w-5" />
+                <span>Slip Tanda Terima Komisi Cuci</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Bukti pembayaran gaji dan komisi pengerjaan kendaraan.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Area Printable Slip */}
+            <div
+              ref={slipPrintRef}
+              className="bg-card text-foreground space-y-4 rounded-xl border p-5 font-mono text-xs shadow-inner"
+            >
+              {/* Header Slip */}
+              <div className="border-b pb-3 text-center">
+                <h3 className="text-sm font-black tracking-wider uppercase">
+                  {outletName}
+                </h3>
+                <p className="text-muted-foreground text-[10px]">
+                  BUKTI PENCAIRAN KOMISI PEKERJA CUCI
+                </p>
+                <p className="text-muted-foreground text-[10px]">
+                  Dicetak: {formatTanggalIndo(new Date())} -{" "}
+                  {new Date().toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  WIB
+                </p>
+              </div>
+
+              {/* Data Pekerja */}
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">
+                    Nama Pekerja:
+                  </span>
+                  <strong className="text-sm">{slipTarget.washerName}</strong>
+                </div>
+                <div className="text-right">
+                  <span className="text-muted-foreground block text-[10px]">
+                    Total Kendaraan:
+                  </span>
+                  <strong>{slipTarget.totalVehicles} Unit</strong> (
+                  {slipTarget.soloCount} Solo / {slipTarget.tandemCount} Tandem)
+                </div>
+              </div>
+
+              {/* Rincian Pengerjaan */}
+              <div className="max-h-48 divide-y overflow-y-auto border-y py-1 text-[10px]">
+                {slipTarget.items.map((it) => (
+                  <div
+                    key={it.id}
+                    className="flex items-center justify-between py-1.5"
+                  >
+                    <div>
+                      <span className="font-bold">
+                        {formatLicensePlate(it.licensePlate)}
+                      </span>{" "}
+                      <span className="text-muted-foreground">
+                        ({it.serviceName})
+                      </span>
+                      <div className="text-muted-foreground text-[9px]">
+                        #{it.ticketNumber} &bull;{" "}
+                        {it.isShared ? "Tandem 50%" : "Mandiri 100%"}
+                      </div>
+                    </div>
+                    <div className="font-bold">
+                      {formatRupiah(it.commissionAmount)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total Komisi */}
+              <div className="space-y-1 pt-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    Telah Dicairkan:
+                  </span>
+                  <span className="font-bold text-emerald-600">
+                    {formatRupiah(slipTarget.paidAmount)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    Tertunda / Baru Dicairkan:
+                  </span>
+                  <span className="font-bold text-amber-600">
+                    {formatRupiah(slipTarget.unpaidAmount)}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t pt-2 text-sm font-black">
+                  <span>TOTAL KOMISI:</span>
+                  <span className="text-primary text-base">
+                    {formatRupiah(
+                      slipTarget.paidAmount + slipTarget.unpaidAmount
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tanda Tangan */}
+              <div className="grid grid-cols-2 gap-4 border-t pt-4 text-center text-[10px]">
+                <div>
+                  <p className="text-muted-foreground mb-10">Penerima Komisi</p>
+                  <p className="font-bold underline">
+                    ({slipTarget.washerName})
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground mb-10">Kasir / Manajer</p>
+                  <p className="font-bold underline">
+                    (.......................)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSlipTarget(null)}
+              >
+                Tutup
+              </Button>
               <Button
                 size="sm"
-                disabled={isPending || activeWasherDetail.unpaidAmount === 0}
-                onClick={() => handlePayWasher(activeWasherDetail)}
-                className="w-full gap-1.5 bg-amber-600 font-bold text-white hover:bg-amber-700 sm:w-auto"
+                onClick={handlePrintSlip}
+                className="gap-1.5 font-bold shadow-xs"
               >
-                <CheckCircle2 className="h-4 w-4" />
-                <span>
-                  Cairkan {formatRupiah(activeWasherDetail.unpaidAmount)}{" "}
-                  Sekarang
-                </span>
+                <Printer className="h-4 w-4" />
+                <span>Cetak Slip (Print)</span>
               </Button>
             </div>
           </DialogContent>

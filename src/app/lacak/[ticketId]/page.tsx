@@ -89,6 +89,8 @@ export default async function LacakTiketPage({
       name: ticket.outlet.name,
       address: ticket.outlet.address,
       phone: ticket.outlet.phone,
+      logoUrl: ticket.outlet.logoUrl,
+      slogan: ticket.outlet.slogan,
     },
   };
 

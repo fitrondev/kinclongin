@@ -61,23 +61,31 @@ export function RevenueTrendChart({ data }: { data: TrendData[] }) {
         >
           <defs>
             <linearGradient id="servicesGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#1447E6" stopOpacity={0.4} />
-              <stop offset="95%" stopColor="#1447E6" stopOpacity={0.0} />
+              <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.35} />
+              <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.0} />
             </linearGradient>
             <linearGradient id="retailGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+              <stop
+                offset="5%"
+                stopColor="var(--color-chart-2, #10b981)"
+                stopOpacity={0.35}
+              />
+              <stop
+                offset="95%"
+                stopColor="var(--color-chart-2, #10b981)"
+                stopOpacity={0.0}
+              />
             </linearGradient>
           </defs>
           <XAxis
             dataKey="dayLabel"
-            stroke="#888888"
+            stroke="var(--muted-foreground)"
             fontSize={12}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="#888888"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -89,10 +97,11 @@ export function RevenueTrendChart({ data }: { data: TrendData[] }) {
               name === "services" ? "Jasa Cuci" : "Barang Ritel",
             ]}
             contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              borderColor: "hsl(var(--border))",
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+              color: "var(--card-foreground)",
               borderRadius: "12px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
               fontSize: "12px",
             }}
           />
@@ -106,7 +115,7 @@ export function RevenueTrendChart({ data }: { data: TrendData[] }) {
           <Area
             type="monotone"
             dataKey="services"
-            stroke="#1447E6"
+            stroke="var(--primary)"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#servicesGradient)"
@@ -114,7 +123,7 @@ export function RevenueTrendChart({ data }: { data: TrendData[] }) {
           <Area
             type="monotone"
             dataKey="retail"
-            stroke="#10b981"
+            stroke="var(--color-chart-2, #10b981)"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#retailGradient)"
@@ -154,13 +163,13 @@ export function PeakHoursChart({ data }: { data: PeakHourData[] }) {
         >
           <XAxis
             dataKey="hour"
-            stroke="#888888"
-            fontSize={10}
+            stroke="var(--muted-foreground)"
+            fontSize={12}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="#888888"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -172,13 +181,15 @@ export function PeakHoursChart({ data }: { data: PeakHourData[] }) {
               "Frekuensi",
             ]}
             contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              borderColor: "hsl(var(--border))",
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+              color: "var(--card-foreground)",
               borderRadius: "12px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
               fontSize: "12px",
             }}
           />
-          <Bar dataKey="vehicles" fill="#1447E6" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="vehicles" fill="var(--primary)" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -200,7 +211,12 @@ export function RevenueCompositionChart({ data }: { data: CompositionData[] }) {
     );
   }
 
-  const COLORS = ["#1447E6", "#10b981", "#8b5cf6", "#f59e0b"];
+  const COLORS = [
+    "var(--primary)",
+    "var(--color-chart-2, #10b981)",
+    "var(--color-chart-3, #8b5cf6)",
+    "var(--color-chart-4, #f59e0b)",
+  ];
   const hasData = data && data.length > 0 && data.some((d) => d.value > 0);
 
   if (!hasData) {
@@ -245,9 +261,11 @@ export function RevenueCompositionChart({ data }: { data: CompositionData[] }) {
               "Omset",
             ]}
             contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              borderColor: "hsl(var(--border))",
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+              color: "var(--card-foreground)",
               borderRadius: "12px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
               fontSize: "12px",
             }}
           />
@@ -300,14 +318,14 @@ export function VehicleCategoryChart({ data }: { data: CategoryData[] }) {
         >
           <XAxis
             type="number"
-            stroke="#888888"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             allowDecimals={false}
           />
           <YAxis
             type="category"
             dataKey="name"
-            stroke="#888888"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -319,13 +337,19 @@ export function VehicleCategoryChart({ data }: { data: CategoryData[] }) {
               "Jumlah Cuci",
             ]}
             contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              borderColor: "hsl(var(--border))",
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+              color: "var(--card-foreground)",
               borderRadius: "12px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
               fontSize: "12px",
             }}
           />
-          <Bar dataKey="count" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
+          <Bar
+            dataKey="count"
+            fill="var(--color-chart-3, #8b5cf6)"
+            radius={[0, 6, 6, 0]}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

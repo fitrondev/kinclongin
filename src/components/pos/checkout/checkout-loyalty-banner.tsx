@@ -146,7 +146,7 @@ export function CheckoutLoyaltyBanner({
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-foreground text-xs font-black">
-                    Daftar Member Kinclongin
+                    Daftar Member Loyalitas
                   </span>
                   <Badge className="h-4 bg-amber-500 px-1.5 text-[10px] font-black text-black">
                     Rp 50.000

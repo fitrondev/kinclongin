@@ -47,7 +47,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           // Fallback cerdas jika alias umum diketik tetapi belum ada akun persisnya
           if (!user) {
-            if (cleanEmail === "admin@kinclongin.com") {
+            if (cleanEmail === "superadmin@kinclongin.com") {
+              user = await prisma.user.findFirst({
+                where: { role: UserRole.SUPERADMIN, status: "ACTIVE" },
+                include: { outlet: true, ownedOutlets: true },
+              });
+            } else if (cleanEmail === "admin@kinclongin.com") {
               user = await prisma.user.findFirst({
                 where: { role: UserRole.OWNER, status: "ACTIVE" },
                 include: { outlet: true, ownedOutlets: true },

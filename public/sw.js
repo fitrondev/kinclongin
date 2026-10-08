@@ -25,6 +25,8 @@ if (isLocalhost) {
     "/pos/antrean",
     "/pos/daftar-baru",
     "/layar-cuci",
+    "/icons/icon-192x192.svg",
+    "/icons/icon-512x512.svg",
     "/logoipsum.svg",
     "/manifest.json",
   ];

@@ -37,6 +37,7 @@ import {
 interface POSHeaderProps {
   outletId?: string;
   outletName?: string;
+  outletLogo?: string | null;
   cashierName?: string;
   userRole?: string;
   stats?: {
@@ -49,7 +50,8 @@ interface POSHeaderProps {
 
 export function POSHeader({
   outletId = "",
-  outletName = "Kinclongin Cabang Pusat",
+  outletName = "Cabang Utama",
+  outletLogo,
   cashierName = "Kasir",
   userRole = "OWNER",
   stats = { queued: 0, washing: 0, drying: 0, ready: 0 },
@@ -77,27 +79,36 @@ export function POSHeader({
             href="/pos/antrean"
             className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
           >
-            <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl p-1.5 shadow-xs">
-              <Image
-                src="/logoipsum.svg"
-                alt="Kinclongin Logo"
-                width={32}
-                height={32}
-                className="h-7 w-7 object-contain"
-                priority
-              />
+            <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl p-1.5 shadow-xs">
+              {outletLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={outletLogo}
+                  alt={outletName}
+                  className="h-7 w-7 rounded-md object-contain"
+                />
+              ) : (
+                <Image
+                  src="/logoipsum.svg"
+                  alt="Logo"
+                  width={32}
+                  height={32}
+                  className="h-7 w-7 object-contain"
+                  priority
+                />
+              )}
             </div>
             <div className="hidden flex-col sm:flex">
               <div className="flex items-center gap-1.5">
-                <span className="font-mono text-sm font-black tracking-tight uppercase sm:text-base">
-                  KINCLONGIN
+                <span className="max-w-44 truncate font-mono text-sm font-black tracking-tight uppercase sm:text-base lg:max-w-64">
+                  {outletName}
                 </span>
-                <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 font-mono text-[10px] font-bold">
+                <span className="bg-primary/10 text-primary shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold">
                   POS
                 </span>
               </div>
               <p className="text-muted-foreground max-w-28 truncate text-[11px] font-medium sm:max-w-44 lg:max-w-60">
-                {outletName}
+                Kasir & Antrean
               </p>
             </div>
           </Link>
@@ -298,21 +309,30 @@ export function POSHeader({
             >
               <SheetHeader className="border-b p-5 text-left">
                 <div className="flex items-center gap-3">
-                  <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl p-1.5 shadow-xs">
-                    <Image
-                      src="/logoipsum.svg"
-                      alt="Kinclongin Logo"
-                      width={32}
-                      height={32}
-                      className="h-7 w-7 object-contain"
-                    />
+                  <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl p-1.5 shadow-xs">
+                    {outletLogo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={outletLogo}
+                        alt={outletName}
+                        className="h-7 w-7 rounded-md object-contain"
+                      />
+                    ) : (
+                      <Image
+                        src="/logoipsum.svg"
+                        alt="Logo"
+                        width={32}
+                        height={32}
+                        className="h-7 w-7 object-contain"
+                      />
+                    )}
                   </div>
                   <div>
-                    <SheetTitle className="font-mono text-base font-black tracking-tight uppercase">
-                      Kinclongin POS
+                    <SheetTitle className="max-w-56 truncate font-mono text-base font-black tracking-tight uppercase">
+                      {outletName}
                     </SheetTitle>
                     <p className="text-muted-foreground max-w-56 truncate text-xs font-medium">
-                      {outletName}
+                      Panel Kasir & Antrean
                     </p>
                   </div>
                 </div>

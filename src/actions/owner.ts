@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { UserRole } from "@/generated/prisma/enums";
 import { createAuditLog } from "@/lib/audit";
+import { isSuperadmin } from "@/lib/auth/rbac";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -199,10 +200,11 @@ export async function getAuditLogsAction(params?: {
 }): Promise<ActionResponse<AuditLogItem[]>> {
   try {
     const user = await getCurrentUser();
-    if (!user || user.role !== UserRole.OWNER) {
+    if (!user || !isSuperadmin(user)) {
       return {
         success: false,
-        error: "Hanya Owner yang memiliki otoritas melihat audit log.",
+        error:
+          "Hanya Superadmin Platform yang memiliki otoritas melihat audit log sistem.",
       };
     }
 
@@ -447,6 +449,26 @@ const updateOutletProfileSchema = z.object({
   address: z.string().min(3, "Alamat cabang minimal 3 karakter"),
   phone: z.string().min(5, "Nomor telepon cabang minimal 5 karakter"),
   logoUrl: z.string().url().optional().or(z.literal("")),
+  slogan: z
+    .string()
+    .max(100, "Slogan maksimal 100 karakter")
+    .optional()
+    .or(z.literal("")),
+  receiptHeader: z
+    .string()
+    .max(100, "Header struk maksimal 100 karakter")
+    .optional()
+    .or(z.literal("")),
+  receiptFooter: z
+    .string()
+    .max(255, "Footer struk maksimal 255 karakter")
+    .optional()
+    .or(z.literal("")),
+  contactPhone: z
+    .string()
+    .max(25, "Nomor kontak CS maksimal 25 digit")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type UpdateOutletProfileInput = z.infer<
@@ -474,7 +496,17 @@ export async function updateOutletProfileAction(
       };
     }
 
-    const { outletId, name, address, phone, logoUrl } = parsed.data;
+    const {
+      outletId,
+      name,
+      address,
+      phone,
+      logoUrl,
+      slogan,
+      receiptHeader,
+      receiptFooter,
+      contactPhone,
+    } = parsed.data;
 
     // Pastikan Owner ini adalah pemilik outlet tersebut
     const outlet = await prisma.outlet.findFirst({
@@ -498,6 +530,10 @@ export async function updateOutletProfileAction(
         address,
         phone,
         logoUrl: logoUrl || null,
+        slogan: slogan || null,
+        receiptHeader: receiptHeader || null,
+        receiptFooter: receiptFooter || null,
+        contactPhone: contactPhone || null,
       },
     });
 
@@ -507,11 +543,14 @@ export async function updateOutletProfileAction(
       action: "OUTLET_PROFILE_UPDATE",
       entityType: "Company",
       entityId: outletId,
-      metadata: { name, address, phone },
+      metadata: { name, address, phone, slogan, receiptHeader },
     });
 
     revalidatePath("/dashboard/pengaturan/cabang");
     revalidatePath("/dashboard");
+    revalidatePath("/pos");
+    revalidatePath("/pos/antrean");
+    revalidatePath("/layar-cuci");
 
     return {
       success: true,

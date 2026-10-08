@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import { Providers } from "@/components/providers";
@@ -14,6 +14,14 @@ const inter = Inter({
 const defaultBaseUrl =
   process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(defaultBaseUrl),
   title: {
@@ -24,8 +32,13 @@ export const metadata: Metadata = {
     "Sistem POS pintar dan manajemen operasional pencucian mobil, motor & auto-detailing multi-cabang.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/logoipsum.svg",
-    apple: "/logoipsum.svg",
+    icon: "/icons/icon-192x192.svg",
+    apple: "/icons/icon-192x192.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Kinclongin POS",
   },
 };
 

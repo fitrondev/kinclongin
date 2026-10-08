@@ -47,6 +47,7 @@ const createWashTicketSchema = z.object({
   color: z.string().optional(),
   useMembershipQuota: z.boolean().optional(),
   membershipId: z.string().optional(),
+  assignedWasherIds: z.array(z.string()).optional(),
 });
 
 export type CreateWashTicketInput = z.infer<typeof createWashTicketSchema>;
@@ -97,7 +98,51 @@ export async function createWashTicketAction(
       color,
       useMembershipQuota,
       membershipId,
+      assignedWasherIds,
     } = parsed.data;
+
+    // 0. Validasi Lisensi Operasional & Grace Period Cabang (Task 8.1)
+    const outlet = await prisma.outlet.findUnique({
+      where: { id: outletId },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        subscriptionExpiresAt: true,
+        subscriptionStatus: true,
+        createdAt: true,
+      },
+    });
+
+    if (!outlet) {
+      return { success: false, error: "Cabang outlet tidak ditemukan." };
+    }
+
+    if (!outlet.isActive) {
+      return {
+        success: false,
+        error:
+          "Lisensi operasional cabang ini dinonaktifkan oleh administrator. Hubungi tim dukungan platform.",
+      };
+    }
+
+    const now = new Date();
+    const expiresAt =
+      outlet.subscriptionExpiresAt ??
+      new Date(outlet.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const diffMs = expiresAt.getTime() - now.getTime();
+    if (diffMs < 0) {
+      const overdueDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
+      // Jika telah melewati masa tenggang 3 hari (> 3 hari) atau status EXPIRED
+      if (overdueDays > 3 || outlet.subscriptionStatus === "EXPIRED") {
+        return {
+          success: false,
+          error:
+            "Masa langganan cabang telah berakhir (melewati toleransi masa tenggang 3 hari). Harap hubungi Owner untuk melakukan perpanjangan sewa Rp 50.000/bulan.",
+        };
+      }
+    }
 
     // 1. Ambil detail paket layanan cuci
     const servicePackage = await prisma.servicePackage.findUnique({
@@ -113,7 +158,6 @@ export async function createWashTicketAction(
     }
 
     // 2. Generate nomor seri tiket: KNC-YYYYMMDD-XXX
-    const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
     const todayStart = new Date(
       now.getFullYear(),
@@ -233,7 +277,14 @@ export async function createWashTicketAction(
         paymentStatus: finalPaymentStatus,
         membershipId: validMembershipId,
         isMembershipWash,
-        status: TicketStatus.QUEUED,
+        status:
+          assignedWasherIds && assignedWasherIds.length > 0
+            ? TicketStatus.WASHING
+            : TicketStatus.QUEUED,
+        washingStartedAt:
+          assignedWasherIds && assignedWasherIds.length > 0
+            ? new Date()
+            : undefined,
         initialNotes: initialNotes || null,
         inspectionPhotos:
           inspectionPhotos && inspectionPhotos.length > 0
@@ -242,9 +293,46 @@ export async function createWashTicketAction(
       },
     });
 
+    // 7. Tugaskan Pekerja Cuci Awal jika dipilih di Kasir (Task 4.2)
+    if (assignedWasherIds && assignedWasherIds.length > 0) {
+      const selectedWashers = await prisma.employee.findMany({
+        where: {
+          id: { in: assignedWasherIds },
+          outletId,
+          isActive: true,
+        },
+      });
+
+      if (selectedWashers.length > 0) {
+        const washerCount = selectedWashers.length;
+        for (const washer of selectedWashers) {
+          let commission = 0;
+          if (washer.commissionType === "PERCENTAGE") {
+            commission =
+              (Number(servicePackage.price) * Number(washer.commissionRate)) /
+              100;
+          } else {
+            commission = Number(washer.commissionRate);
+          }
+          if (washerCount > 1) {
+            commission = commission / washerCount;
+          }
+
+          await prisma.ticketWasher.create({
+            data: {
+              ticketId: ticket.id,
+              employeeId: washer.id,
+              commissionAmount: Math.round(commission),
+            },
+          });
+        }
+      }
+    }
+
     revalidatePath("/pos/antrean");
     revalidatePath("/pos/queue");
     revalidatePath("/pos");
+    revalidatePath("/layar-cuci");
     revalidatePath("/dashboard");
     updateTag("dashboard-metrics");
 
@@ -318,6 +406,24 @@ export async function advanceTicketStatusAction(
       return {
         success: false,
         error: "Tiket tidak ditemukan.",
+      };
+    }
+
+    // Proteksi IDOR: Staf cabang hanya berhak memodifikasi tiket pada outlet aktifnya
+    const userOutletId = user?.outletId;
+    const isOwnerOfOutlet = user?.ownedOutlets?.some(
+      (o) => o.id === existingTicket.outletId
+    );
+    if (
+      user &&
+      user.role !== "SUPERADMIN" &&
+      userOutletId &&
+      existingTicket.outletId !== userOutletId &&
+      !isOwnerOfOutlet
+    ) {
+      return {
+        success: false,
+        error: "Akses ditolak: Tiket tidak terdaftar di cabang aktif Anda.",
       };
     }
 
@@ -496,6 +602,30 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
 
     if (!ticket) {
       return { success: false, error: "Tiket cuci tidak ditemukan." };
+    }
+
+    // Proteksi IDOR: Pastikan tiket cocok dengan outletId dan pengguna memiliki hak akses ke cabang tersebut
+    const isOwnerOfOutlet = user.ownedOutlets?.some(
+      (o) => o.id === ticket.outletId
+    );
+    if (user.role !== "SUPERADMIN") {
+      if (ticket.outletId !== outletId) {
+        return {
+          success: false,
+          error:
+            "Akses ditolak: ID cabang tiket tidak sesuai dengan data checkout.",
+        };
+      }
+      if (
+        user.outletId &&
+        ticket.outletId !== user.outletId &&
+        !isOwnerOfOutlet
+      ) {
+        return {
+          success: false,
+          error: "Akses ditolak: Tiket tidak terdaftar pada cabang aktif Anda.",
+        };
+      }
     }
 
     if (ticket.status === TicketStatus.COMPLETED) {
@@ -753,5 +883,261 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
       success: false,
       error: message,
     };
+  }
+}
+
+const openingFloatSchema = z.object({
+  outletId: z.string().min(1, "ID Cabang wajib diisi"),
+  openingAmount: z.number().min(0, "Modal awal tidak boleh negatif"),
+  notes: z.string().optional(),
+});
+
+export type RecordOpeningFloatInput = z.infer<typeof openingFloatSchema>;
+
+/**
+ * Server Action untuk mencatat modal uang kas awal di laci kasir (Cash Float).
+ * Dicatat ke AuditLog dengan action DRAWER_OPENING_FLOAT.
+ */
+export async function recordOpeningDrawerFloatAction(
+  input: RecordOpeningFloatInput
+): Promise<ActionResponse<{ openingAmount: number; recordedAt: string }>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        success: false,
+        error: "Sesi kasir berakhir. Silakan masuk kembali.",
+      };
+    }
+
+    const parsed = openingFloatSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: "Input modal awal tidak valid." };
+    }
+
+    const { outletId, openingAmount, notes } = parsed.data;
+    const now = new Date();
+
+    await prisma.auditLog.create({
+      data: {
+        outletId,
+        actorId: user.id,
+        actorRole: user.role,
+        action: "DRAWER_OPENING_FLOAT",
+        entityType: "CashDrawer",
+        entityId: user.id,
+        metadata: {
+          openingAmount,
+          cashierName: user.fullName,
+          date: now.toISOString().slice(0, 10),
+          notes: notes || "Modal awal kasir",
+        },
+      },
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/pos");
+
+    return {
+      success: true,
+      data: {
+        openingAmount,
+        recordedAt: now.toISOString(),
+      },
+    };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Gagal mencatat modal awal kasir.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action untuk mengambil modal awal kasir hari ini.
+ */
+export async function getOpeningDrawerFloatAction(
+  outletId: string
+): Promise<ActionResponse<{ openingAmount: number; recordedAt?: string }>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Sesi tidak valid." };
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const log = await prisma.auditLog.findFirst({
+      where: {
+        outletId,
+        actorId: user.id,
+        action: "DRAWER_OPENING_FLOAT",
+        createdAt: { gte: todayStart },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!log || !log.metadata) {
+      return {
+        success: true,
+        data: { openingAmount: 0 },
+      };
+    }
+
+    const meta = log.metadata as { openingAmount?: number };
+    return {
+      success: true,
+      data: {
+        openingAmount: Number(meta.openingAmount || 0),
+        recordedAt: log.createdAt.toISOString(),
+      },
+    };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Gagal mengambil modal awal.",
+    };
+  }
+}
+
+const closeCashierShiftSchema = z.object({
+  outletId: z.string().min(1, "ID Cabang wajib diisi"),
+  openingAmount: z.number().min(0),
+  physicalCashCounted: z.number().min(0, "Hitungan fisik tidak boleh negatif"),
+  notes: z.string().optional(),
+});
+
+export type CloseCashierShiftInput = z.infer<typeof closeCashierShiftSchema>;
+
+export interface ShiftReconciliationReport {
+  closedAt: string;
+  cashierName: string;
+  outletName: string;
+  openingAmount: number;
+  cashPayments: number;
+  qrisPayments: number;
+  transferPayments: number;
+  nonCashPayments: number;
+  totalRevenue: number;
+  transactionsCount: number;
+  expectedDrawerCash: number;
+  physicalCashCounted: number;
+  discrepancy: number;
+  discrepancyStatus: "BALANCED" | "SURPLUS" | "DEFICIT";
+  notes?: string;
+}
+
+/**
+ * Server Action untuk Rekonsiliasi & Penutupan Shift Kasir (Task 4.5).
+ */
+export async function closeCashierShiftAction(
+  input: CloseCashierShiftInput
+): Promise<ActionResponse<ShiftReconciliationReport>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        success: false,
+        error: "Sesi kasir berakhir. Silakan masuk kembali.",
+      };
+    }
+
+    const parsed = closeCashierShiftSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: "Parameter rekonsiliasi kasir tidak valid.",
+      };
+    }
+
+    const { outletId, openingAmount, physicalCashCounted, notes } = parsed.data;
+
+    const outlet = await prisma.outlet.findUnique({
+      where: { id: outletId },
+      select: { name: true },
+    });
+
+    const now = new Date();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Ambil seluruh pembayaran yang ditangani kasir hari ini
+    const payments = await prisma.payment.findMany({
+      where: {
+        outletId,
+        cashierId: user.id,
+        paidAt: { gte: todayStart },
+      },
+    });
+
+    let cashPayments = 0;
+    let qrisPayments = 0;
+    let transferPayments = 0;
+
+    for (const p of payments) {
+      const amt = Number(p.totalAmount);
+      if (p.method === "CASH") cashPayments += amt;
+      else if (p.method === "QRIS") qrisPayments += amt;
+      else if (p.method === "BANK_TRANSFER") transferPayments += amt;
+    }
+
+    const nonCashPayments = qrisPayments + transferPayments;
+    const totalRevenue = cashPayments + nonCashPayments;
+    const expectedDrawerCash = openingAmount + cashPayments;
+    const discrepancy = physicalCashCounted - expectedDrawerCash;
+
+    let discrepancyStatus: "BALANCED" | "SURPLUS" | "DEFICIT" = "BALANCED";
+    if (discrepancy > 0) discrepancyStatus = "SURPLUS";
+    else if (discrepancy < 0) discrepancyStatus = "DEFICIT";
+
+    const report: ShiftReconciliationReport = {
+      closedAt: now.toISOString(),
+      cashierName: user.fullName,
+      outletName: outlet?.name || "Kinclongin Cabang",
+      openingAmount,
+      cashPayments,
+      qrisPayments,
+      transferPayments,
+      nonCashPayments,
+      totalRevenue,
+      transactionsCount: payments.length,
+      expectedDrawerCash,
+      physicalCashCounted,
+      discrepancy,
+      discrepancyStatus,
+      notes: notes || undefined,
+    };
+
+    // Catat rekonsiliasi ke AuditLog
+    await prisma.auditLog.create({
+      data: {
+        outletId,
+        actorId: user.id,
+        actorRole: user.role,
+        action: "CASHIER_SHIFT_RECONCILIATION",
+        entityType: "CashDrawer",
+        entityId: user.id,
+        metadata: {
+          ...report,
+        },
+      },
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/pos");
+
+    return {
+      success: true,
+      data: report,
+    };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Gagal memproses rekonsiliasi penutupan shift kasir.";
+    return { success: false, error: message };
   }
 }

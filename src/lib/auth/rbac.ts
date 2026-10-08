@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 
-import { UserRole } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { Roles } from "@/types/globals";
 
@@ -10,6 +9,27 @@ export { getCurrentUser } from "@/lib/auth/session";
  * Matriks Hak Akses Granular untuk 4 Role Utama di Kinclongin POS.
  */
 export const ROLE_PERMISSIONS = {
+  SUPERADMIN: {
+    canViewBusinessAnalytics: false, // Superadmin tidak mengelola performa cuci cabang
+    canViewCashFlow: false,
+    canManageUsers: false,
+    canManageInventory: false,
+    canViewPayroll: false,
+    canDisburseCommissions: false,
+    canOperatePOS: false,
+    canOperateKiosk: false,
+    canManageSubscriptions: true,
+    canSwitchOutlet: false,
+    canManageOutlets: false,
+    canViewAuditLogs: true,
+    canConfigureWhatsApp: false,
+    canViewCustomers: false,
+    canManageServices: false,
+    canManageShifts: false,
+    canViewCashierDashboard: false,
+    canViewWasherDashboard: false,
+    canAccessSuperadmin: true,
+  },
   OWNER: {
     canViewBusinessAnalytics: true,
     canViewCashFlow: true, // Khusus Owner: Akses laporan arus kas & neraca pemasukan/pengeluaran
@@ -22,12 +42,14 @@ export const ROLE_PERMISSIONS = {
     canManageSubscriptions: true,
     canSwitchOutlet: true,
     canManageOutlets: true, // Khusus Owner: Pengelolaan profil cabang & ekspansi outlet baru
-    canViewAuditLogs: true, // Khusus Owner: Jejak audit keamanan sistem
+    canViewAuditLogs: false, // Audit log sistem adalah hak eksklusif Superadmin platform
     canConfigureWhatsApp: true, // Khusus Owner: Konfigurasi API gateway WhatsApp
     canViewCustomers: true,
     canManageServices: true, // Master tarif & paket layanan cuci
     canManageShifts: true, // Penjadwalan & shift kerja staf
     canViewCashierDashboard: true,
+    canViewWasherDashboard: false,
+    canAccessSuperadmin: false, // Owner adalah tenant, bukan Superadmin platform provider
   },
   MANAGER: {
     canViewBusinessAnalytics: true,
@@ -47,6 +69,8 @@ export const ROLE_PERMISSIONS = {
     canManageServices: true, // Master tarif & paket layanan cuci
     canManageShifts: true, // Penjadwalan & shift kerja staf
     canViewCashierDashboard: true,
+    canViewWasherDashboard: false,
+    canAccessSuperadmin: false,
   },
   CASHIER: {
     canViewBusinessAnalytics: false, // Dilarang melihat omset dan profit margin
@@ -66,6 +90,8 @@ export const ROLE_PERMISSIONS = {
     canViewCustomers: false, // Hanya via pencarian POS
     canManageServices: false,
     canManageShifts: false,
+    canViewWasherDashboard: false,
+    canAccessSuperadmin: false,
   },
   WASHER: {
     canViewBusinessAnalytics: false,
@@ -85,6 +111,8 @@ export const ROLE_PERMISSIONS = {
     canViewCustomers: false,
     canManageServices: false,
     canManageShifts: false,
+    canViewCashierDashboard: false,
+    canAccessSuperadmin: false,
   },
 } as const;
 
@@ -103,6 +131,17 @@ export function hasPermission(
   const permissions = ROLE_PERMISSIONS[upperRole];
   if (!permissions) return false;
   return Boolean((permissions as Record<string, boolean>)[permission]);
+}
+
+export function isSuperadmin(
+  user?: { role?: string | null; email?: string | null } | null
+): boolean {
+  if (!user) return false;
+  if (user.role?.toUpperCase() === "SUPERADMIN") return true;
+  const masterEmails = ["admin@kinclongin.com", "superadmin@kinclongin.com"];
+  if (user.email && masterEmails.includes(user.email.toLowerCase()))
+    return true;
+  return false;
 }
 
 export function isOwner(role?: string | null): boolean {
@@ -220,4 +259,43 @@ export async function requireOrgAuth(options?: {
     outlet,
     user,
   };
+}
+
+/**
+ * Guard proteksi rute platform Superadmin (/dashboard/admin/*).
+ * Hanya dapat diakses oleh Superadmin platform atau master admin email.
+ */
+export async function requireSuperadminAuth(redirectTo = "/dashboard") {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  if (!isSuperadmin(user)) {
+    redirect(redirectTo);
+  }
+
+  return user;
+}
+
+/**
+ * Memvalidasi kepemilikan dan hak akses pengguna terhadap suatu outlet (Proteksi IDOR).
+ */
+export function isAuthorizedForOutlet(
+  user:
+    | {
+        role?: string | null;
+        outletId?: string | null;
+        ownedOutlets?: Array<{ id: string }>;
+      }
+    | null
+    | undefined,
+  targetOutletId: string
+): boolean {
+  if (!user || !targetOutletId) return false;
+  if (user.role?.toUpperCase() === "SUPERADMIN") return true;
+  if (user.outletId === targetOutletId) return true;
+  if (user.ownedOutlets?.some((o) => o.id === targetOutletId)) return true;
+  return false;
 }

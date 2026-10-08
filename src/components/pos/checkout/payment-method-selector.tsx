@@ -21,6 +21,7 @@ export interface PaymentMethodSelectorProps {
   grandTotal: number;
   changeGiven: number;
   isPending: boolean;
+  outletName?: string;
   onProcessCheckout: () => void;
 }
 
@@ -34,6 +35,7 @@ export function PaymentMethodSelector({
   grandTotal,
   changeGiven,
   isPending,
+  outletName,
   onProcessCheckout,
 }: PaymentMethodSelectorProps) {
   const handleQuickCash = (amount: number) => {
@@ -140,7 +142,7 @@ export function PaymentMethodSelector({
             <QrCode className="h-36 w-36 text-black" />
           </div>
           <p className="text-foreground text-xs font-bold">
-            Scan QRIS Usaha Kinclongin
+            Scan QRIS Usaha Outlet
           </p>
           <p className="text-muted-foreground text-[10px]">
             Dukung GoPay, OVO, Dana, ShopeePay, BCA, Mandiri, dll.
@@ -152,9 +154,11 @@ export function PaymentMethodSelector({
       {paymentMethod === "BANK_TRANSFER" ? (
         <div className="space-y-2 pt-1 text-xs">
           <div className="bg-muted/50 space-y-1 rounded-xl border p-3">
-            <p className="text-foreground font-bold">BCA: 056-123-4567</p>
+            <p className="text-foreground font-bold">
+              Transfer Rekening Outlet
+            </p>
             <p className="text-muted-foreground">
-              a.n. PT Kinclongin Indonesia
+              a.n. {outletName || "Pengelola Tempat Cuci"}
             </p>
           </div>
           <Input

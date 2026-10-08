@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { localDb } from "@/lib/offline/db";
 
-export type KanbanTab = "ALL" | "QUEUED" | "WASHING" | "DRYING" | "READY";
+export type KanbanTab =
+  "ALL" | "QUEUED" | "WASHING" | "DRYING" | "READY" | "COMPLETED";
 
 interface KanbanBoardProps {
   initialTickets: KanbanTicket[];
@@ -42,16 +43,17 @@ export function KanbanBoard({
   const [offlineTickets, setOfflineTickets] = useState<KanbanTicket[]>([]);
 
   // Derivasi tab aktif dari prop URL (hanya dijalankan saat mount awal)
-  // Untuk sinkronisasi URL -> tab: gunakan key prop di level parent agar komponen re-mount
   const derivedInitialTab = useMemo<KanbanTab>(() => {
     if (
       initialTab &&
-      ["ALL", "QUEUED", "WASHING", "DRYING", "READY"].includes(initialTab)
+      ["ALL", "QUEUED", "WASHING", "DRYING", "READY", "COMPLETED"].includes(
+        initialTab
+      )
     ) {
       return initialTab as KanbanTab;
     }
     return "ALL";
-  }, []);
+  }, [initialTab]);
 
   const [activeTab, setActiveTab] = useState<KanbanTab>(derivedInitialTab);
 
@@ -141,6 +143,9 @@ export function KanbanBoard({
   const washingTickets = filteredTickets.filter((t) => t.status === "WASHING");
   const dryingTickets = filteredTickets.filter((t) => t.status === "DRYING");
   const readyTickets = filteredTickets.filter((t) => t.status === "READY");
+  const completedTickets = filteredTickets.filter(
+    (t) => t.status === "COMPLETED"
+  );
 
   // Komponen Helper untuk render kartu kolom
   const renderColumnContent = (
@@ -355,6 +360,29 @@ export function KanbanBoard({
             {readyTickets.length}
           </Badge>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("COMPLETED")}
+          className={`flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-3.5 text-xs font-bold transition-all ${
+            activeTab === "COMPLETED"
+              ? "bg-teal-600 font-black text-white shadow-xs"
+              : "bg-card hover:bg-muted text-muted-foreground border"
+          }`}
+        >
+          <CheckCircle className="h-3.5 w-3.5 text-teal-400" />
+          <span>Selesai Hari Ini</span>
+          <Badge
+            variant="outline"
+            className={`h-4.5 px-1.5 text-[10px] font-bold ${
+              activeTab === "COMPLETED"
+                ? "border-white/30 bg-white/20 text-white"
+                : "border-teal-500/30 bg-teal-500/10 text-teal-600"
+            }`}
+          >
+            {completedTickets.length}
+          </Badge>
+        </button>
       </div>
 
       {/* TAMPILAN KANBAN UTAMA */}
@@ -492,6 +520,8 @@ export function KanbanBoard({
                   {activeTab === "DRYING" && "Tahap: Pengeringan & Lap"}
                   {activeTab === "READY" &&
                     "Tahap: Siap Diambil / Kasir Pembayaran"}
+                  {activeTab === "COMPLETED" &&
+                    "Tahap: Selesai & Lunas Hari Ini"}
                 </h3>
                 <p className="text-muted-foreground text-xs font-medium">
                   {activeTab === "QUEUED" &&
@@ -502,6 +532,8 @@ export function KanbanBoard({
                     "Pengeringan bodi, kaca, dan vakum interior"}
                   {activeTab === "READY" &&
                     "Kendaraan selesai dan siap bayar di kasir"}
+                  {activeTab === "COMPLETED" &&
+                    "Seluruh kendaraan yang transaksi dan pembayarannya telah tuntas"}
                 </p>
               </div>
             </div>
@@ -543,6 +575,13 @@ export function KanbanBoard({
                 readyTickets,
                 <CheckCircle className="h-8 w-8" />,
                 "Belum ada kendaraan yang selesai siap diambil",
+                true
+              )}
+            {activeTab === "COMPLETED" &&
+              renderColumnContent(
+                completedTickets,
+                <CheckCircle className="h-8 w-8 text-teal-500" />,
+                "Belum ada kendaraan yang selesai hari ini",
                 true
               )}
           </div>

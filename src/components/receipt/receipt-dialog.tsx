@@ -122,6 +122,7 @@ export function ReceiptDialog({
       outletName: receiptData.outletName,
       outletAddress: receiptData.outletAddress,
       outletPhone: receiptData.outletPhone,
+      slogan: receiptData.slogan,
       loyaltyPoints: receiptData.loyaltyPoints,
     });
 

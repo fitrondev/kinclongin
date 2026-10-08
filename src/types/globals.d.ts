@@ -11,6 +11,7 @@ export type Roles =
   | "washer"
   | "admin"
   | "superadmin"
+  | "SUPERADMIN"
   | "OWNER"
   | "MANAGER"
   | "CASHIER"

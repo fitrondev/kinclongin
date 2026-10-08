@@ -12,6 +12,8 @@ import { UserRole, UserStatus } from "@/generated/prisma/enums";
 
 export function getRoleLabel(role: UserRole) {
   switch (role) {
+    case UserRole.SUPERADMIN:
+      return "Superadmin Platform";
     case UserRole.OWNER:
       return "Pemilik (Owner)";
     case UserRole.MANAGER:
@@ -27,6 +29,16 @@ export function getRoleLabel(role: UserRole) {
 
 export function RoleBadge({ role }: { role: UserRole }) {
   switch (role) {
+    case UserRole.SUPERADMIN:
+      return (
+        <Badge
+          variant="outline"
+          className="gap-1 border-purple-500/30 bg-purple-500/10 text-[11px] font-bold text-purple-600 dark:text-purple-400"
+        >
+          <Crown className="h-3 w-3" />
+          <span>Superadmin</span>
+        </Badge>
+      );
     case UserRole.OWNER:
       return (
         <Badge
@@ -65,6 +77,12 @@ export function RoleBadge({ role }: { role: UserRole }) {
         >
           <Droplets className="h-3 w-3" />
           <span>Washer</span>
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="text-[11px] font-bold">
+          <span>{role}</span>
         </Badge>
       );
   }

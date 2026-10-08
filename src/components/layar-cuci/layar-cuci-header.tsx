@@ -24,12 +24,14 @@ import { Button } from "@/components/ui/button";
 
 interface LayarCuciHeaderProps {
   outletName?: string;
+  outletLogo?: string | null;
   onOpenShiftSummary?: () => void;
   userRole?: string | null;
 }
 
 export function LayarCuciHeader({
-  outletName = "Kinclongin Cabang Pusat",
+  outletName = "Cabang Tempat Cuci",
+  outletLogo,
   onOpenShiftSummary,
   userRole,
 }: LayarCuciHeaderProps) {
@@ -82,14 +84,23 @@ export function LayarCuciHeader({
       <div className="flex h-16 items-center justify-between px-4 sm:h-20 sm:px-6">
         {/* Logo & Mode Layar Cuci */}
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-11 w-11 items-center justify-center rounded-2xl p-2 shadow-sm sm:h-12 sm:w-12">
-            <Image
-              src="/logoipsum.svg"
-              alt="Kinclongin Logo"
-              width={36}
-              height={36}
-              className="h-8 w-8 object-contain"
-            />
+          <div className="bg-primary/10 flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl p-2 shadow-sm sm:h-12 sm:w-12">
+            {outletLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={outletLogo}
+                alt={outletName}
+                className="h-8 w-8 rounded-lg object-contain"
+              />
+            ) : (
+              <Image
+                src="/logoipsum.svg"
+                alt="Logo"
+                width={36}
+                height={36}
+                className="h-8 w-8 object-contain"
+              />
+            )}
           </div>
           <div className="hidden sm:block">
             <div className="flex items-center gap-2">

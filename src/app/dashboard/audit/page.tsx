@@ -8,9 +8,9 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {
-  title: "Audit Log & Jejak Keamanan | Kinclongin POS",
+  title: "Audit Log & Jejak Keamanan Platform | Superadmin Kinclongin",
   description:
-    "Pantau seluruh rekaman aktivitas administratif dan mutasi data sensitif di sistem.",
+    "Pantau seluruh rekaman aktivitas administratif, mutasi data sensitif, dan log keamanan platform.",
 };
 
 export default async function AuditLogPage() {
@@ -19,16 +19,23 @@ export default async function AuditLogPage() {
     redirect("/sign-in");
   }
 
-  // Khusus Peran OWNER (Superadmin)
-  if (user.role !== UserRole.OWNER) {
+  // Khusus Peran SUPERADMIN Platform (Pusat Komando Keamanan Sistem)
+  const isSuper =
+    user.role === UserRole.SUPERADMIN ||
+    user.email?.toLowerCase() === "superadmin@kinclongin.com" ||
+    user.email?.toLowerCase() === "admin@kinclongin.com";
+
+  if (!isSuper) {
     redirect("/dashboard");
   }
 
   const outlet = user.outletId
     ? await prisma.outlet.findUnique({ where: { id: user.outletId } })
-    : await prisma.outlet.findFirst({ where: { isActive: true } });
+    : !isSuper
+      ? await prisma.outlet.findFirst({ where: { isActive: true } })
+      : null;
 
-  if (!outlet) {
+  if (!outlet && !isSuper) {
     return (
       <div className="text-muted-foreground p-8 text-center text-sm">
         Cabang outlet aktif tidak ditemukan.
@@ -39,5 +46,10 @@ export default async function AuditLogPage() {
   const res = await getAuditLogsAction({ limit: 100 });
   const initialLogs = res.success && res.data ? res.data : [];
 
-  return <AuditLogView initialLogs={initialLogs} outletName={outlet.name} />;
+  return (
+    <AuditLogView
+      initialLogs={initialLogs}
+      outletName={outlet?.name || "Platform Global HQ"}
+    />
+  );
 }

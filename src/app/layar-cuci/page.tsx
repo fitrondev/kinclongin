@@ -57,12 +57,17 @@ export default async function LayarCuciPage({
     );
   }
 
-  // Ambil antrean kendaraan yang relevan untuk pekerja di area basah (QUEUED, WASHING, DRYING)
+  // Ambil antrean kendaraan yang relevan untuk pekerja di area basah (QUEUED, WASHING, DRYING, READY)
   const rawTickets = await prisma.washTicket.findMany({
     where: {
       outletId: outlet.id,
       status: {
-        in: [TicketStatus.QUEUED, TicketStatus.WASHING, TicketStatus.DRYING],
+        in: [
+          TicketStatus.QUEUED,
+          TicketStatus.WASHING,
+          TicketStatus.DRYING,
+          TicketStatus.READY,
+        ],
       },
     },
     include: {
@@ -97,6 +102,10 @@ export default async function LayarCuciPage({
         }
       : null,
     initialNotes: t.initialNotes,
+    queuedAt: t.queuedAt,
+    washingStartedAt: t.washingStartedAt,
+    dryingStartedAt: t.dryingStartedAt,
+    readyAt: t.readyAt,
     washers: t.washers.map((w) => ({
       washer: {
         id: w.washer.id,
@@ -111,6 +120,7 @@ export default async function LayarCuciPage({
       initialTickets={tickets}
       outletId={outlet.id}
       outletName={outlet.name}
+      outletLogo={outlet.logoUrl}
       userRole={user?.role ?? null}
     />
   );

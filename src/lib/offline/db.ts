@@ -25,6 +25,35 @@ export interface LocalTicket {
   updatedAt: number;
 }
 
+export interface OfflinePayment {
+  localPaymentId: string;
+  ticketId: string; // localId atau serverId tiket
+  amount: number;
+  paymentMethod: "CASH" | "QRIS" | "BANK_TRANSFER";
+  cashGiven?: number;
+  changeGiven?: number;
+  referenceNumber?: string;
+  paidAt: number;
+  syncStatus: "PENDING_SYNC" | "SYNCED";
+}
+
+export interface CachedService {
+  id: string;
+  outletId: string;
+  name: string;
+  vehicleCategory: string;
+  price: number;
+  estimatedMinutes: number;
+}
+
+export interface CachedCustomer {
+  phone: string;
+  fullName: string;
+  totalVisits: number;
+  loyaltyPoints: number;
+  lastVisitAt?: number;
+}
+
 export interface OfflineMutation {
   id?: number;
   mutationType: "CREATE_TICKET" | "UPDATE_STATUS" | "PROCESS_PAYMENT";
@@ -43,6 +72,9 @@ export interface CachedMasterData {
 
 export class KinclonginOfflineDb extends Dexie {
   tickets!: Table<LocalTicket, string>;
+  offlinePayments!: Table<OfflinePayment, string>;
+  cachedServices!: Table<CachedService, string>;
+  cachedCustomers!: Table<CachedCustomer, string>;
   syncQueue!: Table<OfflineMutation, number>;
   masterCache!: Table<CachedMasterData, string>;
 
@@ -53,6 +85,19 @@ export class KinclonginOfflineDb extends Dexie {
       syncQueue: "++id, mutationType, entityId, createdAt, retryCount",
       masterCache: "key, cachedAt",
     });
+    this.version(2).stores({
+      tickets: "localId, serverId, licensePlate, status, syncStatus, createdAt",
+      offlinePayments: "localPaymentId, ticketId, syncStatus, paidAt",
+      cachedServices: "id, outletId, vehicleCategory",
+      cachedCustomers: "phone, fullName",
+      syncQueue: "++id, mutationType, entityId, createdAt, retryCount",
+      masterCache: "key, cachedAt",
+    });
+  }
+
+  // Alias getter untuk kompatibilitas nama tabel Task 7.2
+  get offlineTickets(): Table<LocalTicket, string> {
+    return this.tickets;
   }
 }
 

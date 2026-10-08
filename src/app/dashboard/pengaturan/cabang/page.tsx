@@ -21,7 +21,7 @@ export default async function OutletManagementPage() {
     redirect("/sign-in");
   }
 
-  // Khusus Peran OWNER (Superadmin)
+  // Khusus Peran OWNER Bisnis
   if (user.role !== UserRole.OWNER) {
     redirect("/dashboard");
   }
@@ -75,6 +75,10 @@ export default async function OutletManagementPage() {
         address: o.address,
         phone: o.phone,
         logoUrl: o.logoUrl,
+        slogan: o.slogan,
+        receiptHeader: o.receiptHeader,
+        receiptFooter: o.receiptFooter,
+        contactPhone: o.contactPhone,
         isActive: o.isActive,
         isCurrent: o.id === currentOutlet.id,
         totalEmployees: o._count.employees,
@@ -92,6 +96,10 @@ export default async function OutletManagementPage() {
     address: currentOutlet.address,
     phone: currentOutlet.phone,
     logoUrl: currentOutlet.logoUrl,
+    slogan: currentOutlet.slogan,
+    receiptHeader: currentOutlet.receiptHeader,
+    receiptFooter: currentOutlet.receiptFooter,
+    contactPhone: currentOutlet.contactPhone,
     isActive: currentOutlet.isActive,
     isCurrent: true,
     totalEmployees: 0,

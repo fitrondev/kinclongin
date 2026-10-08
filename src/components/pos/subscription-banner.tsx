@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { AlertTriangle, ArrowRight, Lock, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowRight, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +14,6 @@ interface SubscriptionBannerProps {
 }
 
 export function SubscriptionBanner({
-  status,
   isGracePeriod = false,
   graceDaysRemaining = 0,
   isHardLocked = false,
@@ -35,16 +34,16 @@ export function SubscriptionBanner({
               Masa Akses Sistem Berakhir
             </h2>
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Masa tenggang telah terlewati. Hubungi administrator atau perbarui
-              akses untuk melanjutkan pendaftaran tiket baru. Seluruh data
-              riwayat tiket dan laporan keuangan tetap tersimpan aman.
+              Masa tenggang 3 hari telah terlewati. Pendaftaran tiket cuci baru
+              dinonaktifkan. Silakan perpanjang sewa software Rp 50.000/bulan.
+              Seluruh riwayat transaksi dan data pelanggan tetap tersimpan aman.
             </p>
           </div>
 
           <div className="bg-muted/40 rounded-xl border p-3 text-xs">
             <span className="text-muted-foreground block">Status Layanan</span>
             <span className="text-primary text-base font-black">
-              Kinclongin POS & Operasional
+              Sistem POS & Operasional Cabang
             </span>
           </div>
 
@@ -78,9 +77,9 @@ export function SubscriptionBanner({
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 shrink-0 animate-pulse text-amber-600" />
           <span>
-            <strong>Masa Tenggang (Grace Period):</strong> Masa aktif langganan
-            cabang berakhir. Tersisa <strong>{graceDaysRemaining} hari</strong>{" "}
-            sebelum akses input tiket baru dinonaktifkan.
+            <strong>Masa Sewa Berakhir (Masa Tenggang):</strong> Harap
+            perpanjang dalam <strong>{graceDaysRemaining} hari</strong> agar
+            operasional tidak terhenti.
           </span>
         </div>
 

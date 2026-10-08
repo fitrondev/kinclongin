@@ -49,10 +49,36 @@ export default async function POSAntreanPage({
     );
   }
 
-  const rawTickets = await getActiveQueueTickets(outletId);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [rawTickets, completedTickets] = await Promise.all([
+    getActiveQueueTickets(outletId),
+    prisma.washTicket.findMany({
+      where: {
+        outletId,
+        status: "COMPLETED",
+        completedAt: { gte: todayStart },
+      },
+      include: {
+        servicePackage: true,
+        customer: true,
+        vehicle: true,
+        washers: {
+          include: {
+            washer: true,
+          },
+        },
+      },
+      orderBy: { completedAt: "desc" },
+      take: 25,
+    }),
+  ]);
+
+  const allRaw = [...rawTickets, ...completedTickets];
 
   // Normalisasi data untuk komponen KanbanTicket
-  const tickets: KanbanTicket[] = rawTickets.map((t) => ({
+  const tickets: KanbanTicket[] = allRaw.map((t) => ({
     id: t.id,
     ticketNumber: t.ticketNumber,
     licensePlate: t.licensePlate,

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import {
-  type TicketStatus,
+  PaymentMethod,
+  PaymentStatus,
+  TicketStatus,
   type VehicleCategory,
 } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -70,6 +72,26 @@ export async function POST(req: Request) {
               entityId: item.entityId,
               success: false,
               error: "Data pembuatan tiket tidak lengkap.",
+            });
+            continue;
+          }
+
+          // IDEMPOTENCY CHECK: Cegah duplikasi jika tiket lokal ini telah pernah tersimpan sebelumnya
+          const offlineTag = `[Luring ID:${item.entityId}]`;
+          const existingOfflineTicket = await prisma.washTicket.findFirst({
+            where: {
+              outletId,
+              initialNotes: { contains: offlineTag },
+            },
+          });
+
+          if (existingOfflineTicket) {
+            results.push({
+              mutationId: item.id,
+              entityId: item.entityId,
+              serverId: existingOfflineTicket.id,
+              ticketNumber: existingOfflineTicket.ticketNumber,
+              success: true,
             });
             continue;
           }
@@ -149,6 +171,10 @@ export async function POST(req: Request) {
           }
           vehicleId = vehicle.id;
 
+          const composedNotes = initialNotes
+            ? `${offlineTag} ${initialNotes}`
+            : `${offlineTag} Dicatat saat perangkat luring`;
+
           // Buat tiket cuci di MySQL
           const createdTicket = await prisma.washTicket.create({
             data: {
@@ -161,17 +187,15 @@ export async function POST(req: Request) {
               vehicleCategory,
               servicePackageId,
               servicePrice: servicePackage.price,
-              status: "QUEUED",
-              initialNotes: initialNotes
-                ? `[Luring] ${initialNotes}`
-                : "[Dibuat saat Luring]",
+              status: TicketStatus.QUEUED,
+              initialNotes: composedNotes,
               inspectionPhotos: inspectionPhotos || [],
               subtotalServices: servicePackage.price,
               subtotalRetail: 0,
               discountAmount: 0,
               totalAmount: servicePackage.price,
               paidAmount: 0,
-              paymentStatus: "UNPAID",
+              paymentStatus: PaymentStatus.UNPAID,
             },
           });
 
@@ -184,7 +208,20 @@ export async function POST(req: Request) {
           });
         } else if (item.mutationType === "UPDATE_STATUS") {
           const payload = item.payload;
-          const targetTicketId = (payload.ticketId as string) || item.entityId;
+          let targetTicketId = (payload.ticketId as string) || item.entityId;
+
+          // Jika targetTicketId merupakan localId, cari server ID yang sesuai
+          if (targetTicketId.startsWith("local_")) {
+            const matched = await prisma.washTicket.findFirst({
+              where: {
+                initialNotes: { contains: `[Luring ID:${targetTicketId}]` },
+              },
+            });
+            if (matched) {
+              targetTicketId = matched.id;
+            }
+          }
+
           const newStatus = payload.status as TicketStatus;
 
           const updateData: Record<string, unknown> = { status: newStatus };
@@ -204,11 +241,85 @@ export async function POST(req: Request) {
             serverId: targetTicketId,
             success: true,
           });
-        } else {
-          // Lainnya (misal PROCESS_PAYMENT)
+        } else if (item.mutationType === "PROCESS_PAYMENT") {
+          const payload = item.payload;
+          let targetTicketId = (payload.ticketId as string) || item.entityId;
+
+          if (targetTicketId.startsWith("local_")) {
+            const matched = await prisma.washTicket.findFirst({
+              where: {
+                initialNotes: { contains: `[Luring ID:${targetTicketId}]` },
+              },
+            });
+            if (matched) {
+              targetTicketId = matched.id;
+            }
+          }
+
+          const ticket = await prisma.washTicket.findUnique({
+            where: { id: targetTicketId },
+          });
+
+          if (!ticket) {
+            results.push({
+              mutationId: item.id,
+              entityId: item.entityId,
+              success: false,
+              error: "Tiket pembayaran tidak ditemukan.",
+            });
+            continue;
+          }
+
+          const existingPayment = await prisma.payment.findUnique({
+            where: { ticketId: ticket.id },
+          });
+
+          if (!existingPayment) {
+            const rawMethod = (payload.paymentMethod as string) || "CASH";
+            const validMethod =
+              rawMethod in PaymentMethod
+                ? (rawMethod as PaymentMethod)
+                : PaymentMethod.CASH;
+
+            const totalAmount = Number(
+              payload.totalAmount || ticket.totalAmount
+            );
+
+            await prisma.payment.create({
+              data: {
+                ticketId: ticket.id,
+                outletId: ticket.outletId,
+                cashierId: user.id,
+                method: validMethod,
+                status: PaymentStatus.PAID,
+                totalAmount,
+                cashGiven: payload.cashGiven ? Number(payload.cashGiven) : null,
+                changeGiven: payload.changeGiven
+                  ? Number(payload.changeGiven)
+                  : null,
+                referenceNumber: (payload.referenceNumber as string) || null,
+              },
+            });
+
+            await prisma.washTicket.update({
+              where: { id: ticket.id },
+              data: {
+                paymentStatus: PaymentStatus.PAID,
+                paidAmount: totalAmount,
+                status:
+                  ticket.status === TicketStatus.READY
+                    ? TicketStatus.COMPLETED
+                    : ticket.status,
+                completedAt:
+                  ticket.status === TicketStatus.READY ? new Date() : undefined,
+              },
+            });
+          }
+
           results.push({
             mutationId: item.id,
             entityId: item.entityId,
+            serverId: ticket.id,
             success: true,
           });
         }

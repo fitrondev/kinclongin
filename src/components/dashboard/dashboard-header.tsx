@@ -130,13 +130,6 @@ export function DashboardHeader({
           allowed: isOwner,
         },
         {
-          href: "/dashboard/audit",
-          label: "Audit Log",
-          icon: History,
-          active: pathname.startsWith("/dashboard/audit"),
-          allowed: isOwner,
-        },
-        {
           href: "/dashboard/pengaturan/whatsapp",
           label: "Webhook WA",
           icon: MessageSquare,
@@ -152,7 +145,7 @@ export function DashboardHeader({
         },
         {
           href: "/dashboard/pengguna",
-          label: "Akun & Role",
+          label: "Staf Cabang",
           icon: ShieldCheck,
           active: pathname.startsWith("/dashboard/pengguna"),
           allowed: canManageStaff,

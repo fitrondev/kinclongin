@@ -16,6 +16,7 @@ datasource db {
 // -------------------------------------------------------------
 
 enum UserRole {
+  SUPERADMIN
   OWNER
   MANAGER
   CASHIER
@@ -81,6 +82,24 @@ enum WhatsAppDeliveryStatus {
   FAILED
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  GRACE_PERIOD
+  EXPIRED
+  TRIAL
+}
+
+enum SubscriptionPaymentMethod {
+  MANUAL_TRANSFER
+  QRIS
+}
+
+enum SubscriptionPaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // -------------------------------------------------------------
 // 1. OUTLET / CABANG & PENGGUNA
 // -------------------------------------------------------------
@@ -96,8 +115,12 @@ model Outlet {
   waSenderNumber  String? // Nomor WhatsApp pengirim notifikasi
   isActive        Boolean @default(true)
   ownerId         String? // User ID pemilik cabang (Owner)
-
-
+  slogan          String? // Slogan usaha kustom (misal: "Cepat, Bersih & Berkilau")
+  receiptHeader   String? // Teks kustom kepala nota struk
+  receiptFooter   String? // Teks kustom catatan kaki nota struk
+  contactPhone    String? // Nomor kontak CS / WhatsApp bantuan
+  subscriptionExpiresAt DateTime?
+  subscriptionStatus    SubscriptionStatus @default(ACTIVE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -116,6 +139,7 @@ model Outlet {
   auditLogs            AuditLog[]
   workShifts           WorkShift[]
   shiftAssignments     ShiftAssignment[]
+  subscriptionPayments TenantSubscriptionPayment[]
 
   @@index([ownerId])
   @@index([isActive])
@@ -555,4 +579,29 @@ model ShiftAssignment {
   @@unique([employeeId, date])
   @@index([outletId, date])
   @@index([shiftId])
+}
+
+// -------------------------------------------------------------
+// 10. PEMBAYARAN LANGGANAN LISENSI (FLAT RP 50.000 / BULAN)
+// -------------------------------------------------------------
+
+model TenantSubscriptionPayment {
+  id              String                    @id @default(cuid())
+  outletId        String
+  amount          Decimal                   @default(50000) @db.Decimal(10, 2)
+  periodMonths    Int                       @default(1)
+  paymentMethod   SubscriptionPaymentMethod @default(MANUAL_TRANSFER)
+  paymentProofUrl String                    @db.Text
+  status          SubscriptionPaymentStatus @default(PENDING)
+  notes           String?                   @db.Text
+  rejectionReason String?                   @db.Text
+  createdAt       DateTime                  @default(now())
+  verifiedAt      DateTime?
+  verifiedBy      String?
+
+  // Relasi
+  outlet Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@index([outletId, status])
+  @@index([createdAt])
 }

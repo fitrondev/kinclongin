@@ -43,9 +43,16 @@ interface ServicePackageItem {
   estimatedMinutes: number;
 }
 
+export interface WasherOptionItem {
+  id: string;
+  fullName: string;
+  role: string;
+}
+
 interface WalkInFormProps {
   outletId: string;
   servicePackages: ServicePackageItem[];
+  washers?: WasherOptionItem[];
 }
 
 const CATEGORY_OPTIONS: Array<{
@@ -98,7 +105,11 @@ const CATEGORY_OPTIONS: Array<{
   },
 ];
 
-export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
+export function WalkInForm({
+  outletId,
+  servicePackages,
+  washers = [],
+}: WalkInFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -106,6 +117,7 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
   const [licensePlate, setLicensePlate] = useState("");
   const [category, setCategory] = useState<VehicleCategory>("MOBIL_SEDANG");
   const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [selectedWasherIds, setSelectedWasherIds] = useState<string[]>([]);
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [initialNotes, setInitialNotes] = useState("");
@@ -297,6 +309,8 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
           color: color || undefined,
           useMembershipQuota: useMembershipQuota && !!activeMembership,
           membershipId: activeMembership?.id,
+          assignedWasherIds:
+            selectedWasherIds.length > 0 ? selectedWasherIds : undefined,
         });
 
         if (!res.success || !res.data) {
@@ -575,7 +589,71 @@ export function WalkInForm({ outletId, servicePackages }: WalkInFormProps) {
         </CardContent>
       </Card>
 
-      {/* 5. Informasi Pelanggan & WhatsApp (Opsional untuk Struk WA) */}
+      {/* 5. Penugasan Petugas Cuci Awal (Opsional - Task 4.2) */}
+      {washers && washers.length > 0 && (
+        <Card>
+          <CardContent className="space-y-3 pt-5">
+            <div className="flex items-center justify-between">
+              <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase">
+                <User className="h-3.5 w-3.5" />
+                <span>Petugas Cuci / Washer (Opsional)</span>
+              </label>
+              <span className="text-muted-foreground text-[11px]">
+                {selectedWasherIds.length === 0
+                  ? "Masuk Pool Antrean Kiosk"
+                  : selectedWasherIds.length === 1
+                    ? "Solo Washer (100% Komisi)"
+                    : `Tandem (${selectedWasherIds.length} Washer - Komisi Bagi Rata)`}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={selectedWasherIds.length === 0 ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedWasherIds([])}
+                className="h-9 text-xs font-bold"
+              >
+                Pool Antrean (Klaim via Kiosk)
+              </Button>
+              {washers.map((w) => {
+                const isSelected = selectedWasherIds.includes(w.id);
+                return (
+                  <Button
+                    key={w.id}
+                    type="button"
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedWasherIds(
+                          selectedWasherIds.filter((id) => id !== w.id)
+                        );
+                      } else {
+                        setSelectedWasherIds([...selectedWasherIds, w.id]);
+                      }
+                    }}
+                    className={`h-9 text-xs font-bold transition-all ${
+                      isSelected
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    {w.fullName}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="text-muted-foreground text-[11px]">
+              Jika dipilih, status tiket langsung aktif dalam antrean cuci dan
+              komisi tercatat otomatis atas nama staf.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 6. Informasi Pelanggan & WhatsApp (Opsional untuk Struk WA) */}
       <Card>
         <CardContent className="space-y-3 pt-5">
           <div className="flex items-center justify-between">

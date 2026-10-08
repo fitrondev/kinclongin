@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
+import { getSubscriptionStatusAction } from "@/actions/subscription";
 import { POSHeader } from "@/components/pos/header";
 import { OfflineIndicator } from "@/components/pos/offline-indicator";
+import { SubscriptionBanner } from "@/components/pos/subscription-banner";
 import { TicketStatus } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
@@ -59,11 +61,29 @@ export default async function POSLayout({
     });
   }
 
+  // Periksa status lisensi cabang (Flat Rp 50.000 / bulan & Grace Period 3 hari)
+  let subStatus = null;
+  if (outlet?.id) {
+    const subRes = await getSubscriptionStatusAction(outlet.id);
+    if (subRes.success && subRes.data) {
+      subStatus = subRes.data;
+    }
+  }
+
   return (
     <div className="bg-background flex min-h-screen flex-col">
+      {subStatus ? (
+        <SubscriptionBanner
+          status={subStatus.status}
+          isGracePeriod={subStatus.isGracePeriod}
+          graceDaysRemaining={subStatus.graceDaysRemaining}
+          isHardLocked={subStatus.isHardLocked}
+        />
+      ) : null}
       <POSHeader
         outletId={outlet?.id}
-        outletName={outlet?.name || "Kinclongin Cabang Utama"}
+        outletName={outlet?.name || "Cabang Utama"}
+        outletLogo={outlet?.logoUrl}
         cashierName={user.fullName}
         userRole={user.role}
         stats={stats}

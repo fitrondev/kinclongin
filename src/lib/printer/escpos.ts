@@ -9,6 +9,10 @@ export interface ReceiptData {
   outletName: string;
   outletAddress: string;
   outletPhone: string;
+  slogan?: string | null;
+  receiptHeader?: string | null;
+  receiptFooter?: string | null;
+  contactPhone?: string | null;
   ticketNumber: string;
   dateStr: string;
   cashierName: string;
@@ -59,8 +63,14 @@ export function generatePlainTextReceipt(
   // Header
   lines.push(line);
   lines.push(center(data.outletName.toUpperCase()));
+  if (data.slogan) {
+    lines.push(center(`"${data.slogan}"`));
+  }
+  if (data.receiptHeader) {
+    lines.push(center(data.receiptHeader));
+  }
   lines.push(center(data.outletAddress));
-  lines.push(center(`Telp: ${data.outletPhone}`));
+  lines.push(center(`Telp: ${data.contactPhone || data.outletPhone}`));
   lines.push(line);
 
   // Metadata
@@ -114,8 +124,15 @@ export function generatePlainTextReceipt(
 
   // Footer
   lines.push(line);
-  lines.push(center("TERIMA KASIH ATAS KUNJUNGAN ANDA!"));
-  lines.push(center("KENDARAAN BERSIH & KINCLONG!"));
+  if (data.receiptFooter) {
+    lines.push(center(data.receiptFooter));
+  } else {
+    lines.push(center("TERIMA KASIH ATAS KUNJUNGAN ANDA!"));
+    lines.push(center("KENDARAAN BERSIH & KINCLONG!"));
+  }
+  if (data.contactPhone && !data.receiptFooter?.includes(data.contactPhone)) {
+    lines.push(center(`CS: ${data.contactPhone}`));
+  }
   lines.push(line);
 
   return lines.join("\n");

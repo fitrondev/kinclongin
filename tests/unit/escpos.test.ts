@@ -77,4 +77,22 @@ describe("ESC/POS Thermal Printer Unit Tests", () => {
     expect(commands[len - 2]).toBe(0x42);
     expect(commands[len - 1]).toBe(0x00);
   });
+
+  it("mencetak slogan, header kustom, footer kustom dan CS kustom untuk white-label", () => {
+    const brandedReceipt: ReceiptData = {
+      ...sampleReceipt,
+      outletName: "Berkah Auto Wash",
+      slogan: "Cepat & Mengkilap",
+      receiptHeader: "SPESIALIS SALJU & INTERIOR",
+      receiptFooter: "Barang berharga harap diamankan.",
+      contactPhone: "08987654321",
+    };
+
+    const text = generatePlainTextReceipt(brandedReceipt, 32);
+    expect(text).toContain("BERKAH AUTO WASH");
+    expect(text).toContain('"Cepat & Mengkilap"');
+    expect(text).toContain("SPESIALIS SALJU & INTERIOR");
+    expect(text).toContain("Barang berharga harap diamankan.");
+    expect(text).toContain("CS: 08987654321");
+  });
 });

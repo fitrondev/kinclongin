@@ -55,7 +55,18 @@ export function RekapShiftModal({
     setSummary(null);
   };
 
+  const triggerHaptic = () => {
+    if (typeof window !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate(25);
+      } catch {
+        // Abaikan
+      }
+    }
+  };
+
   const handleDigitClick = (digit: string) => {
+    triggerHaptic();
     if (pin.length >= 4) return;
     setErrorMsg(null);
     const newPin = pin + digit;
@@ -162,7 +173,7 @@ export function RekapShiftModal({
             <Button
               type="button"
               onClick={resetAll}
-              className="h-12 w-full font-bold"
+              className="h-14 w-full rounded-2xl text-base font-bold"
             >
               Tutup & Selesai
             </Button>
@@ -171,7 +182,7 @@ export function RekapShiftModal({
           /* Tampilan Input PIN untuk Membuka Rekap */
           <div className="space-y-4 py-2">
             <div className="space-y-1 text-center">
-              <p className="text-muted-foreground text-xs">
+              <p className="text-muted-foreground text-xs font-semibold">
                 Masukkan 4-digit PIN Anda untuk melihat hasil kerja hari ini:
               </p>
 
@@ -184,7 +195,7 @@ export function RekapShiftModal({
                       className={`h-4 w-4 rounded-full transition-all ${
                         isFilled
                           ? "scale-125 bg-amber-500 shadow-sm"
-                          : "bg-muted border-border border"
+                          : "bg-muted border-border border-2"
                       }`}
                     />
                   );
@@ -192,22 +203,22 @@ export function RekapShiftModal({
               </div>
 
               {errorMsg && (
-                <div className="text-destructive flex items-center justify-center gap-1.5 pt-1 text-xs font-semibold">
+                <div className="text-destructive animate-shake flex items-center justify-center gap-1.5 pt-1 text-xs font-bold">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
             </div>
 
-            {/* Numpad */}
-            <div className="mx-auto grid max-w-70 grid-cols-3 gap-2 pt-2">
+            {/* Numpad Masif */}
+            <div className="mx-auto grid max-w-85 grid-cols-3 gap-2.5 pt-2">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
                 <button
                   key={num}
                   type="button"
                   disabled={isPending}
                   onClick={() => handleDigitClick(num)}
-                  className="bg-card border-border text-foreground flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl border-2 text-xl font-black shadow-xs transition-all select-none hover:border-amber-500 hover:bg-amber-500/5 active:scale-95 sm:h-16 sm:text-2xl"
+                  className="bg-card border-border text-foreground flex h-16 w-full cursor-pointer items-center justify-center rounded-2xl border-2 text-2xl font-black shadow-xs transition-all select-none hover:border-amber-500 hover:bg-amber-500/5 active:scale-95 sm:h-20 sm:text-3xl"
                 >
                   {num}
                 </button>
@@ -217,10 +228,11 @@ export function RekapShiftModal({
                 type="button"
                 disabled={isPending}
                 onClick={() => {
+                  triggerHaptic();
                   setErrorMsg(null);
                   setPin("");
                 }}
-                className="bg-muted/60 hover:bg-muted text-muted-foreground flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl text-xs font-bold transition-all select-none sm:h-16"
+                className="bg-muted/60 hover:bg-muted text-muted-foreground flex h-16 w-full cursor-pointer items-center justify-center rounded-2xl border text-xs font-bold transition-all select-none sm:h-20 sm:text-sm"
               >
                 Hapus
               </button>
@@ -229,7 +241,7 @@ export function RekapShiftModal({
                 type="button"
                 disabled={isPending}
                 onClick={() => handleDigitClick("0")}
-                className="bg-card border-border text-foreground flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl border-2 text-xl font-black shadow-xs transition-all select-none hover:border-amber-500 hover:bg-amber-500/5 active:scale-95 sm:h-16 sm:text-2xl"
+                className="bg-card border-border text-foreground flex h-16 w-full cursor-pointer items-center justify-center rounded-2xl border-2 text-2xl font-black shadow-xs transition-all select-none hover:border-amber-500 hover:bg-amber-500/5 active:scale-95 sm:h-20 sm:text-3xl"
               >
                 0
               </button>
@@ -238,12 +250,13 @@ export function RekapShiftModal({
                 type="button"
                 disabled={isPending}
                 onClick={() => {
+                  triggerHaptic();
                   setErrorMsg(null);
                   setPin((prev) => prev.slice(0, -1));
                 }}
-                className="bg-muted/60 hover:bg-muted text-foreground flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl transition-all select-none sm:h-16"
+                className="bg-muted/60 hover:bg-muted text-foreground flex h-16 w-full cursor-pointer items-center justify-center rounded-2xl border transition-all select-none sm:h-20"
               >
-                <Delete className="h-5 w-5" />
+                <Delete className="h-6 w-6" />
               </button>
             </div>
           </div>

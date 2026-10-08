@@ -33,8 +33,8 @@ const MATRIX_DATA = [
     washer: false,
   },
   {
-    feature: "Manajemen Akun & Role Pengguna",
-    desc: "Buat akun staf, ganti password, atur hak akses",
+    feature: "Manajemen Staf & Karyawan Cabang",
+    desc: "Kelola kasir, washer PIN kiosk, manajer cabang, & reset password",
     owner: true,
     manager: true,
     cashier: false,

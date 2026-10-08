@@ -1,7 +1,6 @@
 import {
   Check,
   CreditCard,
-  Crown,
   Droplets,
   KeyRound,
   Lock,
@@ -28,7 +27,7 @@ export interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   outletName: string;
-  isOwner: boolean;
+  isOwner?: boolean;
   createFullName: string;
   setCreateFullName: (val: string) => void;
   createEmail: string;
@@ -105,20 +104,10 @@ export function CreateUserDialog({
                 },
                 {
                   role: UserRole.MANAGER,
-                  label: "Manajer",
+                  label: "Manajer Cabang",
                   desc: "Supervisi & Stok",
                   icon: ShieldCheck,
                 },
-                ...(isOwner
-                  ? [
-                      {
-                        role: UserRole.OWNER,
-                        label: "Owner",
-                        desc: "Akses Penuh",
-                        icon: Crown,
-                      },
-                    ]
-                  : []),
               ].map((item) => {
                 const Icon = item.icon;
                 const isSelected = createRole === item.role;

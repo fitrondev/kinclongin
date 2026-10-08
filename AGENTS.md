@@ -94,7 +94,7 @@ export type ActionResponse<T = unknown> = {
 
 - **JANGAN SIMPAN BINARY DI DATABASE**: Foto inspeksi kondisi kendaraan sebelum cuci, bukti transfer pembayaran, logo cabang, dan gambar produk ritel disimpan di SumoPod Object Storage melalui direct presigned URL.
 
-### 2.7 Sistem Langganan SaaS Flat (Manual Transfer / QRIS)
+### 2.7 Sistem Langganan Lisensi Flat (Manual Transfer / QRIS)
 
 - **TARIF FLAT TUNGGAL**: Rp 50.000 / bulan per cabang outlet (Full Features).
 - Seluruh pembayaran diproses secara lokal melalui **Transfer Bank Manual** atau **QRIS Usaha**.

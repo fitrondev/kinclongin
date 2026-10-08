@@ -50,6 +50,8 @@ export interface TrackingData {
     name: string;
     address: string;
     phone: string;
+    logoUrl?: string | null;
+    slogan?: string | null;
   };
 }
 
@@ -138,19 +140,33 @@ export function TrackingView({ initialData }: { initialData: TrackingData }) {
         {/* Header Outlet */}
         <header className="bg-card flex items-center justify-between rounded-2xl border p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl p-1.5 shadow-sm">
-              <Image
-                src="/logoipsum.svg"
-                alt="Kinclongin Logo"
-                width={32}
-                height={32}
-                className="h-7 w-7 object-contain"
-              />
+            <div className="bg-primary/10 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl p-1 shadow-sm">
+              {data.outlet.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={data.outlet.logoUrl}
+                  alt={data.outlet.name}
+                  className="h-8 w-8 rounded-md object-contain"
+                />
+              ) : (
+                <Image
+                  src="/logoipsum.svg"
+                  alt="Logo"
+                  width={32}
+                  height={32}
+                  className="h-7 w-7 object-contain"
+                />
+              )}
             </div>
             <div>
               <h1 className="text-base font-extrabold tracking-tight">
                 {data.outlet.name}
               </h1>
+              {data.outlet.slogan ? (
+                <p className="text-primary text-[11px] font-medium italic">
+                  &ldquo;{data.outlet.slogan}&rdquo;
+                </p>
+              ) : null}
               <p className="text-muted-foreground line-clamp-1 text-xs">
                 {data.outlet.address}
               </p>
@@ -310,7 +326,7 @@ export function TrackingView({ initialData }: { initialData: TrackingData }) {
                   : "Menunggu penugasan kru"}
               </p>
               <p className="text-muted-foreground text-[11px]">
-                Kru spesialis cuci Kinclongin
+                Kru spesialis cuci {data.outlet.name}
               </p>
             </CardContent>
           </Card>
@@ -352,7 +368,7 @@ export function TrackingView({ initialData }: { initialData: TrackingData }) {
         </div>
 
         <footer className="text-muted-foreground pb-6 text-center text-[11px]">
-          <p>Kinclongin &bull; Platform Manajemen Cuci Modern Indonesia</p>
+          <p>{data.outlet.name} &bull; Lacak Status Cuci Real-Time</p>
         </footer>
       </div>
     </div>

@@ -24,13 +24,16 @@ export async function sendWhatsAppReceipt(
     formattedPhone = "62" + formattedPhone.slice(1);
   }
 
-  const messageText = formatWhatsAppReceiptMessage(params);
-
   try {
     // Cari konfigurasi API Gateway outlet
     const ticket = await prisma.washTicket.findUnique({
       where: { id: params.ticketId },
       include: { outlet: true },
+    });
+
+    const messageText = formatWhatsAppReceiptMessage({
+      ...params,
+      slogan: params.slogan ?? ticket?.outlet.slogan,
     });
 
     const apiKey = ticket?.outlet.waGatewayApiKey;

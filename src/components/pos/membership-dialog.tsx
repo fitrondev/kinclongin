@@ -82,7 +82,7 @@ export function MembershipDialog({
         customerPhone,
         customerName,
         licensePlate: licensePlate || undefined,
-        planName: "Member Loyalitas Kinclongin",
+        planName: "Member Loyalitas",
         price: MEMBERSHIP_FEE,
         durationDays: 365, // 1 Tahun
         totalQuota: 999, // Akses poin akumulatif & promo 10x gratis 1x
@@ -157,7 +157,7 @@ export function MembershipDialog({
           <div className="space-y-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black tracking-wide text-amber-900 uppercase dark:text-amber-200">
-                Keuntungan Member Kinclongin
+                Keuntungan Member Eksklusif
               </span>
               <Badge className="bg-amber-500 text-[10px] font-black text-black">
                 {formatRupiah(MEMBERSHIP_FEE)}

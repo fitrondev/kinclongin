@@ -19,7 +19,7 @@ export default async function CashFlowPage() {
     redirect("/sign-in");
   }
 
-  // Khusus Peran OWNER (Superadmin)
+  // Khusus Peran OWNER Bisnis
   if (user.role !== UserRole.OWNER) {
     redirect("/dashboard");
   }

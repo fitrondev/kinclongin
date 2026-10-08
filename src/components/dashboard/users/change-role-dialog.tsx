@@ -1,4 +1,4 @@
-import { Check, CreditCard, Crown, Droplets, ShieldCheck } from "lucide-react";
+import { Check, CreditCard, Droplets, ShieldCheck } from "lucide-react";
 
 import type { UserAccountItem } from "@/actions/users";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export interface ChangeRoleDialogProps {
   onOpenChange: (open: boolean) => void;
   targetNewRole: UserRole;
   setTargetNewRole: (val: UserRole) => void;
-  isOwner: boolean;
+  isOwner?: boolean;
   isPending: boolean;
   onConfirmUpdateRole: () => void;
 }
@@ -73,15 +73,6 @@ export function ChangeRoleDialog({
                   label: "Manajer Cabang",
                   icon: ShieldCheck,
                 },
-                ...(isOwner
-                  ? [
-                      {
-                        role: UserRole.OWNER,
-                        label: "Owner (Pemilik)",
-                        icon: Crown,
-                      },
-                    ]
-                  : []),
               ].map((item) => {
                 const Icon = item.icon;
                 const isSelected = targetNewRole === item.role;

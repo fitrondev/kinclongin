@@ -7,13 +7,17 @@ import {
   CheckCircle2,
   Crown,
   ExternalLink,
+  Image as ImageIcon,
   MapPin,
   Phone,
   Plus,
+  Receipt,
   RefreshCw,
   Save,
   ShieldCheck,
   Sparkles,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,6 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useStorageUpload } from "@/hooks/use-storage-upload";
 
 export interface OutletDetailItem {
   id: string;
@@ -53,6 +58,10 @@ export interface OutletDetailItem {
   address: string;
   phone: string;
   logoUrl: string | null;
+  slogan?: string | null;
+  receiptHeader?: string | null;
+  receiptFooter?: string | null;
+  contactPhone?: string | null;
   isActive: boolean;
   isCurrent: boolean;
   totalEmployees: number;
@@ -73,7 +82,45 @@ export function OutletManagementView({
   const [address, setAddress] = useState(currentOutlet.address);
   const [phone, setPhone] = useState(currentOutlet.phone);
   const [logoUrl, setLogoUrl] = useState(currentOutlet.logoUrl || "");
+  const [slogan, setSlogan] = useState(currentOutlet.slogan || "");
+  const [receiptHeader, setReceiptHeader] = useState(
+    currentOutlet.receiptHeader || ""
+  );
+  const [receiptFooter, setReceiptFooter] = useState(
+    currentOutlet.receiptFooter || ""
+  );
+  const [contactPhone, setContactPhone] = useState(
+    currentOutlet.contactPhone || currentOutlet.phone || ""
+  );
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Hook Upload Logo S3
+  const { upload, isUploading: isLogoUploading } = useStorageUpload();
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (PNG, JPG, atau WEBP)");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ukuran logo maksimal 2MB");
+      return;
+    }
+
+    const res = await upload(file, "LOGO", currentOutlet.id);
+    if (res?.publicUrl) {
+      setLogoUrl(res.publicUrl);
+      toast.success(
+        "Logo berhasil diunggah! Klik 'Simpan Perubahan' untuk menerapkan."
+      );
+    } else {
+      toast.error("Gagal mengunggah logo ke penyimpanan.");
+    }
+  };
 
   // State Tambah Cabang Baru
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -94,6 +141,10 @@ export function OutletManagementView({
         address: address.trim(),
         phone: phone.trim(),
         logoUrl: logoUrl.trim() || undefined,
+        slogan: slogan.trim() || undefined,
+        receiptHeader: receiptHeader.trim() || undefined,
+        receiptFooter: receiptFooter.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
       });
 
       if (!res.success) {
@@ -101,7 +152,7 @@ export function OutletManagementView({
         return;
       }
 
-      toast.success("Profil cabang berhasil diperbarui!");
+      toast.success("Profil dan identitas brand cabang berhasil diperbarui!");
     } catch {
       toast.error("Terjadi kendala jaringan saat memperbarui profil cabang.");
     } finally {
@@ -289,103 +340,334 @@ export function OutletManagementView({
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Edit Profil Cabang Aktif */}
+        {/* Tab 1: Edit Profil Cabang Aktif & White-Label Branding */}
         <TabsContent value="profile">
-          <Card className="border-border bg-card max-w-2xl shadow-xs">
-            <CardHeader className="space-y-1 pb-4">
-              <CardTitle className="text-foreground text-base font-bold">
-                Detail Identitas Cabang Aktif
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Informasi ini akan tertera pada struk fisik dan pesan WhatsApp
-                pelanggan
-              </CardDescription>
-            </CardHeader>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Kolom Kiri: Form Pengaturan Brand (8 Kolom) */}
+            <Card className="border-border bg-card shadow-xs lg:col-span-7 xl:col-span-8">
+              <CardHeader className="space-y-1 pb-4">
+                <CardTitle className="text-foreground text-base font-bold">
+                  Detail Identitas & White-Label Branding
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Atur logo, nama usaha, dan tampilan struk kasir. Seluruh staf
+                  dan pelanggan akan melihat identitas brand tempat cuci Anda.
+                </CardDescription>
+              </CardHeader>
 
-            <form onSubmit={handleUpdateProfile}>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs font-semibold">
-                    Nama Usaha / Cabang
-                  </Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    className="h-10 rounded-xl text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="address" className="text-xs font-semibold">
-                    Alamat Fisik Cabang
-                  </Label>
-                  <Textarea
-                    id="address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    required
-                    rows={3}
-                    className="rounded-xl text-xs"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="phone" className="text-xs font-semibold">
-                      Nomor Telepon / WhatsApp
+              <form onSubmit={handleUpdateProfile}>
+                <CardContent className="space-y-4">
+                  {/* Upload Logo Tempat Cuci */}
+                  <div className="bg-muted/20 space-y-2 rounded-xl border border-dashed p-3 sm:p-4">
+                    <Label className="flex items-center justify-between text-xs font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <ImageIcon className="text-primary h-3.5 w-3.5" />
+                        <span>Logo Tempat Cuci</span>
+                      </span>
+                      {logoUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setLogoUrl("")}
+                          className="text-destructive flex items-center gap-1 text-[11px] hover:underline"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Hapus Logo
+                        </button>
+                      ) : null}
                     </Label>
-                    <Input
-                      id="phone"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+
+                    <div className="flex flex-col items-center gap-4 sm:flex-row">
+                      {/* Thumbnail Preview */}
+                      <div className="bg-card flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border p-1.5 shadow-xs">
+                        {logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={logoUrl}
+                            alt="Logo Tempat Cuci"
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <div className="text-muted-foreground flex flex-col items-center text-center">
+                            <ImageIcon className="h-6 w-6 opacity-40" />
+                            <span className="mt-0.5 text-[9px] font-medium">
+                              Tanpa Logo
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* File Upload Input & Manual URL */}
+                      <div className="w-full flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              disabled={isLogoUploading}
+                              onChange={handleLogoUpload}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isLogoUploading}
+                              className="pointer-events-none h-9 gap-1.5 rounded-xl text-xs font-semibold"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                              <span>
+                                {isLogoUploading
+                                  ? "Mengunggah..."
+                                  : "Unggah Logo (PNG/JPG)"}
+                              </span>
+                            </Button>
+                          </label>
+                          <span className="text-muted-foreground text-[11px]">
+                            Maks 2MB
+                          </span>
+                        </div>
+                        <Input
+                          id="logoUrl"
+                          placeholder="Atau tempel URL gambar (https://...)"
+                          value={logoUrl}
+                          onChange={(e) => setLogoUrl(e.target.value)}
+                          className="h-8 rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name" className="text-xs font-semibold">
+                        Nama Usaha / Tempat Cuci
+                      </Label>
+                      <Input
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        placeholder="Contoh: Berkah Auto Wash"
+                        className="h-10 rounded-xl text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="slogan" className="text-xs font-semibold">
+                        Slogan Usaha (Opsional)
+                      </Label>
+                      <Input
+                        id="slogan"
+                        value={slogan}
+                        onChange={(e) => setSlogan(e.target.value)}
+                        placeholder="Contoh: Cepat, Bersih & Mengkilap"
+                        className="h-10 rounded-xl text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="address" className="text-xs font-semibold">
+                      Alamat Fisik Cabang
+                    </Label>
+                    <Textarea
+                      id="address"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
                       required
-                      className="h-10 rounded-xl text-xs"
+                      rows={2}
+                      className="rounded-xl text-xs"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="slug" className="text-xs font-semibold">
-                      Slug Identitas URL
-                    </Label>
-                    <Input
-                      id="slug"
-                      value={currentOutlet.slug}
-                      disabled
-                      className="bg-muted text-muted-foreground h-10 rounded-xl font-mono text-xs"
-                    />
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone" className="text-xs font-semibold">
+                        Telepon Operasional
+                      </Label>
+                      <Input
+                        id="phone"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        required
+                        className="h-10 rounded-xl text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="contactPhone"
+                        className="text-xs font-semibold"
+                      >
+                        WhatsApp Bantuan CS
+                      </Label>
+                      <Input
+                        id="contactPhone"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        placeholder="08123456789"
+                        className="h-10 rounded-xl text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="slug" className="text-xs font-semibold">
+                        Slug URL Cabang
+                      </Label>
+                      <Input
+                        id="slug"
+                        value={currentOutlet.slug}
+                        disabled
+                        className="bg-muted text-muted-foreground h-10 rounded-xl font-mono text-xs"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="logoUrl" className="text-xs font-semibold">
-                    URL Logo Usaha (Opsional)
-                  </Label>
-                  <Input
-                    id="logoUrl"
-                    placeholder="https://..."
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    className="h-10 rounded-xl text-xs"
-                  />
-                </div>
-              </CardContent>
+                  {/* Kustomisasi Teks Struk Kasir */}
+                  <div className="space-y-3 border-t pt-2">
+                    <h3 className="text-foreground flex items-center gap-1.5 text-xs font-bold">
+                      <Receipt className="text-primary h-3.5 w-3.5" />
+                      <span>Kustomisasi Nota / Struk Kasir (ESC/POS)</span>
+                    </h3>
 
-              <CardFooter className="border-t pt-4">
-                <Button
-                  type="submit"
-                  disabled={isUpdating}
-                  className="h-10 w-full gap-2 rounded-xl text-xs font-bold shadow-xs sm:w-auto"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>
-                    {isUpdating ? "Menyimpan..." : "Simpan Perubahan Cabang"}
-                  </span>
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="receiptHeader"
+                        className="text-xs font-semibold"
+                      >
+                        Teks Tambahan Kepala Struk (Header)
+                      </Label>
+                      <Input
+                        id="receiptHeader"
+                        value={receiptHeader}
+                        onChange={(e) => setReceiptHeader(e.target.value)}
+                        placeholder="Contoh: SPESIALIS CUCI HIDROLIK & SALJU"
+                        className="h-10 rounded-xl text-xs"
+                      />
+                      <p className="text-muted-foreground text-[11px]">
+                        Teks ini dicetak di bawah nama outlet pada struk kertas
+                        thermal.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="receiptFooter"
+                        className="text-xs font-semibold"
+                      >
+                        Teks Catatan Kaki Struk (Footer)
+                      </Label>
+                      <Input
+                        id="receiptFooter"
+                        value={receiptFooter}
+                        onChange={(e) => setReceiptFooter(e.target.value)}
+                        placeholder="Contoh: Barang berharga harap diamankan. Terima kasih atas kunjungan Anda!"
+                        className="h-10 rounded-xl text-xs"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="border-t pt-4">
+                  <Button
+                    type="submit"
+                    disabled={isUpdating || isLogoUploading}
+                    className="h-10 w-full gap-2 rounded-xl text-xs font-bold shadow-xs sm:w-auto"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>
+                      {isUpdating
+                        ? "Menyimpan..."
+                        : "Simpan Perubahan Identitas"}
+                    </span>
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+
+            {/* Kolom Kanan: Pratinjau Langsung Struk Kasir (4-5 Kolom) */}
+            <div className="space-y-4 lg:col-span-5 xl:col-span-4">
+              <Card className="border-border bg-card shadow-xs">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-foreground flex items-center gap-1.5 text-xs font-bold">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Pratinjau Live Struk Kasir</span>
+                  </CardTitle>
+                  <CardDescription className="text-[11px]">
+                    Simulasi tampilan nota thermal 58mm pelanggan
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/40 text-foreground space-y-2 rounded-xl border p-4 font-mono text-xs shadow-inner">
+                    {/* Header Struk */}
+                    <div className="space-y-0.5 border-b pb-2 text-center">
+                      {logoUrl ? (
+                        <div className="mb-1 flex justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={logoUrl}
+                            alt="Logo Struk"
+                            className="h-8 object-contain"
+                          />
+                        </div>
+                      ) : null}
+                      <p className="text-sm font-extrabold tracking-wide uppercase">
+                        {name || "NAMA TEMPAT CUCI"}
+                      </p>
+                      {slogan ? (
+                        <p className="text-muted-foreground text-[10px] italic">
+                          &ldquo;{slogan}&rdquo;
+                        </p>
+                      ) : null}
+                      {receiptHeader ? (
+                        <p className="text-primary text-[10px] font-semibold">
+                          {receiptHeader}
+                        </p>
+                      ) : null}
+                      <p className="text-muted-foreground line-clamp-1 text-[10px]">
+                        {address || "Alamat Cabang"}
+                      </p>
+                      <p className="text-muted-foreground text-[10px]">
+                        Telp: {contactPhone || phone || "08xxxx"}
+                      </p>
+                    </div>
+
+                    {/* Metadata Sample */}
+                    <div className="space-y-0.5 border-b py-1 text-[11px]">
+                      <div className="flex justify-between">
+                        <span>No. Tiket:</span>
+                        <span className="font-bold">#KNC-001</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Kendaraan:</span>
+                        <span className="font-bold">DR 1234 BZ (Avanza)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Layanan:</span>
+                        <span>Cuci Salju + Semir</span>
+                      </div>
+                    </div>
+
+                    {/* Total Sample */}
+                    <div className="flex justify-between border-b pt-1 pb-2 text-xs font-bold">
+                      <span>TOTAL:</span>
+                      <span>Rp 50.000</span>
+                    </div>
+
+                    {/* Footer Struk */}
+                    <div className="text-muted-foreground space-y-0.5 pt-1 text-center text-[10px]">
+                      <p className="font-medium">
+                        {receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!"}
+                      </p>
+                      {contactPhone ? (
+                        <p className="text-[9px]">CS: {contactPhone}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Tab 2: Daftar Seluruh Cabang (Multi-Outlet) */}

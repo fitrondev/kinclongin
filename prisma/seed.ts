@@ -5,6 +5,9 @@ import {
   MovementType,
   PaymentMethod,
   PaymentStatus,
+  SubscriptionPaymentMethod,
+  SubscriptionPaymentStatus,
+  SubscriptionStatus,
   TicketStatus,
   UserRole,
   UserStatus,
@@ -13,9 +16,55 @@ import {
 } from "../src/generated/prisma/client";
 import { prisma } from "../src/lib/db/prisma";
 
+interface BranchConfig {
+  name: string;
+  slug: string;
+  address: string;
+  phone: string;
+  city: string;
+  subStatus: SubscriptionStatus;
+  subExpiresAt: Date;
+  receiptHeader: string;
+  receiptFooter: string;
+  manager: { name: string; email: string };
+  cashiers: Array<{ name: string; email: string }>;
+  washers: Array<{ name: string; email: string; pin: string }>;
+  vehicleTypes: Array<{
+    name: string;
+    category: VehicleCategory;
+    price: number;
+    duration: number;
+    commissionAmount: number;
+  }>;
+  supplies: Array<{
+    name: string;
+    unit: string;
+    stock: number;
+    minStockAlert: number;
+  }>;
+  retails: Array<{
+    name: string;
+    sku: string;
+    category: string;
+    costPrice: number;
+    sellingPrice: number;
+    stock: number;
+    minStockAlert: number;
+  }>;
+  customers: Array<{
+    fullName: string;
+    phone: string;
+    plate: string;
+    brand: string;
+    model: string;
+    category: VehicleCategory;
+    points: number;
+  }>;
+}
+
 async function main() {
   console.log("🧼 =========================================================");
-  console.log("🧼 MEMULAI SEEDING DATA LENGKAP KINCLONGIN POS & SAAS SYSTEM");
+  console.log("🧼 MEMULAI SEEDING DATA LENGKAP KINCLONGIN POS PLATFORM");
   console.log("🧼 =========================================================");
 
   const now = new Date();
@@ -23,6 +72,7 @@ async function main() {
 
   // 1. Bersihkan tabel lama agar seeding bersih dan idenpoten
   console.log("\n🧹 1. Membersihkan database lama...");
+  await prisma.tenantSubscriptionPayment.deleteMany();
   await prisma.shiftAssignment.deleteMany();
   await prisma.workShift.deleteMany();
   await prisma.whatsAppLog.deleteMany();
@@ -46,2547 +96,1102 @@ async function main() {
   // Hash kata sandi default untuk semua akun demo (123456)
   const defaultPasswordHash = await bcrypt.hash("123456", 10);
 
-  // 2. Buat Pengguna Utama Cabang (Owner terlebih dahulu agar dapat ditautkan ke Outlet)
-  console.log("👤 2. Membuat Akun Pengguna Utama (Owner)...");
-  const ownerUser = await prisma.user.create({
+  // 2. Buat Superadmin Platform (Pusat Provider tanpa outlet lokal)
+  console.log("👑 2. Membuat Akun Superadmin Platform Provider...");
+  const superadminUser = await prisma.user.create({
     data: {
-      email: "owner@kinclongin.com",
+      email: "superadmin@kinclongin.com",
       passwordHash: defaultPasswordHash,
-      fullName: "Pak H. Ridwan (Owner Cabang)",
-      role: UserRole.OWNER,
+      fullName: "Superadmin Platform Pusat",
+      role: UserRole.SUPERADMIN,
       status: UserStatus.ACTIVE,
-      avatarUrl:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&q=80",
+      outletId: null, // Superadmin platform murni tidak terikat cabang fisik
     },
   });
 
-  // 3. Buat Cabang Outlet (Multi-Tenant Manual Demo: 3 Cabang)
-  console.log("\n🏢 3. Membuat Cabang Outlet Demo (3 Cabang Multi-Tenant)...");
-  const outletMataram = await prisma.outlet.create({
-    data: {
-      name: "Kinclongin Cabang Pusat Mataram",
-      slug: "kinclongin-pusat-mataram",
-      address: "Jl. Pejanggik No. 88, Cakranegara, Kota Mataram, NTB",
-      phone: "081912345678",
-      logoUrl:
-        "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=400&q=80",
-      waGatewayApiKey: "WA_KNC_DEMO_KEY_MATARAM",
-      waSenderNumber: "6281912345678",
-      ownerId: ownerUser.id,
-      isActive: true,
-    },
-  });
-
-  const outletRembiga = await prisma.outlet.create({
-    data: {
-      name: "Kinclongin Express Rembiga",
-      slug: "kinclongin-express-rembiga",
-      address: "Jl. Dr. Wahidin No. 45, Rembiga, Kota Mataram, NTB",
-      phone: "081987654321",
-      logoUrl:
-        "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?w=400&q=80",
-      waGatewayApiKey: "WA_KNC_DEMO_KEY_REMBIGA",
-      waSenderNumber: "6281987654321",
-      ownerId: ownerUser.id,
-      isActive: true,
-    },
-  });
-
-  const outletSenggigi = await prisma.outlet.create({
-    data: {
-      name: "Kinclongin Auto Spa & Detailing Senggigi",
-      slug: "kinclongin-autospa-senggigi",
-      address: "Jl. Raya Senggigi KM 8, Batu Layar, Lombok Barat, NTB",
-      phone: "081933445566",
-      logoUrl:
-        "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?w=400&q=80",
-      waGatewayApiKey: "WA_KNC_DEMO_KEY_SENGGIGI",
-      waSenderNumber: "6281933445566",
-      ownerId: ownerUser.id,
-      isActive: true,
-    },
-  });
-
-  // Tautkan outletId aktif untuk Owner (default ke Mataram Pusat)
-  await prisma.user.update({
-    where: { id: ownerUser.id },
-    data: { outletId: outletMataram.id },
-  });
-
-  // Akun Admin Pusat (Alias umum admin@kinclongin.com)
-  const adminUser = await prisma.user.create({
-    data: {
-      email: "admin@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Admin Kinclongin Pusat",
-      role: UserRole.OWNER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-      avatarUrl:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
-    },
-  });
-
-  // Buat Manajer & Kasir Mataram
-  console.log("👥 4. Membuat Akun Manajer & Kasir Shift...");
-  const managerUser = await prisma.user.create({
-    data: {
-      email: "danu.manager@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Danu Prakoso",
-      role: UserRole.MANAGER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  // Alias Manager (manager@kinclongin.com & danu.operasional@kinclongin.com)
-  const managerGeneric = await prisma.user.create({
-    data: {
-      email: "manager@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Manager Operasional Cabang",
-      role: UserRole.MANAGER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  const managerOperasional = await prisma.user.create({
-    data: {
-      email: "danu.operasional@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Danu Prakoso (Operasional)",
-      role: UserRole.MANAGER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  const cashierMorning = await prisma.user.create({
-    data: {
-      email: "kasir.pagi@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Siti Rahma",
-      role: UserRole.CASHIER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  const cashierAfternoon = await prisma.user.create({
-    data: {
-      email: "kasir.sore@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Putri Anggraeni",
-      role: UserRole.CASHIER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  // Alias Kasir Umum (kasir@kinclongin.com & kasir.mataram@kinclongin.com)
-  const cashierGeneric = await prisma.user.create({
-    data: {
-      email: "kasir@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Kasir Kinclongin Pusat",
-      role: UserRole.CASHIER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  const cashierMataram = await prisma.user.create({
-    data: {
-      email: "kasir.mataram@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Kasir Cabang Mataram",
-      role: UserRole.CASHIER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-
-  // Staf Cabang Rembiga
-  const managerRembiga = await prisma.user.create({
-    data: {
-      email: "manager.rembiga@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Rian Saputra",
-      role: UserRole.MANAGER,
-      status: UserStatus.ACTIVE,
-      outletId: outletRembiga.id,
-    },
-  });
-
-  const cashierRembiga = await prisma.user.create({
-    data: {
-      email: "kasir.rembiga@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Dina Marlina",
-      role: UserRole.CASHIER,
-      status: UserStatus.ACTIVE,
-      outletId: outletRembiga.id,
-    },
-  });
-
-  // Staf Cabang Senggigi
-  const managerSenggigi = await prisma.user.create({
-    data: {
-      email: "manager.senggigi@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Bayu Nugroho",
-      role: UserRole.MANAGER,
-      status: UserStatus.ACTIVE,
-      outletId: outletSenggigi.id,
-    },
-  });
-
-  // Contoh Akun Suspended & Inactive (untuk menguji filter status pengguna di dasbor)
-  await prisma.user.create({
-    data: {
-      email: "mantan.kasir@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Hadi Wijaya",
-      role: UserRole.CASHIER,
-      status: UserStatus.SUSPENDED,
-      outletId: outletMataram.id,
-    },
-  });
-
-  // Buat Employee record untuk Manager & Kasir agar terdaftar di modul roster staf & jadwal shift
-  const empManagerMataram = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: managerUser.id,
-      fullName: "Danu Prakoso",
-      phone: "081922334455",
-      role: UserRole.MANAGER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  const empCashierMorning = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: cashierMorning.id,
-      fullName: "Siti Rahma",
-      phone: "081933445566",
-      role: UserRole.CASHIER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  const empCashierAfternoon = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: cashierAfternoon.id,
-      fullName: "Putri Anggraeni",
-      phone: "081944556677",
-      role: UserRole.CASHIER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  const empManagerGeneric = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: managerGeneric.id,
-      fullName: "Manager Operasional Cabang",
-      phone: "081922334466",
-      role: UserRole.MANAGER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  const empCashierGeneric = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: cashierGeneric.id,
-      fullName: "Kasir Kinclongin Pusat",
-      phone: "081933445588",
-      role: UserRole.CASHIER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  const empManagerRembiga = await prisma.employee.create({
-    data: {
-      outletId: outletRembiga.id,
-      userId: managerRembiga.id,
-      fullName: "Rian Saputra",
-      phone: "081955667788",
-      role: UserRole.MANAGER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  const empCashierRembiga = await prisma.employee.create({
-    data: {
-      outletId: outletRembiga.id,
-      userId: cashierRembiga.id,
-      fullName: "Dina Marlina",
-      phone: "081966778899",
-      role: UserRole.CASHIER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  const empManagerSenggigi = await prisma.employee.create({
-    data: {
-      outletId: outletSenggigi.id,
-      userId: managerSenggigi.id,
-      fullName: "Bayu Nugroho",
-      phone: "081977889900",
-      role: UserRole.MANAGER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 0,
-      isActive: true,
-    },
-  });
-
-  // 5. Buat Karyawan Washer Cuci & Hubungkan ke Akun Pengguna + PIN Kiosk
-  console.log("🧽 5. Membuat Karyawan Washer Cuci & PIN Kiosk Tablet...");
-
-  // Washer 1: Agus Santoso (PIN: 1234)
-  const userWasher1 = await prisma.user.create({
-    data: {
-      email: "agus.washer@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Agus Santoso",
-      role: UserRole.WASHER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-  const washer1 = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: userWasher1.id,
-      fullName: "Agus Santoso",
-      phone: "087765432101",
-      pinCode: "1234",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 12000,
-      isActive: true,
-    },
-  });
-
-  // Washer 2: Budi Pratama (PIN: 5678)
-  const userWasher2 = await prisma.user.create({
-    data: {
-      email: "budi.washer@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Budi Pratama",
-      role: UserRole.WASHER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-  const washer2 = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: userWasher2.id,
-      fullName: "Budi Pratama",
-      phone: "087765432102",
-      pinCode: "5678",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 12000,
-      isActive: true,
-    },
-  });
-
-  // Washer 3: Rian Hidayat (PIN: 9999)
-  const userWasher3 = await prisma.user.create({
-    data: {
-      email: "rian.washer@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Rian Hidayat",
-      role: UserRole.WASHER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-  const washer3 = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: userWasher3.id,
-      fullName: "Rian Hidayat",
-      phone: "087765432103",
-      pinCode: "9999",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 10000,
-      isActive: true,
-    },
-  });
-
-  // Washer 4: Ilham Saputra (PIN: 2026)
-  const userWasher4 = await prisma.user.create({
-    data: {
-      email: "ilham.washer@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Ilham Saputra",
-      role: UserRole.WASHER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-  const washer4 = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: userWasher4.id,
-      fullName: "Ilham Saputra",
-      phone: "087765432104",
-      pinCode: "2026",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 10000,
-      isActive: true,
-    },
-  });
-
-  // Washer 5: Fajar Ramadhan (PIN: 1122 - Komisi Persentase 25%)
-  const userWasher5 = await prisma.user.create({
-    data: {
-      email: "fajar.washer@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Fajar Ramadhan",
-      role: UserRole.WASHER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-  const washer5 = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: userWasher5.id,
-      fullName: "Fajar Ramadhan",
-      phone: "087765432105",
-      pinCode: "1122",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.PERCENTAGE,
-      commissionRate: 25,
-      isActive: true,
-    },
-  });
-
-  // Washer 6: Zaki Firmansyah (PIN: 4488 - Fixed Rp 10.000)
-  const userWasher6 = await prisma.user.create({
-    data: {
-      email: "zaki.washer@kinclongin.com",
-      passwordHash: defaultPasswordHash,
-      fullName: "Zaki Firmansyah",
-      role: UserRole.WASHER,
-      status: UserStatus.ACTIVE,
-      outletId: outletMataram.id,
-    },
-  });
-  const washer6 = await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      userId: userWasher6.id,
-      fullName: "Zaki Firmansyah",
-      phone: "087765432106",
-      pinCode: "4488",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 10000,
-      isActive: true,
-    },
-  });
-
-  // Washer 7 (Tidak Aktif - Menguji filter status karyawan & arsip)
-  await prisma.employee.create({
-    data: {
-      outletId: outletMataram.id,
-      fullName: "Joko Widodo (Alumni Staf)",
-      phone: "087765432109",
-      pinCode: "4321",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 10000,
-      isActive: false,
-    },
-  });
-
-  // Karyawan Cabang Rembiga
-  const washerRembiga1 = await prisma.employee.create({
-    data: {
-      outletId: outletRembiga.id,
-      fullName: "Dadan Hermansyah",
-      phone: "087711223344",
-      pinCode: "3344",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 10000,
-      isActive: true,
-    },
-  });
-
-  const washerRembiga2 = await prisma.employee.create({
-    data: {
-      outletId: outletRembiga.id,
-      fullName: "Eko Prasetyo",
-      phone: "087711223355",
-      pinCode: "5566",
-      role: UserRole.WASHER,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      commissionRate: 10000,
-      isActive: true,
-    },
-  });
-
-  // 6. Buat Master Paket Layanan Cuci (Semua 7 Kategori Kendaraan + Variasi Komisi)
-  console.log("📋 6. Membuat Master Paket Layanan Cuci (7 Kategori)...");
-  const servicesData = [
-    // 1. MOTOR KECIL (Bebek, Matic 110-125cc: Beat, Vario, Scoopy, Mio)
-    {
-      name: "Cuci Salju Motor Kecil",
-      description: "Cuci bodi salju, kolong, velg, dan semir ban kering",
-      vehicleCategory: VehicleCategory.MOTOR_KECIL,
-      price: 15000,
-      estimatedMinutes: 20,
-      defaultCommission: 5000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Cuci Komplit + Semir Bodi Motor Kecil",
-      description: "Cuci salju, poles bodi mengkilap, dan semir ban wet look",
-      vehicleCategory: VehicleCategory.MOTOR_KECIL,
-      price: 25000,
-      estimatedMinutes: 30,
-      defaultCommission: 8000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-
-    // 2. MOTOR BESAR (NMax, PCX, Vespa, Aerox, ADV, 150-250cc)
-    {
-      name: "Cuci Salju Motor Besar (NMax/PCX)",
-      description:
-        "Cuci bodi jumbo, sela mesin, kolong belakang, dan semir ban",
-      vehicleCategory: VehicleCategory.MOTOR_BESAR,
-      price: 20000,
-      estimatedMinutes: 25,
-      defaultCommission: 7000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Cuci Komplit + Detailing Rantai Motor Besar",
-      description: "Cuci bodi salju, degreaser rantai & gear, plus semir bodi",
-      vehicleCategory: VehicleCategory.MOTOR_BESAR,
-      price: 35000,
-      estimatedMinutes: 40,
-      defaultCommission: 12000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-
-    // 3. MOTOR MOGE (250cc+, Harley, Ninja ZX, Trail, Big Bike)
-    {
-      name: "Cuci Premium Moge (250cc+)",
-      description:
-        "Cuci detail teliti, sela mesin V-Twin/In-Line, semir & wax bodi",
-      vehicleCategory: VehicleCategory.MOTOR_MOGE,
-      price: 50000,
-      estimatedMinutes: 45,
-      defaultCommission: 18000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Detailing Engine & Ceramic Wax Moge",
-      description:
-        "Deep cleaning ruang mesin, coating pelindung knalpot, wax bodi",
-      vehicleCategory: VehicleCategory.MOTOR_MOGE,
-      price: 120000,
-      estimatedMinutes: 75,
-      defaultCommission: 35000,
-      commissionType: CommissionType.PERCENTAGE,
-      isActive: true,
-    },
-
-    // 4. MOBIL KECIL (Brio, Agya, Ayla, Yaris, Raize, Hatchback)
-    {
-      name: "Cuci Salju + Vacuum Mobil Kecil (Agya/Brio)",
-      description:
-        "Cuci bodi salju aktif, vacuum kabin, bersihkan karpet, semir ban",
-      vehicleCategory: VehicleCategory.MOBIL_KECIL,
-      price: 40000,
-      estimatedMinutes: 35,
-      defaultCommission: 12000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Cuci Komplit + Wax Proteksi Mobil Kecil",
-      description:
-        "Cuci hidrolik, vacuum detail, wax bodi anti jamur, parfum kabin",
-      vehicleCategory: VehicleCategory.MOBIL_KECIL,
-      price: 65000,
-      estimatedMinutes: 50,
-      defaultCommission: 20000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-
-    // 5. MOBIL SEDANG (Avanza, Xpander, HR-V, Innova Zenix, Sedan)
-    {
-      name: "Cuci Salju + Vacuum Mobil Sedang (Avanza/Xpander)",
-      description: "Cuci hidrolik kolong, vacuum jok & karpet, semir ban",
-      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
-      price: 50000,
-      estimatedMinutes: 40,
-      defaultCommission: 15000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Cuci Komplit + Wax Mobil Sedang",
-      description:
-        "Cuci hidrolik, semir kolong, vacuum, poles bodi wax, dan semir ban",
-      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
-      price: 75000,
-      estimatedMinutes: 60,
-      defaultCommission: 25000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Fogging Disinfektan Interior Mobil",
-      description: "Pengasapan antibakteri aroma kopi / lemon interior kabin",
-      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
-      price: 35000,
-      estimatedMinutes: 15,
-      defaultCommission: 10000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-
-    // 6. MOBIL BESAR (Pajero, Fortuner, Alphard, Double Cabin, Land Cruiser)
-    {
-      name: "Cuci Salju + Vacuum Mobil Besar (Pajero/Fortuner)",
-      description:
-        "Cuci hidrolik kolong besar, semir ban tebal, vacuum kabin 3 baris",
-      vehicleCategory: VehicleCategory.MOBIL_BESAR,
-      price: 60000,
-      estimatedMinutes: 50,
-      defaultCommission: 18000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Cuci Hidrolik + Semir Kolong + Wax Mobil Besar",
-      description:
-        "Cuci lengkap kolong, poles wax kilap anti air (daun talas), interior",
-      vehicleCategory: VehicleCategory.MOBIL_BESAR,
-      price: 90000,
-      estimatedMinutes: 70,
-      defaultCommission: 30000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Deep Cleaning Interior & Plafon Mobil Besar",
-      description:
-        "Pencucian jok, plafon fabric, karpet dasar tebal, dan antibakteri",
-      vehicleCategory: VehicleCategory.MOBIL_BESAR,
-      price: 175000,
-      estimatedMinutes: 90,
-      defaultCommission: 45000,
-      commissionType: CommissionType.PERCENTAGE,
-      isActive: true,
-    },
-
-    // 7. KENDARAAN LAIN (Pick-up, Blind Van, Truk Engkel Box)
-    {
-      name: "Cuci Eksterior Pick-up / Mobil Box",
-      description: "Cuci bersih bodi luar, bak kargo, dan semir roda",
-      vehicleCategory: VehicleCategory.KENDARAAN_LAIN,
-      price: 50000,
-      estimatedMinutes: 40,
-      defaultCommission: 15000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-    {
-      name: "Cuci Kolong & Bodi Truk Engkel",
-      description: "Semprot hidrolik bertekanan tinggi sasis & kolong lumpur",
-      vehicleCategory: VehicleCategory.KENDARAAN_LAIN,
-      price: 85000,
-      estimatedMinutes: 60,
-      defaultCommission: 25000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: true,
-    },
-
-    // 8. Paket Layanan Tidak Aktif (Contoh Arsip Promo)
-    {
-      name: "Paket Promo Kemerdekaan (Arsip)",
-      description: "Diskon cuci khusus bulan Agustus",
-      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
-      price: 35000,
-      estimatedMinutes: 30,
-      defaultCommission: 10000,
-      commissionType: CommissionType.FIXED_NOMINAL,
-      isActive: false,
-    },
-  ];
-
-  const createdServices: Array<
-    Awaited<ReturnType<typeof prisma.servicePackage.create>>
-  > = [];
-  for (const s of servicesData) {
-    const created = await prisma.servicePackage.create({
-      data: {
-        ...s,
-        outletId: outletMataram.id,
-      },
-    });
-    createdServices.push(created);
-  }
-
-  // Paket Layanan Cabang Rembiga (Sebagian)
-  for (const s of servicesData.slice(0, 6)) {
-    await prisma.servicePackage.create({
-      data: {
-        ...s,
-        outletId: outletRembiga.id,
-      },
-    });
-  }
-
-  // 7. Buat Master Produk Ritel & Minuman (Semua Status Stok)
+  // 3. Buat 2 Akun Owner Bisnis Cuci Mandiri (Multi-Tenant B2B)
   console.log(
-    "☕ 7. Membuat Master Produk Ritel Toko Kasir (Semua Status Stok)..."
+    "🏢 3. Membuat 2 Akun Owner (AutoClean Group & Kilap Star Group)..."
   );
-  const retailProductsData = [
-    // Stok Normal
+
+  // Owner 1: Pak H. Ridwan Santoso (AutoClean Group)
+  const owner1 = await prisma.user.create({
+    data: {
+      email: "ridwan.owner@autoclean.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "H. Ridwan Santoso",
+      role: UserRole.OWNER,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
+  // Owner 2: Ibu Hj. Dewi Anggraeni (Kilap Motor & Detailing Group)
+  const owner2 = await prisma.user.create({
+    data: {
+      email: "dewi.owner@kilapglossy.com",
+      passwordHash: defaultPasswordHash,
+      fullName: "Hj. Dewi Anggraeni",
+      role: UserRole.OWNER,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
+  // 4. Konfigurasi 4 Cabang Usaha Cuci (2 Cabang per Owner, BUKAN nama Kinclongin)
+  const branchConfigs: Array<{ ownerId: string; config: BranchConfig }> = [
+    // --- CABANG OWNER 1 (AUTOCLEAN GROUP) ---
     {
-      sku: "RTL-001",
-      name: "Kopi Gula Aren Dingin 250ml",
-      category: "Minuman",
-      costPrice: 6000,
-      sellingPrice: 12000,
-      stock: 45,
-      minStockAlert: 10,
-      imageUrl:
-        "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=300&q=80",
-      isActive: true,
+      ownerId: owner1.id,
+      config: {
+        name: "AutoClean Express Mataram",
+        slug: "autoclean-express-mataram",
+        address: "Jl. Pejanggik No. 88, Mataram, NTB",
+        phone: "081234567801",
+        city: "Mataram",
+        subStatus: SubscriptionStatus.ACTIVE,
+        subExpiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // +30 Hari
+        receiptHeader:
+          "AUTOCLEAN EXPRESS MATARAM\nCuci Cepat, Bersih Maksimal, Mengkilap",
+        receiptFooter:
+          "Terima kasih atas kunjungan Anda!\nKritik & Saran WA: 081234567801",
+        manager: { name: "Danu Prakoso", email: "danu.manager@autoclean.com" },
+        cashiers: [
+          { name: "Siti Rahma", email: "siti.kasir@autoclean.com" },
+          { name: "Budi Setiawan", email: "budi.kasir@autoclean.com" },
+        ],
+        washers: [
+          {
+            name: "Agus Santoso",
+            email: "agus.washer@autoclean.com",
+            pin: "1234",
+          },
+          {
+            name: "Bayu Pratama",
+            email: "bayu.washer@autoclean.com",
+            pin: "2345",
+          },
+          {
+            name: "Candra Wijaya",
+            email: "candra.washer@autoclean.com",
+            pin: "3456",
+          },
+        ],
+        vehicleTypes: [
+          {
+            name: "Cuci Mobil Standar (Avanza, Xpander, Ertiga)",
+            category: VehicleCategory.MOBIL_SEDANG,
+            price: 45000,
+            duration: 35,
+            commissionAmount: 12000,
+          },
+          {
+            name: "Cuci Mobil Premium + Salju (Fortuner, Pajero, CR-V)",
+            category: VehicleCategory.MOBIL_BESAR,
+            price: 60000,
+            duration: 45,
+            commissionAmount: 16000,
+          },
+          {
+            name: "Cuci Motor Reguler (Beat, Vario, Scoopy)",
+            category: VehicleCategory.MOTOR_KECIL,
+            price: 20000,
+            duration: 20,
+            commissionAmount: 6000,
+          },
+          {
+            name: "Cuci Motor Besar (NMAX, PCX, Aerox)",
+            category: VehicleCategory.MOTOR_BESAR,
+            price: 25000,
+            duration: 25,
+            commissionAmount: 8000,
+          },
+        ],
+        supplies: [
+          {
+            name: "Shampoo Salju Snow Foam pH Balanced",
+            unit: "LITER",
+            stock: 80,
+            minStockAlert: 20,
+          },
+          {
+            name: "Semir Ban Wet-Look Premium",
+            unit: "LITER",
+            stock: 35,
+            minStockAlert: 10,
+          },
+          {
+            name: "Pembersih Interior & Dashboard",
+            unit: "LITER",
+            stock: 22,
+            minStockAlert: 8,
+          },
+          {
+            name: "Wax Body Finishing Carnauba",
+            unit: "BOTOL",
+            stock: 12,
+            minStockAlert: 5,
+          },
+        ],
+        retails: [
+          {
+            name: "Parfum Mobil Aroma Kopi Bali Gantung",
+            sku: "ACC-001",
+            category: "Aksesoris",
+            costPrice: 12000,
+            sellingPrice: 20000,
+            stock: 30,
+            minStockAlert: 10,
+          },
+          {
+            name: "Lap Microfiber Tebal 40x40cm 600GSM",
+            sku: "ACC-002",
+            category: "Aksesoris",
+            costPrice: 15000,
+            sellingPrice: 25000,
+            stock: 25,
+            minStockAlert: 8,
+          },
+          {
+            name: "Air Mineral Botol Dingin 600ml",
+            sku: "MNM-001",
+            category: "Minuman",
+            costPrice: 3000,
+            sellingPrice: 5000,
+            stock: 60,
+            minStockAlert: 20,
+          },
+          {
+            name: "Kopi Susu Gula Aren Kaleng Dingin",
+            sku: "MNM-002",
+            category: "Minuman",
+            costPrice: 6500,
+            sellingPrice: 10000,
+            stock: 40,
+            minStockAlert: 15,
+          },
+        ],
+        customers: [
+          {
+            fullName: "Bambang Irawan",
+            phone: "08123450001",
+            plate: "DR 1452 AP",
+            brand: "Toyota",
+            model: "Avanza",
+            category: VehicleCategory.MOBIL_SEDANG,
+            points: 6,
+          },
+          {
+            fullName: "dr. Nurul Hidayah",
+            phone: "08123450002",
+            plate: "DR 8899 LK",
+            brand: "Honda",
+            model: "HR-V",
+            category: VehicleCategory.MOBIL_SEDANG,
+            points: 9,
+          },
+          {
+            fullName: "Dimas Saputra",
+            phone: "08123450003",
+            plate: "DR 5521 BC",
+            brand: "Yamaha",
+            model: "NMAX",
+            category: VehicleCategory.MOTOR_BESAR,
+            points: 3,
+          },
+          {
+            fullName: "Suryadi Pratama",
+            phone: "08123450004",
+            plate: "DR 2109 XY",
+            brand: "Mitsubishi",
+            model: "Pajero Sport",
+            category: VehicleCategory.MOBIL_BESAR,
+            points: 10,
+          },
+        ],
+      },
     },
     {
-      sku: "RTL-002",
-      name: "Air Mineral Dingin 600ml",
-      category: "Minuman",
-      costPrice: 2500,
-      sellingPrice: 5000,
-      stock: 90,
-      minStockAlert: 20,
-      imageUrl:
-        "https://images.unsplash.com/photo-1560023907-5f339617ea30?w=300&q=80",
-      isActive: true,
-    },
-    {
-      sku: "RTL-003",
-      name: "Teh Kotak Melati Dingin",
-      category: "Minuman",
-      costPrice: 3000,
-      sellingPrice: 6000,
-      stock: 40,
-      minStockAlert: 10,
-      imageUrl:
-        "https://images.unsplash.com/photo-1556881286-fc6915169721?w=300&q=80",
-      isActive: true,
-    },
-    {
-      sku: "RTL-004",
-      name: "Keripik Singkong Balado Renyah",
-      category: "Makanan",
-      costPrice: 4000,
-      sellingPrice: 8000,
-      stock: 25,
-      minStockAlert: 5,
-      imageUrl:
-        "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&q=80",
-      isActive: true,
-    },
-    {
-      sku: "RTL-005",
-      name: "Kain Lap Microfiber Tebal 40x40cm",
-      category: "Aksesoris",
-      costPrice: 7000,
-      sellingPrice: 15000,
-      stock: 35,
-      minStockAlert: 8,
-      imageUrl:
-        "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=300&q=80",
-      isActive: true,
+      ownerId: owner1.id,
+      config: {
+        name: "AutoClean Detailing Rembiga",
+        slug: "autoclean-detailing-rembiga",
+        address: "Jl. Dr. Wahidin No. 42, Rembiga, Mataram",
+        phone: "081234567802",
+        city: "Mataram",
+        subStatus: SubscriptionStatus.ACTIVE,
+        subExpiresAt: new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000), // +45 Hari
+        receiptHeader:
+          "AUTOCLEAN DETAILING REMBIGA\nSalon Mobil, Nano Coating & Interior Detailing",
+        receiptFooter:
+          "Perawatan Kendaraan Terpercaya di Rembiga\nBooking Servis: 081234567802",
+        manager: { name: "Reza Gunawan", email: "reza.manager@autoclean.com" },
+        cashiers: [{ name: "Maya Lestari", email: "maya.kasir@autoclean.com" }],
+        washers: [
+          {
+            name: "Fajar Ilham",
+            email: "fajar.washer@autoclean.com",
+            pin: "4567",
+          },
+          {
+            name: "Gita Saputra",
+            email: "gita.washer@autoclean.com",
+            pin: "5678",
+          },
+        ],
+        vehicleTypes: [
+          {
+            name: "Cuci Hidrolik + Kolong Sasis (All Car)",
+            category: VehicleCategory.MOBIL_SEDANG,
+            price: 55000,
+            duration: 45,
+            commissionAmount: 15000,
+          },
+          {
+            name: "Full Detailing Jamur Kaca + Bodi",
+            category: VehicleCategory.MOBIL_BESAR,
+            price: 175000,
+            duration: 90,
+            commissionAmount: 45000,
+          },
+          {
+            name: "Poles Bodi & Cuci Mesin Komplit",
+            category: VehicleCategory.MOBIL_SEDANG,
+            price: 150000,
+            duration: 75,
+            commissionAmount: 40000,
+          },
+        ],
+        supplies: [
+          {
+            name: "Compound Poles Step 1 Cutting",
+            unit: "BOTOL",
+            stock: 15,
+            minStockAlert: 4,
+          },
+          {
+            name: "Shampoo Touchless Active Foam",
+            unit: "LITER",
+            stock: 50,
+            minStockAlert: 15,
+          },
+          {
+            name: "Cairan Pembersih Jamur Kaca Waterspot",
+            unit: "LITER",
+            stock: 18,
+            minStockAlert: 5,
+          },
+        ],
+        retails: [
+          {
+            name: "Parfum Mobil Aroma Vanilla Botol Kayu",
+            sku: "ACC-101",
+            category: "Aksesoris",
+            costPrice: 14000,
+            sellingPrice: 25000,
+            stock: 20,
+            minStockAlert: 5,
+          },
+          {
+            name: "Kanebo Aion Asli Tabung Kuning",
+            sku: "ACC-102",
+            category: "Aksesoris",
+            costPrice: 28000,
+            sellingPrice: 45000,
+            stock: 15,
+            minStockAlert: 5,
+          },
+        ],
+        customers: [
+          {
+            fullName: "Agung Wicaksono",
+            phone: "08123450011",
+            plate: "DR 1111 WZ",
+            brand: "Toyota",
+            model: "Innova Zenix",
+            category: VehicleCategory.MOBIL_BESAR,
+            points: 4,
+          },
+          {
+            fullName: "Ferry Salim",
+            phone: "08123450012",
+            plate: "DR 7700 AS",
+            brand: "Honda",
+            model: "Civic Turbo",
+            category: VehicleCategory.MOBIL_SEDANG,
+            points: 7,
+          },
+        ],
+      },
     },
 
-    // Stok Menipis (Trigger Alert: stock <= minStockAlert)
+    // --- CABANG OWNER 2 (KILAP STAR GROUP) ---
     {
-      sku: "RTL-006",
-      name: "Parfum Mobil Aroma Kopi (Kaleng)",
-      category: "Aksesoris",
-      costPrice: 18000,
-      sellingPrice: 35000,
-      stock: 3, // TRIGGER ALERT STOK MENIPIS!
-      minStockAlert: 5,
-      imageUrl:
-        "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?w=300&q=80",
-      isActive: true,
+      ownerId: owner2.id,
+      config: {
+        name: "Kilap Glossy Ampenan",
+        slug: "kilap-glossy-ampenan",
+        address: "Jl. Saleh Sungkar No. 15, Ampenan, Mataram",
+        phone: "081987654301",
+        city: "Mataram",
+        subStatus: SubscriptionStatus.ACTIVE,
+        subExpiresAt: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000), // +25 Hari
+        receiptHeader:
+          "KILAP GLOSSY AMPENAN\nSolusi Kilap Kendaraan Pesisir Pantai Ampenan",
+        receiptFooter:
+          "Buka Setiap Hari 07.30 - 21.00 WITA\nLayanan Antar Jemput: 081987654301",
+        manager: {
+          name: "Hendra Kusuma",
+          email: "hendra.manager@kilapglossy.com",
+        },
+        cashiers: [{ name: "Rina Wati", email: "rina.kasir@kilapglossy.com" }],
+        washers: [
+          {
+            name: "Joko Susilo",
+            email: "joko.washer@kilapglossy.com",
+            pin: "6789",
+          },
+          {
+            name: "Kiki Kurniawan",
+            email: "kiki.washer@kilapglossy.com",
+            pin: "7890",
+          },
+        ],
+        vehicleTypes: [
+          {
+            name: "Cuci Anti-Karat Garam Laut (Mobil)",
+            category: VehicleCategory.MOBIL_SEDANG,
+            price: 50000,
+            duration: 40,
+            commissionAmount: 14000,
+          },
+          {
+            name: "Cuci Motor Kilap Salju (Matic)",
+            category: VehicleCategory.MOTOR_KECIL,
+            price: 18000,
+            duration: 20,
+            commissionAmount: 5000,
+          },
+          {
+            name: "Cuci Motor Sport / Moge 250cc+",
+            category: VehicleCategory.MOTOR_BESAR,
+            price: 28000,
+            duration: 30,
+            commissionAmount: 9000,
+          },
+        ],
+        supplies: [
+          {
+            name: "Cairan Anti Karat Underbody Coating",
+            unit: "LITER",
+            stock: 40,
+            minStockAlert: 10,
+          },
+          {
+            name: "Shampoo Salju Wax Protect",
+            unit: "LITER",
+            stock: 65,
+            minStockAlert: 20,
+          },
+        ],
+        retails: [
+          {
+            name: "Gantungan Kunci Kulit Custom Plat",
+            sku: "ACC-201",
+            category: "Merchandise",
+            costPrice: 8000,
+            sellingPrice: 15000,
+            stock: 45,
+            minStockAlert: 10,
+          },
+          {
+            name: "Teh Botol Kotak Dingin",
+            sku: "MNM-201",
+            category: "Minuman",
+            costPrice: 3200,
+            sellingPrice: 5000,
+            stock: 50,
+            minStockAlert: 15,
+          },
+        ],
+        customers: [
+          {
+            fullName: "I Made Sujana",
+            phone: "08198760001",
+            plate: "DR 4455 BL",
+            brand: "Honda",
+            model: "Vario 160",
+            category: VehicleCategory.MOTOR_KECIL,
+            points: 5,
+          },
+          {
+            fullName: "Wayan Sudirman",
+            phone: "08198760002",
+            plate: "DR 1988 AB",
+            brand: "Toyota",
+            model: "Raize",
+            category: VehicleCategory.MOBIL_SEDANG,
+            points: 2,
+          },
+        ],
+      },
     },
     {
-      sku: "RTL-007",
-      name: "Wiper Fluid Konsentrat Rain-X",
-      category: "Aksesoris",
-      costPrice: 15000,
-      sellingPrice: 28000,
-      stock: 2, // TRIGGER ALERT STOK MENIPIS!
-      minStockAlert: 5,
-      imageUrl:
-        "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&q=80",
-      isActive: true,
-    },
-
-    // Stok Habis (Stok = 0)
-    {
-      sku: "RTL-008",
-      name: "Phone Holder Magnetik Dashboard",
-      category: "Aksesoris",
-      costPrice: 22000,
-      sellingPrice: 45000,
-      stock: 0, // HABIS TOTAL
-      minStockAlert: 5,
-      imageUrl:
-        "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=300&q=80",
-      isActive: true,
-    },
-
-    // Produk Non-Aktif
-    {
-      sku: "RTL-009",
-      name: "Bantal Leher Memory Foam",
-      category: "Aksesoris",
-      costPrice: 35000,
-      sellingPrice: 65000,
-      stock: 10,
-      minStockAlert: 3,
-      imageUrl:
-        "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=300&q=80",
-      isActive: false, // TIDAK AKTIF
+      ownerId: owner2.id,
+      config: {
+        name: "Star Wash & Detailing Narmada",
+        slug: "star-wash-narmada",
+        address: "Jl. Raya Narmada No. 101, Lembuak, Narmada",
+        phone: "081987654302",
+        city: "Lombok Barat",
+        subStatus: SubscriptionStatus.GRACE_PERIOD, // DEMO: GRACE PERIOD (3 hari) & ADA PENGAJUAN PENDING 50k
+        subExpiresAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // Kedaluwarsa kemarin (Toleransi hari ke-2)
+        receiptHeader:
+          "STAR WASH & DETAILING NARMADA\nAir Sumber Mata Air Alami Narmada",
+        receiptFooter:
+          "Pencucian Sebersih Mata Air Pegunungan\nFollow IG: @starwash.narmada",
+        manager: { name: "Surya Saputra", email: "surya.manager@starwash.com" },
+        cashiers: [{ name: "Nina Permata", email: "nina.kasir@starwash.com" }],
+        washers: [
+          {
+            name: "Lukman Hakim",
+            email: "lukman.washer@starwash.com",
+            pin: "8901",
+          },
+          {
+            name: "Maman Suherman",
+            email: "maman.washer@starwash.com",
+            pin: "9012",
+          },
+        ],
+        vehicleTypes: [
+          {
+            name: "Cuci Mobil Alami Mata Air",
+            category: VehicleCategory.MOBIL_SEDANG,
+            price: 40000,
+            duration: 35,
+            commissionAmount: 11000,
+          },
+          {
+            name: "Cuci Motor Cepat",
+            category: VehicleCategory.MOTOR_KECIL,
+            price: 15000,
+            duration: 15,
+            commissionAmount: 5000,
+          },
+        ],
+        supplies: [
+          {
+            name: "Shampoo Salju Standard",
+            unit: "LITER",
+            stock: 30,
+            minStockAlert: 10,
+          },
+          {
+            name: "Semir Ban Standar",
+            unit: "LITER",
+            stock: 20,
+            minStockAlert: 5,
+          },
+        ],
+        retails: [
+          {
+            name: "Air Mineral Botol Narmada 600ml",
+            sku: "MNM-301",
+            category: "Minuman",
+            costPrice: 2500,
+            sellingPrice: 4000,
+            stock: 80,
+            minStockAlert: 20,
+          },
+        ],
+        customers: [
+          {
+            fullName: "Lalu Zulkifli",
+            phone: "08198760011",
+            plate: "DR 3344 LK",
+            brand: "Suzuki",
+            model: "Ertiga",
+            category: VehicleCategory.MOBIL_SEDANG,
+            points: 8,
+          },
+        ],
+      },
     },
   ];
 
-  const createdRetail: Array<
-    Awaited<ReturnType<typeof prisma.retailProduct.create>>
-  > = [];
-  for (const p of retailProductsData) {
-    const created = await prisma.retailProduct.create({
+  // 5. Eksekusi Seeding Data Cabang
+  console.log("\n🏪 4. Membuat 4 Outlet Beserta Struktur Lengkap...");
+
+  for (let bIndex = 0; bIndex < branchConfigs.length; bIndex++) {
+    const { ownerId, config } = branchConfigs[bIndex];
+    console.log(
+      `\n  📍 [${bIndex + 1}/4] Membangun Cabang: "${config.name}" (Kota: ${config.city})...`
+    );
+
+    // A. Buat Outlet
+    const outlet = await prisma.outlet.create({
       data: {
-        ...p,
-        outletId: outletMataram.id,
+        name: config.name,
+        slug: config.slug,
+        address: config.address,
+        phone: config.phone,
+        ownerId: ownerId,
+        subscriptionStatus: config.subStatus,
+        subscriptionExpiresAt: config.subExpiresAt,
+        receiptHeader: config.receiptHeader,
+        receiptFooter: config.receiptFooter,
+        isActive: true,
       },
     });
-    createdRetail.push(created);
 
-    if (p.stock > 0) {
-      await prisma.stockMovement.create({
+    // Jika ini cabang pertama masing-masing owner, set sebagai outletId aktif owner
+    if (bIndex === 0) {
+      await prisma.user.update({
+        where: { id: owner1.id },
+        data: { outletId: outlet.id },
+      });
+    } else if (bIndex === 2) {
+      await prisma.user.update({
+        where: { id: owner2.id },
+        data: { outletId: outlet.id },
+      });
+    }
+
+    // B. Buat Riwayat Pembayaran Lisensi Cabang (TenantSubscriptionPayment)
+    console.log(`    💳 Membuat pembayaran lisensi cabang...`);
+    await prisma.tenantSubscriptionPayment.create({
+      data: {
+        outletId: outlet.id,
+        amount: 50000,
+        periodMonths: 1,
+        paymentMethod: SubscriptionPaymentMethod.QRIS,
+        paymentProofUrl:
+          "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800",
+        status: SubscriptionPaymentStatus.APPROVED,
+        notes: "Perpanjangan lisensi operasional cabang bulan sebelumnya",
+        verifiedAt: new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),
+        verifiedBy: superadminUser.id,
+      },
+    });
+
+    if (bIndex === 0) {
+      // Cabang 1 tambahan 1x riwayat approved
+      await prisma.tenantSubscriptionPayment.create({
         data: {
-          outletId: outletMataram.id,
-          retailProductId: created.id,
-          movementType: MovementType.IN_RESTOCK,
-          quantity: p.stock,
-          balanceAfter: p.stock,
-          referenceNote: "Inisialisasi Saldo Awal Gudang Ritel",
+          outletId: outlet.id,
+          amount: 50000,
+          periodMonths: 1,
+          paymentMethod: SubscriptionPaymentMethod.MANUAL_TRANSFER,
+          paymentProofUrl:
+            "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800",
+          status: SubscriptionPaymentStatus.APPROVED,
+          notes: "Pembayaran transfer Bank Mandiri 50k",
+          verifiedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+          verifiedBy: superadminUser.id,
         },
       });
     }
-  }
 
-  // 8. Buat Master Bahan Baku Operasional Cuci
-  console.log("🧪 8. Membuat Master Bahan Baku Operasional Cuci...");
-  const operationalSuppliesData = [
-    {
-      sku: "OPS-001",
-      name: "Shampo Salju Konsentrat (Touchless Pink)",
-      unit: "Liter",
-      stock: 125,
-      minStockAlert: 20,
-      usagePerCarWash: 0.1, // 100ml per mobil
-      usagePerMotorWash: 0.04, // 40ml per motor
-    },
-    {
-      sku: "OPS-002",
-      name: "Silicone Emulsion Semir Ban Wet Look",
-      unit: "Liter",
-      stock: 45,
-      minStockAlert: 10,
-      usagePerCarWash: 0.05,
-      usagePerMotorWash: 0.02,
-    },
-    {
-      sku: "OPS-003",
-      name: "Degreaser Pembersih Velg & Kolong",
-      unit: "Liter",
-      stock: 28,
-      minStockAlert: 8,
-      usagePerCarWash: 0.08,
-      usagePerMotorWash: 0.03,
-    },
-    {
-      sku: "OPS-004",
-      name: "Interior Dressing Protectant (Matte Finish)",
-      unit: "Liter",
-      stock: 4, // ALERT STOK MENIPIS!
-      minStockAlert: 5,
-      usagePerCarWash: 0.03,
-      usagePerMotorWash: 0.01,
-    },
-    {
-      sku: "OPS-005",
-      name: "Cairan Fogging Disinfektan Aroma Kopi",
-      unit: "Liter",
-      stock: 18,
-      minStockAlert: 4,
-      usagePerCarWash: 0.05,
-      usagePerMotorWash: 0.0,
-    },
-  ];
-
-  for (const s of operationalSuppliesData) {
-    const created = await prisma.operationalSupply.create({
-      data: {
-        ...s,
-        outletId: outletMataram.id,
-      },
-    });
-
-    await prisma.stockMovement.create({
-      data: {
-        outletId: outletMataram.id,
-        operationalSupplyId: created.id,
-        movementType: MovementType.IN_RESTOCK,
-        quantity: s.stock,
-        balanceAfter: s.stock,
-        referenceNote: "Penerimaan Pasokan Bahan Formula Cuci",
-      },
-    });
-  }
-
-  // 9. DATA MASTER MEMBER PELANGGAN & KENDARAAN (SEMUA CONTOH KASUS LOYALITAS)
-  console.log("\n🚗 9. Membuat Data Member Pelanggan & Kendaraan Terkunci...");
-
-  // Pelanggan 1: Ibu Linda Permata - CONTOH SIAP KLAIM PROMO CUCI 10x GRATIS 1x
-  // Plat DR 1001 AB sudah 10 kali kunjungan!
-  const customer1 = await prisma.customer.create({
-    data: {
-      phone: "085233445566",
-      fullName: "Ibu Linda Permata",
-      notes:
-        "Pelanggan setia sejak 2024. Brio merah selalu minta semir ban wet look.",
-      loyaltyPoints: 50,
-      totalVisits: 10,
-    },
-  });
-
-  const vehicle1 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 1001 AB",
-      category: VehicleCategory.MOBIL_KECIL,
-      brand: "Honda",
-      model: "Brio RS",
-      color: "Merah Rallye",
-      customerId: customer1.id,
-      totalVisits: 10, // KUNJUNGAN KE-10: BERHAK KLAIM CUCI 10X GRATIS 1X!
-    },
-  });
-
-  // Pelanggan 2: Hendra Wijaya - CONTOH SISA 1x LAGI MENUJU CUCI GRATIS KE-10
-  // Plat DR 1888 XY sudah 9 kali kunjungan!
-  const customer2 = await prisma.customer.create({
-    data: {
-      phone: "081234567890",
-      fullName: "Hendra Wijaya",
-      notes: "VIP Member, minta velg dipoles ekstra bersih.",
-      loyaltyPoints: 35,
-      totalVisits: 9,
-    },
-  });
-
-  const vehicle2 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 1888 XY",
-      category: VehicleCategory.MOBIL_SEDANG,
-      brand: "Mitsubishi",
-      model: "Xpander Cross",
-      color: "Hitam Metalik",
-      customerId: customer2.id,
-      totalVisits: 9, // Kunjungan ke-9 (Sisa 1x lagi menuju Cuci Gratis ke-10!)
-    },
-  });
-
-  // Pelanggan 3: Budi Setiawan - CONTOH 1 PELANGGAN 2 KENDARAAN (KUNJUNGAN INDEPENDEN AMAN)
-  // Menunjukkan bahwa Fortuner (5x) dan XMAX (2x) tidak dicampur aduk!
-  const customer3 = await prisma.customer.create({
-    data: {
-      phone: "087812345678",
-      fullName: "Budi Setiawan",
-      notes:
-        "Punya mobil Fortuner dan motor XMAX. Poin loyalitas terakumulasi di akun WA.",
-      loyaltyPoints: 42,
-      totalVisits: 7, // 5 mobil + 2 motor
-    },
-  });
-
-  const vehicle3Mobil = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 7777 WQ",
-      category: VehicleCategory.MOBIL_BESAR,
-      brand: "Toyota",
-      model: "Fortuner GR Sport",
-      color: "Putih Mutiara",
-      customerId: customer3.id,
-      totalVisits: 5,
-    },
-  });
-
-  const vehicle3Motor = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 3333 AZ",
-      category: VehicleCategory.MOTOR_BESAR,
-      brand: "Yamaha",
-      model: "XMAX 250",
-      color: "Matte Dark Blue",
-      customerId: customer3.id,
-      totalVisits: 2,
-    },
-  });
-
-  // Pelanggan 4: dr. Farhan Malik - CONTOH MEMBER VIP SALDO POIN BANYAK
-  const customer4 = await prisma.customer.create({
-    data: {
-      phone: "081999888777",
-      fullName: "dr. Farhan Malik, Sp.A",
-      notes: "Suka ambil cuci komplit wax + fogging interior.",
-      loyaltyPoints: 85, // Siap redeem diskon poin
-      totalVisits: 8,
-    },
-  });
-
-  const vehicle4 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 88 EV",
-      category: VehicleCategory.MOBIL_SEDANG,
-      brand: "Hyundai",
-      model: "Ioniq 5 Electric",
-      color: "Gravity Gold",
-      customerId: customer4.id,
-      totalVisits: 8,
-    },
-  });
-
-  // Pelanggan 5: Dedi Kurniawan - Motor NMax
-  const customer5 = await prisma.customer.create({
-    data: {
-      phone: "081998877665",
-      fullName: "Dedi Kurniawan",
-      notes: "Suka cuci salju sambil ngopi dingin.",
-      loyaltyPoints: 15,
-      totalVisits: 3,
-    },
-  });
-
-  const vehicle5 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 5432 KL",
-      category: VehicleCategory.MOTOR_BESAR,
-      brand: "Yamaha",
-      model: "NMax 155 Connected",
-      color: "Abu-Abu Doff",
-      customerId: customer5.id,
-      totalVisits: 3,
-    },
-  });
-
-  // Pelanggan 6: Ahmad Zaki - Walk-in Pertama Kali
-  const customer6 = await prisma.customer.create({
-    data: {
-      phone: "082145678901",
-      fullName: "Ahmad Zaki",
-      notes: "Walk-in baru pertama kali.",
-      loyaltyPoints: 5,
-      totalVisits: 1,
-    },
-  });
-
-  const vehicle6 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 1234 BZ",
-      category: VehicleCategory.MOBIL_SEDANG,
-      brand: "Toyota",
-      model: "Innova Zenix",
-      color: "Silver Metallic",
-      customerId: customer6.id,
-      totalVisits: 1,
-    },
-  });
-
-  // Pelanggan 7: Ibu Ratna Dewi - Member Langganan Cuci Bulanan Unlimited
-  const customer7 = await prisma.customer.create({
-    data: {
-      phone: "081333777888",
-      fullName: "Ibu Ratna Dewi",
-      notes: "Member bulanan unlimited motor matic.",
-      loyaltyPoints: 20,
-      totalVisits: 4,
-    },
-  });
-
-  const vehicle7 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 2222 KL",
-      category: VehicleCategory.MOTOR_KECIL,
-      brand: "Honda",
-      model: "Scoopy Prestige",
-      color: "Putih Mutiara",
-      customerId: customer7.id,
-      totalVisits: 4,
-    },
-  });
-
-  // Pelanggan 8: Rudi Hartono - Niaga Pick-up
-  const customer8 = await prisma.customer.create({
-    data: {
-      phone: "085999111222",
-      fullName: "Rudi Hartono",
-      notes: "Armada operasional toko bangunan.",
-      loyaltyPoints: 24,
-      totalVisits: 6,
-    },
-  });
-
-  const vehicle8 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 4567 TY",
-      category: VehicleCategory.KENDARAAN_LAIN,
-      brand: "Suzuki",
-      model: "Carry Pick-up",
-      color: "Hitam Solid",
-      customerId: customer8.id,
-      totalVisits: 6,
-    },
-  });
-
-  // Pelanggan 9: Kevin Sanjaya - Moge Ninja ZX
-  const customer9 = await prisma.customer.create({
-    data: {
-      phone: "081777222333",
-      fullName: "Kevin Sanjaya",
-      notes:
-        "Komunitas motor sport, selalu minta detailing rantai & sela mesin.",
-      loyaltyPoints: 28,
-      totalVisits: 4,
-    },
-  });
-
-  const vehicle9 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 9999 ZX",
-      category: VehicleCategory.MOTOR_MOGE,
-      brand: "Kawasaki",
-      model: "Ninja ZX-25R",
-      color: "Lime Green",
-      customerId: customer9.id,
-      totalVisits: 4,
-    },
-  });
-
-  // Pelanggan 10: Siti Nurhaliza - Yaris Cross
-  const customer10 = await prisma.customer.create({
-    data: {
-      phone: "082333444555",
-      fullName: "Siti Nurhaliza",
-      notes: "Pelanggan baru area Cakranegara.",
-      loyaltyPoints: 12,
-      totalVisits: 2,
-    },
-  });
-
-  const vehicle10 = await prisma.vehicle.create({
-    data: {
-      licensePlate: "DR 5555 YC",
-      category: VehicleCategory.MOBIL_KECIL,
-      brand: "Toyota",
-      model: "Yaris Cross",
-      color: "Putih",
-      customerId: customer10.id,
-      totalVisits: 2,
-    },
-  });
-
-  // 10. Buat Langganan Member Pelanggan (CustomerMembership - Semua Status)
-  console.log(
-    "💳 10. Membuat Contoh Langganan Member Cuci (CustomerMembership)..."
-  );
-
-  // Contoh 1: Aktif dengan Sisa Kuota (dr. Farhan)
-  const membershipFarhan = await prisma.customerMembership.create({
-    data: {
-      customerId: customer4.id,
-      outletId: outletMataram.id,
-      planName: "Paket Hemat 4x Cuci / Bulan",
-      price: 180000,
-      startDate: new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000),
-      endDate: new Date(now.getTime() + 18 * 24 * 60 * 60 * 1000),
-      status: "ACTIVE",
-      totalQuota: 4,
-      remainingQuota: 2, // Sisa 2 kuota cuci
-      discountPercent: 10,
-      paymentMethod: PaymentMethod.QRIS,
-      paymentRef: "QRIS-MEM-0091",
-      cashierId: cashierMorning.id,
-      notes: "Member aktif, diskon ritel 10%",
-    },
-  });
-
-  // Contoh 2: Aktif Unlimited Motor (Ibu Ratna Dewi)
-  const membershipRatna = await prisma.customerMembership.create({
-    data: {
-      customerId: customer7.id,
-      outletId: outletMataram.id,
-      planName: "VIP Unlimited Express Cuci Motor (1 Bulan)",
-      price: 150000,
-      startDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
-      endDate: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000),
-      status: "ACTIVE",
-      totalQuota: 999, // Unlimited
-      remainingQuota: 999,
-      discountPercent: 15,
-      paymentMethod: PaymentMethod.CASH,
-      cashierId: cashierMorning.id,
-      notes: "Unlimited cuci motor Scoopy putih",
-    },
-  });
-
-  // Contoh 3: Aktif Kuota Sisa 1x (Hendra Wijaya)
-  await prisma.customerMembership.create({
-    data: {
-      customerId: customer2.id,
-      outletId: outletMataram.id,
-      planName: "Paket Komplit 5x Cuci + Wax",
-      price: 300000,
-      startDate: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000),
-      endDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
-      status: "ACTIVE",
-      totalQuota: 5,
-      remainingQuota: 1, // Sisa 1x lagi
-      discountPercent: 5,
-      paymentMethod: PaymentMethod.BANK_TRANSFER,
-      paymentRef: "TRF-BCA-887102",
-      cashierId: cashierAfternoon.id,
-      notes: "Sisa 1x lagi, tawari perpanjangan bulan depan",
-    },
-  });
-
-  // Contoh 4: Kedaluwarsa (Expired - Ibu Linda)
-  await prisma.customerMembership.create({
-    data: {
-      customerId: customer1.id,
-      outletId: outletMataram.id,
-      planName: "Paket Hemat 4x Cuci (Bulan Lalu)",
-      price: 160000,
-      startDate: new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000),
-      endDate: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
-      status: "EXPIRED",
-      totalQuota: 4,
-      remainingQuota: 0,
-      discountPercent: 0,
-      paymentMethod: PaymentMethod.CASH,
-      cashierId: cashierMorning.id,
-      notes: "Masa aktif telah berakhir",
-    },
-  });
-
-  // Contoh 5: Dibatalkan (Cancelled - Rudi Hartono)
-  await prisma.customerMembership.create({
-    data: {
-      customerId: customer8.id,
-      outletId: outletMataram.id,
-      planName: "Paket Armada Usaha 8x Cuci",
-      price: 320000,
-      startDate: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000),
-      endDate: new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000),
-      status: "CANCELLED",
-      totalQuota: 8,
-      remainingQuota: 6,
-      discountPercent: 0,
-      paymentMethod: PaymentMethod.CASH,
-      cashierId: cashierMorning.id,
-      notes:
-        "Dibatalkan atas permintaan pemilik armada karena kendaraan dijual",
-    },
-  });
-
-  // 11. Riwayat Mutasi Poin Loyalitas Pelanggan (CustomerLoyaltyLog)
-  console.log("📜 11. Membuat Riwayat Mutasi Poin Loyalitas & Reward...");
-  await prisma.customerLoyaltyLog.createMany({
-    data: [
-      {
-        customerId: customer1.id,
-        pointsChanged: 4,
-        balanceAfter: 46,
-        description: "Poin transaksi cuci Brio RS (#KNC-20260915-012)",
-        createdAt: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000),
-      },
-      {
-        customerId: customer1.id,
-        pointsChanged: 4,
-        balanceAfter: 50,
-        description: "Poin transaksi cuci Brio RS (#KNC-20260925-008)",
-        createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
-      },
-      {
-        customerId: customer2.id,
-        pointsChanged: 5,
-        balanceAfter: 35,
-        description: "Poin transaksi cuci Xpander (#KNC-20260928-004)",
-        createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-      },
-      {
-        customerId: customer4.id,
-        pointsChanged: 11,
-        balanceAfter: 85,
-        description:
-          "Poin transaksi cuci Ioniq 5 + Fogging (#KNC-20260920-001)",
-        createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
-      },
-      {
-        customerId: customer3.id,
-        pointsChanged: 6,
-        balanceAfter: 42,
-        description:
-          "Poin transaksi cuci Fortuner GR Sport (#KNC-20260926-003)",
-        createdAt: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000),
-      },
-    ],
-  });
-
-  // 12. Helper untuk mengambil paket layanan
-  const sMobilKecil = createdServices.find(
-    (s) => s.name === "Cuci Salju + Vacuum Mobil Kecil (Agya/Brio)"
-  )!;
-  const sMobilKecilWax = createdServices.find(
-    (s) => s.name === "Cuci Komplit + Wax Proteksi Mobil Kecil"
-  )!;
-  const sMotorKecil = createdServices.find(
-    (s) => s.name === "Cuci Salju Motor Kecil"
-  )!;
-  const sMotorBesar = createdServices.find(
-    (s) => s.name === "Cuci Salju Motor Besar (NMax/PCX)"
-  )!;
-  const sMotorMoge = createdServices.find(
-    (s) => s.name === "Cuci Premium Moge (250cc+)"
-  )!;
-  const sMobilSedang = createdServices.find(
-    (s) => s.name === "Cuci Salju + Vacuum Mobil Sedang (Avanza/Xpander)"
-  )!;
-  const sMobilSedangWax = createdServices.find(
-    (s) => s.name === "Cuci Komplit + Wax Mobil Sedang"
-  )!;
-  const sMobilBesar = createdServices.find(
-    (s) => s.name === "Cuci Salju + Vacuum Mobil Besar (Pajero/Fortuner)"
-  )!;
-  const sMobilBesarWax = createdServices.find(
-    (s) => s.name === "Cuci Hidrolik + Semir Kolong + Wax Mobil Besar"
-  )!;
-  const sPickup = createdServices.find(
-    (s) => s.name === "Cuci Eksterior Pick-up / Mobil Box"
-  )!;
-
-  // 13. BUAT TIKET ANTREAN LIVE HARI INI (SEMUA STATUS: QUEUED, WASHING, DRYING, READY, COMPLETED, CANCELLED)
-  console.log(
-    "🎫 13. Membuat Tiket Antrean Live Hari Ini (Semua Status Kanban)..."
-  );
-
-  // TIKET 1: Status READY (Honda Brio Ibu Linda - SIAP KLAIM PROMO CUCI 10X GRATIS DI KASIR!)
-  const ticketReady1 = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-001`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer1.id,
-      vehicleId: vehicle1.id,
-      licensePlate: vehicle1.licensePlate,
-      vehicleCategory: vehicle1.category,
-      servicePackageId: sMobilKecil.id,
-      servicePrice: sMobilKecil.price,
-      status: TicketStatus.READY,
-      initialNotes: "Kondisi bodi mulus, minta semir ban ekstra basah.",
-      inspectionPhotos: [
-        "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=600&q=80",
-      ],
-      washingStartedAt: new Date(now.getTime() - 50 * 60 * 1000),
-      dryingStartedAt: new Date(now.getTime() - 25 * 60 * 1000),
-      readyAt: new Date(now.getTime() - 5 * 60 * 1000),
-      subtotalServices: sMobilKecil.price,
-      subtotalRetail: 0,
-      totalAmount: sMobilKecil.price,
-      paymentStatus: PaymentStatus.UNPAID,
-    },
-  });
-
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketReady1.id,
-      employeeId: washer1.id,
-      commissionAmount: sMobilKecil.defaultCommission,
-      isPaidToWasher: false,
-    },
-  });
-
-  // TIKET 2: Status READY (Honda Scoopy Ibu Ratna - PENGGUNAAN KUOTA MEMBERSHIP!)
-  const ticketReady2 = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-004`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer7.id,
-      vehicleId: vehicle7.id,
-      licensePlate: vehicle7.licensePlate,
-      vehicleCategory: vehicle7.category,
-      servicePackageId: sMotorKecil.id,
-      servicePrice: sMotorKecil.price,
-      status: TicketStatus.READY,
-      membershipId: membershipRatna.id,
-      isMembershipWash: true, // Cuci pakai kuota langganan member!
-      initialNotes: "Klaim kuota member bulanan unlimited.",
-      washingStartedAt: new Date(now.getTime() - 35 * 60 * 1000),
-      dryingStartedAt: new Date(now.getTime() - 15 * 60 * 1000),
-      readyAt: new Date(now.getTime() - 2 * 60 * 1000),
-      subtotalServices: sMotorKecil.price,
-      subtotalRetail: 0,
-      discountAmount: sMotorKecil.price,
-      totalAmount: 0, // Terpotong penuh oleh membership
-      paidAmount: 0,
-      paymentStatus: PaymentStatus.PAID,
-    },
-  });
-
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketReady2.id,
-      employeeId: washer5.id,
-      commissionAmount: sMotorKecil.defaultCommission,
-      isPaidToWasher: false,
-    },
-  });
-
-  // TIKET 3: Status DRYING (Motor NMax Dedi - Sedang Dikeringkan & Beli Kopi Dingin)
-  const ticketDrying = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-002`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer5.id,
-      vehicleId: vehicle5.id,
-      licensePlate: vehicle5.licensePlate,
-      vehicleCategory: vehicle5.category,
-      servicePackageId: sMotorBesar.id,
-      servicePrice: sMotorBesar.price,
-      status: TicketStatus.DRYING,
-      initialNotes: "Sela radiator agak berdebu.",
-      washingStartedAt: new Date(now.getTime() - 30 * 60 * 1000),
-      dryingStartedAt: new Date(now.getTime() - 8 * 60 * 1000),
-      subtotalServices: sMotorBesar.price,
-      subtotalRetail: 12000, // Kopi Dingin
-      totalAmount: Number(sMotorBesar.price) + 12000,
-      paymentStatus: PaymentStatus.UNPAID,
-    },
-  });
-
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketDrying.id,
-      employeeId: washer4.id,
-      commissionAmount: sMotorBesar.defaultCommission,
-      isPaidToWasher: false,
-    },
-  });
-
-  await prisma.ticketRetailItem.create({
-    data: {
-      ticketId: ticketDrying.id,
-      retailProductId: createdRetail[0].id, // Kopi Gula Aren Dingin
-      quantity: 1,
-      unitPrice: 12000,
-      subtotal: 12000,
-    },
-  });
-
-  // TIKET 4: Status WASHING - TANDEM WASHER (Xpander Hendra Wijaya - Dikerjakan 2 Washer Sekaligus!)
-  const ticketWashingTandem = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-003`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer2.id,
-      vehicleId: vehicle2.id,
-      licensePlate: vehicle2.licensePlate,
-      vehicleCategory: vehicle2.category,
-      servicePackageId: sMobilSedang.id,
-      servicePrice: sMobilSedang.price,
-      status: TicketStatus.WASHING,
-      initialNotes: "Kolong banyak lumpur sehabis ke Lombok Timur.",
-      washingStartedAt: new Date(now.getTime() - 18 * 60 * 1000),
-      subtotalServices: sMobilSedang.price,
-      subtotalRetail: 0,
-      totalAmount: sMobilSedang.price,
-      paymentStatus: PaymentStatus.UNPAID,
-    },
-  });
-
-  // Komisi dibagi dua (Tandem Agus Santoso & Budi Pratama)
-  const halfCommission = Number(sMobilSedang.defaultCommission) / 2;
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketWashingTandem.id,
-      employeeId: washer1.id,
-      commissionAmount: halfCommission,
-      isPaidToWasher: false,
-    },
-  });
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketWashingTandem.id,
-      employeeId: washer2.id,
-      commissionAmount: halfCommission,
-      isPaidToWasher: false,
-    },
-  });
-
-  // TIKET 5: Status WASHING - SOLO (Pick-up Rudi Hartono)
-  const ticketWashingSolo = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-005`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer8.id,
-      vehicleId: vehicle8.id,
-      licensePlate: vehicle8.licensePlate,
-      vehicleCategory: vehicle8.category,
-      servicePackageId: sPickup.id,
-      servicePrice: sPickup.price,
-      status: TicketStatus.WASHING,
-      initialNotes: "Bak kargo banyak pasir.",
-      washingStartedAt: new Date(now.getTime() - 10 * 60 * 1000),
-      subtotalServices: sPickup.price,
-      subtotalRetail: 0,
-      totalAmount: sPickup.price,
-      paymentStatus: PaymentStatus.UNPAID,
-    },
-  });
-
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketWashingSolo.id,
-      employeeId: washer3.id,
-      commissionAmount: sPickup.defaultCommission,
-      isPaidToWasher: false,
-    },
-  });
-
-  // TIKET 6: Status QUEUED (Kawasaki Ninja ZX-25R Kevin Sanjaya - Moge di Antrean Masuk)
-  await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-006`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer9.id,
-      vehicleId: vehicle9.id,
-      licensePlate: vehicle9.licensePlate,
-      vehicleCategory: vehicle9.category,
-      servicePackageId: sMotorMoge.id,
-      servicePrice: sMotorMoge.price,
-      status: TicketStatus.QUEUED,
-      initialNotes: "Waspada leher knalpot masih panas.",
-      subtotalServices: sMotorMoge.price,
-      subtotalRetail: 0,
-      totalAmount: sMotorMoge.price,
-      paymentStatus: PaymentStatus.UNPAID,
-    },
-  });
-
-  // TIKET 7: Status QUEUED (Fortuner Budi Setiawan - Mobil Besar di Antrean Masuk)
-  await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-007`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer3.id,
-      vehicleId: vehicle3Mobil.id,
-      licensePlate: vehicle3Mobil.licensePlate,
-      vehicleCategory: vehicle3Mobil.category,
-      servicePackageId: sMobilBesar.id,
-      servicePrice: sMobilBesar.price,
-      status: TicketStatus.QUEUED,
-      initialNotes: "Mobil tinggi, gunakan tangga hidrolik untuk atap.",
-      subtotalServices: sMobilBesar.price,
-      subtotalRetail: 0,
-      totalAmount: sMobilBesar.price,
-      paymentStatus: PaymentStatus.UNPAID,
-    },
-  });
-
-  // TIKET 8: Status CANCELLED (Daihatsu Sigra - Contoh Pembatalan Tiket & Audit Log)
-  const ticketCancelled = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-000D`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      licensePlate: "DR 9876 XX",
-      vehicleCategory: VehicleCategory.MOBIL_SEDANG,
-      servicePackageId: sMobilSedang.id,
-      servicePrice: sMobilSedang.price,
-      status: TicketStatus.CANCELLED,
-      initialNotes:
-        "Dibatalkan pelanggan karena ada urusan mendadak dan antrean hidrolik penuh.",
-      subtotalServices: sMobilSedang.price,
-      subtotalRetail: 0,
-      totalAmount: sMobilSedang.price,
-      paymentStatus: PaymentStatus.UNPAID,
-    },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      outletId: outletMataram.id,
-      actorId: cashierMorning.id,
-      actorRole: "CASHIER",
-      action: "TICKET_CANCELLED",
-      entityType: "WashTicket",
-      entityId: ticketCancelled.id,
-      metadata: {
-        reason: "Pelanggan buru-buru, antrean penuh",
-        ticketNumber: ticketCancelled.ticketNumber,
-      },
-    },
-  });
-
-  // 14. TRANSAKSI SELESAI HARI INI (COMPLETED) DENGAN PEMBAYARAN LUNAS BERBAGAI METODE
-  console.log(
-    "💰 14. Membuat Transaksi Selesai Hari Ini (QRIS, CASH, TRANSFER)..."
-  );
-
-  // Selesai 1: Ioniq 5 dr. Farhan (Lunas QRIS Rp 110.000)
-  const ticketCompletedToday1 = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-000A`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer4.id,
-      vehicleId: vehicle4.id,
-      licensePlate: vehicle4.licensePlate,
-      vehicleCategory: vehicle4.category,
-      servicePackageId: sMobilSedangWax.id,
-      servicePrice: sMobilSedangWax.price, // 75.000
-      status: TicketStatus.COMPLETED,
-      initialNotes: "Wax bodi mengkilap anti air.",
-      washingStartedAt: new Date(now.getTime() - 130 * 60 * 1000),
-      dryingStartedAt: new Date(now.getTime() - 80 * 60 * 1000),
-      readyAt: new Date(now.getTime() - 40 * 60 * 1000),
-      completedAt: new Date(now.getTime() - 30 * 60 * 1000),
-      subtotalServices: sMobilSedangWax.price,
-      subtotalRetail: 35000, // Parfum Mobil Kaleng
-      totalAmount: 110000,
-      paidAmount: 110000,
-      paymentStatus: PaymentStatus.PAID,
-    },
-  });
-
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketCompletedToday1.id,
-      employeeId: washer4.id,
-      commissionAmount: sMobilSedangWax.defaultCommission,
-      isPaidToWasher: false, // Belum dicairkan (bisa dicairkan di modul Komisi)
-    },
-  });
-
-  await prisma.ticketRetailItem.create({
-    data: {
-      ticketId: ticketCompletedToday1.id,
-      retailProductId: createdRetail[5].id, // Parfum Mobil
-      quantity: 1,
-      unitPrice: 35000,
-      subtotal: 35000,
-    },
-  });
-
-  await prisma.payment.create({
-    data: {
-      ticketId: ticketCompletedToday1.id,
-      outletId: outletMataram.id,
-      cashierId: cashierMorning.id,
-      method: PaymentMethod.QRIS,
-      status: PaymentStatus.PAID,
-      totalAmount: 110000,
-      referenceNumber: "QRIS-NMID-99281729102",
-      paidAt: new Date(now.getTime() - 30 * 60 * 1000),
-    },
-  });
-
-  // Selesai 2: Innova Zenix Ahmad Zaki (Lunas Tunai CASH Rp 50.000)
-  const ticketCompletedToday2 = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-000B`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer6.id,
-      vehicleId: vehicle6.id,
-      licensePlate: vehicle6.licensePlate,
-      vehicleCategory: vehicle6.category,
-      servicePackageId: sMobilSedang.id,
-      servicePrice: sMobilSedang.price,
-      status: TicketStatus.COMPLETED,
-      initialNotes: "Walk-in baru.",
-      washingStartedAt: new Date(now.getTime() - 100 * 60 * 1000),
-      dryingStartedAt: new Date(now.getTime() - 60 * 60 * 1000),
-      readyAt: new Date(now.getTime() - 25 * 60 * 1000),
-      completedAt: new Date(now.getTime() - 20 * 60 * 1000),
-      subtotalServices: sMobilSedang.price,
-      subtotalRetail: 0,
-      totalAmount: sMobilSedang.price,
-      paidAmount: sMobilSedang.price,
-      paymentStatus: PaymentStatus.PAID,
-    },
-  });
-
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketCompletedToday2.id,
-      employeeId: washer1.id,
-      commissionAmount: sMobilSedang.defaultCommission,
-      isPaidToWasher: false,
-    },
-  });
-
-  await prisma.payment.create({
-    data: {
-      ticketId: ticketCompletedToday2.id,
-      outletId: outletMataram.id,
-      cashierId: cashierMorning.id,
-      method: PaymentMethod.CASH,
-      status: PaymentStatus.PAID,
-      totalAmount: 50000,
-      cashGiven: 100000,
-      changeGiven: 50000,
-      paidAt: new Date(now.getTime() - 20 * 60 * 1000),
-    },
-  });
-
-  // Selesai 3: Yaris Cross Siti Nurhaliza (Lunas BANK TRANSFER Rp 65.000)
-  const ticketCompletedToday3 = await prisma.washTicket.create({
-    data: {
-      ticketNumber: `KNC-${dateStr}-000C`,
-      outletId: outletMataram.id,
-      createdById: cashierMorning.id,
-      customerId: customer10.id,
-      vehicleId: vehicle10.id,
-      licensePlate: vehicle10.licensePlate,
-      vehicleCategory: vehicle10.category,
-      servicePackageId: sMobilKecilWax.id,
-      servicePrice: sMobilKecilWax.price, // 65.000
-      status: TicketStatus.COMPLETED,
-      initialNotes: "Cuci komplit wax kinclong.",
-      washingStartedAt: new Date(now.getTime() - 75 * 60 * 1000),
-      dryingStartedAt: new Date(now.getTime() - 35 * 60 * 1000),
-      readyAt: new Date(now.getTime() - 15 * 60 * 1000),
-      completedAt: new Date(now.getTime() - 10 * 60 * 1000),
-      subtotalServices: sMobilKecilWax.price,
-      subtotalRetail: 0,
-      totalAmount: sMobilKecilWax.price,
-      paidAmount: sMobilKecilWax.price,
-      paymentStatus: PaymentStatus.PAID,
-    },
-  });
-
-  await prisma.ticketWasher.create({
-    data: {
-      ticketId: ticketCompletedToday3.id,
-      employeeId: washer2.id,
-      commissionAmount: sMobilKecilWax.defaultCommission,
-      isPaidToWasher: false,
-    },
-  });
-
-  await prisma.payment.create({
-    data: {
-      ticketId: ticketCompletedToday3.id,
-      outletId: outletMataram.id,
-      cashierId: cashierMorning.id,
-      method: PaymentMethod.BANK_TRANSFER,
-      status: PaymentStatus.PAID,
-      totalAmount: 65000,
-      referenceNumber: "TRF-BCA-992384",
-      proofImageUrl:
-        "https://images.unsplash.com/photo-1556742049-0a67c5574f73?w=600&q=80",
-      paidAt: new Date(now.getTime() - 10 * 60 * 1000),
-    },
-  });
-
-  // 15. SEED DATA HISTORIS 6 HARI TERAKHIR (UNTUK ANALITIK & GRAFIK DASBOR YANG KAYA)
-  console.log(
-    "📊 15. Membuat Transaksi Historis 6 Hari Terakhir (Populasi Grafik Dasbor)..."
-  );
-
-  interface PastTicketTemplate {
-    category: VehicleCategory;
-    serviceName: string;
-    plate: string;
-    hour: number;
-    minute: number;
-    paymentMethod: PaymentMethod;
-    retailSku?: string;
-    washerIdx: number;
-    isPaidCommission: boolean;
-  }
-
-  const pastTemplates: PastTicketTemplate[] = [
-    {
-      category: VehicleCategory.MOTOR_KECIL,
-      serviceName: "Cuci Salju Motor Kecil",
-      plate: "DR 1101 SA",
-      hour: 8,
-      minute: 30,
-      paymentMethod: PaymentMethod.CASH,
-      washerIdx: 0,
-      isPaidCommission: true,
-    },
-    {
-      category: VehicleCategory.MOBIL_SEDANG,
-      serviceName: "Cuci Salju + Vacuum Mobil Sedang (Avanza/Xpander)",
-      plate: "DR 2022 AB",
-      hour: 9,
-      minute: 15,
-      paymentMethod: PaymentMethod.QRIS,
-      retailSku: "RTL-001", // Kopi
-      washerIdx: 1,
-      isPaidCommission: true,
-    },
-    {
-      category: VehicleCategory.MOBIL_BESAR,
-      serviceName: "Cuci Salju + Vacuum Mobil Besar (Pajero/Fortuner)",
-      plate: "DR 3033 CD",
-      hour: 10,
-      minute: 45,
-      paymentMethod: PaymentMethod.BANK_TRANSFER,
-      washerIdx: 2,
-      isPaidCommission: true,
-    },
-    {
-      category: VehicleCategory.MOTOR_BESAR,
-      serviceName: "Cuci Salju Motor Besar (NMax/PCX)",
-      plate: "DR 4044 EF",
-      hour: 11,
-      minute: 20,
-      paymentMethod: PaymentMethod.CASH,
-      washerIdx: 3,
-      isPaidCommission: true,
-    },
-    {
-      category: VehicleCategory.MOBIL_SEDANG,
-      serviceName: "Cuci Komplit + Wax Mobil Sedang",
-      plate: "DR 5055 GH",
-      hour: 13,
-      minute: 10,
-      paymentMethod: PaymentMethod.QRIS,
-      retailSku: "RTL-006", // Parfum
-      washerIdx: 0,
-      isPaidCommission: true,
-    },
-    {
-      category: VehicleCategory.MOBIL_KECIL,
-      serviceName: "Cuci Salju + Vacuum Mobil Kecil (Agya/Brio)",
-      plate: "DR 6066 IJ",
-      hour: 14,
-      minute: 40,
-      paymentMethod: PaymentMethod.CASH,
-      washerIdx: 4,
-      isPaidCommission: true,
-    },
-    {
-      category: VehicleCategory.MOTOR_MOGE,
-      serviceName: "Cuci Premium Moge (250cc+)",
-      plate: "DR 7077 KL",
-      hour: 15,
-      minute: 30,
-      paymentMethod: PaymentMethod.QRIS,
-      washerIdx: 1,
-      isPaidCommission: true,
-    },
-    {
-      category: VehicleCategory.KENDARAAN_LAIN,
-      serviceName: "Cuci Eksterior Pick-up / Mobil Box",
-      plate: "DR 8088 MN",
-      hour: 16,
-      minute: 15,
-      paymentMethod: PaymentMethod.CASH,
-      washerIdx: 2,
-      isPaidCommission: true,
-    },
-  ];
-
-  const washersList = [washer1, washer2, washer3, washer4, washer5, washer6];
-
-  for (let daysAgo = 6; daysAgo >= 1; daysAgo--) {
-    const targetDate = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() - daysAgo
-    );
-    const dayStr = targetDate.toISOString().slice(0, 10).replace(/-/g, "");
-
-    // Ambil sebagian template per hari (antara 4 - 7 transaksi per hari)
-    const countForDay = 4 + ((daysAgo * 3) % 4);
-    const dayTemplates = pastTemplates.slice(0, countForDay);
-
-    for (let i = 0; i < dayTemplates.length; i++) {
-      const t = dayTemplates[i];
-      const seqStr = String(i + 1).padStart(3, "0");
-      const ticketNum = `KNC-${dayStr}-${seqStr}`;
-
-      const sPkg = createdServices.find((s) => s.name === t.serviceName)!;
-      const retailProd = t.retailSku
-        ? createdRetail.find((r) => r.sku === t.retailSku)
-        : null;
-
-      const ticketTime = new Date(
-        targetDate.getFullYear(),
-        targetDate.getMonth(),
-        targetDate.getDate(),
-        t.hour,
-        t.minute
+    if (config.slug === "star-wash-narmada") {
+      // Cabang 4: Buat 1 pengajuan pembayaran PENDING untuk DEMO SUPERADMIN VERIFIKASI
+      await prisma.tenantSubscriptionPayment.create({
+        data: {
+          outletId: outlet.id,
+          amount: 50000,
+          periodMonths: 1,
+          paymentMethod: SubscriptionPaymentMethod.QRIS,
+          paymentProofUrl:
+            "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800",
+          status: SubscriptionPaymentStatus.PENDING,
+          notes:
+            "Pengajuan perpanjangan lisensi 1 bulan via QRIS Usaha. Mohon approval.",
+          createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000), // 2 jam yang lalu
+        },
+      });
+      console.log(
+        `    ⭐ Dibuat 1 antrean bukti bayar PENDING untuk demo verifikasi Superadmin!`
       );
-      const readyTime = new Date(ticketTime.getTime() + 35 * 60 * 1000);
-      const completedTime = new Date(ticketTime.getTime() + 45 * 60 * 1000);
+    }
 
-      const retailAmount = retailProd ? Number(retailProd.sellingPrice) : 0;
-      const totalAmount = Number(sPkg.price) + retailAmount;
+    // C. Buat Staf Cabang (Manager, Cashiers, Washers)
+    console.log(`    👥 Mendaftarkan manajer, kasir, dan tukang cuci...`);
 
-      const histTicket = await prisma.washTicket.create({
+    // 1. Manajer
+    const managerUser = await prisma.user.create({
+      data: {
+        email: config.manager.email,
+        passwordHash: defaultPasswordHash,
+        fullName: config.manager.name,
+        role: UserRole.MANAGER,
+        status: UserStatus.ACTIVE,
+        outletId: outlet.id,
+      },
+    });
+    await prisma.employee.create({
+      data: {
+        fullName: config.manager.name,
+        role: UserRole.MANAGER,
+        outletId: outlet.id,
+        userId: managerUser.id,
+        commissionType: CommissionType.FIXED_NOMINAL,
+        commissionRate: 0,
+      },
+    });
+
+    // 2. Kasir
+    const cashierUsers = [];
+    for (const c of config.cashiers) {
+      const u = await prisma.user.create({
         data: {
-          ticketNumber: ticketNum,
-          outletId: outletMataram.id,
-          createdById: cashierMorning.id,
-          licensePlate: t.plate,
-          vehicleCategory: t.category,
-          servicePackageId: sPkg.id,
-          servicePrice: sPkg.price,
-          status: TicketStatus.COMPLETED,
-          queuedAt: ticketTime,
-          washingStartedAt: ticketTime,
-          dryingStartedAt: new Date(ticketTime.getTime() + 20 * 60 * 1000),
-          readyAt: readyTime,
-          completedAt: completedTime,
-          subtotalServices: sPkg.price,
-          subtotalRetail: retailAmount,
-          totalAmount,
-          paidAmount: totalAmount,
-          paymentStatus: PaymentStatus.PAID,
-          createdAt: ticketTime,
+          email: c.email,
+          passwordHash: defaultPasswordHash,
+          fullName: c.name,
+          role: UserRole.CASHIER,
+          status: UserStatus.ACTIVE,
+          outletId: outlet.id,
         },
       });
-
-      // Hubungkan washer & komisi (sebagian sudah dicairkan di masa lalu)
-      const assignedWasher = washersList[t.washerIdx % washersList.length];
-      const isPaid = daysAgo >= 2 ? true : false; // 2 hari ke belakang sudah dicairkan, kemarin belum dicairkan
-      await prisma.ticketWasher.create({
+      const emp = await prisma.employee.create({
         data: {
-          ticketId: histTicket.id,
-          employeeId: assignedWasher.id,
-          commissionAmount: sPkg.defaultCommission,
-          assignedAt: ticketTime,
-          isPaidToWasher: isPaid,
-          paidAt: isPaid
-            ? new Date(ticketTime.getTime() + 8 * 60 * 60 * 1000)
-            : null,
+          fullName: c.name,
+          role: UserRole.CASHIER,
+          outletId: outlet.id,
+          userId: u.id,
+          commissionType: CommissionType.FIXED_NOMINAL,
+          commissionRate: 0,
         },
       });
+      cashierUsers.push({ user: u, employee: emp });
+    }
 
-      // Item ritel jika ada
-      if (retailProd) {
-        await prisma.ticketRetailItem.create({
+    // 3. Washers (Tukang Cuci dengan PIN Kiosk Masif)
+    const washerRecords = [];
+    for (const w of config.washers) {
+      const u = await prisma.user.create({
+        data: {
+          email: w.email,
+          passwordHash: defaultPasswordHash,
+          fullName: w.name,
+          role: UserRole.WASHER,
+          status: UserStatus.ACTIVE,
+          outletId: outlet.id,
+        },
+      });
+      const emp = await prisma.employee.create({
+        data: {
+          fullName: w.name,
+          role: UserRole.WASHER,
+          pinCode: w.pin,
+          outletId: outlet.id,
+          userId: u.id,
+          commissionType: CommissionType.FIXED_NOMINAL,
+          commissionRate: 10000,
+        },
+      });
+      washerRecords.push({ user: u, employee: emp, pin: w.pin });
+    }
+
+    // D. Buat Work Shifts & Shift Assignments
+    console.log(`    ⏰ Membuat jadwal shift kerja...`);
+    const shiftPagi = await prisma.workShift.create({
+      data: {
+        name: "Shift Pagi (08:00 - 16:00)",
+        startTime: "08:00",
+        endTime: "16:00",
+        outletId: outlet.id,
+      },
+    });
+    const shiftSore = await prisma.workShift.create({
+      data: {
+        name: "Shift Sore (14:00 - 22:00)",
+        startTime: "14:00",
+        endTime: "22:00",
+        outletId: outlet.id,
+      },
+    });
+
+    // Tugaskan washer ke shift hari ini
+    if (washerRecords.length > 0) {
+      await prisma.shiftAssignment.create({
+        data: {
+          employeeId: washerRecords[0].employee.id,
+          shiftId: shiftPagi.id,
+          outletId: outlet.id,
+          date: now,
+        },
+      });
+    }
+
+    // E. Buat Paket Layanan (ServicePackage)
+    console.log(`    🚿 Mendaftarkan paket layanan cuci...`);
+    const createdPackages = [];
+    for (const pkg of config.vehicleTypes) {
+      const sp = await prisma.servicePackage.create({
+        data: {
+          name: pkg.name,
+          vehicleCategory: pkg.category,
+          price: pkg.price,
+          estimatedMinutes: pkg.duration,
+          commissionType: CommissionType.FIXED_NOMINAL,
+          defaultCommission: pkg.commissionAmount,
+          outletId: outlet.id,
+        },
+      });
+      createdPackages.push(sp);
+    }
+
+    // F. Buat Bahan Operasional (OperationalSupply)
+    console.log(`    🧪 Mendaftarkan bahan baku operasional...`);
+    const createdSupplies = [];
+    for (const sup of config.supplies) {
+      const s = await prisma.operationalSupply.create({
+        data: {
+          name: sup.name,
+          unit: sup.unit,
+          stock: sup.stock,
+          minStockAlert: sup.minStockAlert,
+          outletId: outlet.id,
+        },
+      });
+      // Catat movement saldo awal
+      await prisma.stockMovement.create({
+        data: {
+          operationalSupplyId: s.id,
+          quantity: sup.stock,
+          balanceAfter: sup.stock,
+          movementType: MovementType.IN_RESTOCK,
+          referenceNote: "Stok awal pembukaan cabang",
+          outletId: outlet.id,
+        },
+      });
+      createdSupplies.push(s);
+    }
+
+    // G. Buat Produk Ritel Kasir (RetailProduct)
+    console.log(`    🥤 Mendaftarkan produk ritel kasir...`);
+    const createdRetails = [];
+    for (const ret of config.retails) {
+      const r = await prisma.retailProduct.create({
+        data: {
+          name: ret.name,
+          sku: ret.sku,
+          category: ret.category,
+          costPrice: ret.costPrice,
+          sellingPrice: ret.sellingPrice,
+          stock: ret.stock,
+          minStockAlert: ret.minStockAlert,
+          outletId: outlet.id,
+        },
+      });
+      createdRetails.push(r);
+    }
+
+    // H. Buat Data Pelanggan & Kendaraan
+    console.log(`    🚗 Mendaftarkan pelanggan tetap & antrean aktif...`);
+    const createdCustomers = [];
+    for (const cust of config.customers) {
+      // Find or create customer by phone
+      let c = await prisma.customer.findUnique({
+        where: { phone: cust.phone },
+      });
+      if (!c) {
+        c = await prisma.customer.create({
           data: {
-            ticketId: histTicket.id,
-            retailProductId: retailProd.id,
-            quantity: 1,
-            unitPrice: retailProd.sellingPrice,
-            subtotal: retailProd.sellingPrice,
+            fullName: cust.fullName,
+            phone: cust.phone,
+            loyaltyPoints: cust.points,
+            totalVisits: cust.points + 2,
           },
         });
       }
 
-      // Pembayaran kasir
+      // Find or create vehicle by plate
+      let v = await prisma.vehicle.findUnique({
+        where: { licensePlate: cust.plate },
+      });
+      if (!v) {
+        v = await prisma.vehicle.create({
+          data: {
+            licensePlate: cust.plate,
+            brand: cust.brand,
+            model: cust.model,
+            category: cust.category,
+            customerId: c.id,
+          },
+        });
+      }
+
+      createdCustomers.push({
+        customer: c,
+        vehicle: v,
+        initialPoints: cust.points,
+      });
+    }
+
+    // I. Buat Tiket Cuci Berbagai Tahapan Kanban (QUEUED, WASHING, DRYING, READY, COMPLETED)
+    if (
+      createdCustomers.length >= 2 &&
+      createdPackages.length >= 2 &&
+      washerRecords.length >= 2
+    ) {
+      const activeCashier = cashierUsers[0].user;
+
+      // Tiket 1: Status QUEUED (Menunggu Cuci di Antrean Depan)
+      await prisma.washTicket.create({
+        data: {
+          ticketNumber: `TKT-${dateStr}-${String(bIndex * 10 + 1).padStart(3, "0")}`,
+          licensePlate: createdCustomers[0].vehicle.licensePlate,
+          vehicleCategory: createdCustomers[0].vehicle.category,
+          servicePackageId: createdPackages[0].id,
+          servicePrice: createdPackages[0].price,
+          subtotalServices: createdPackages[0].price,
+          totalAmount: createdPackages[0].price,
+          status: TicketStatus.QUEUED,
+          paymentStatus: PaymentStatus.UNPAID,
+          vehicleId: createdCustomers[0].vehicle.id,
+          customerId: createdCustomers[0].customer.id,
+          outletId: outlet.id,
+          createdById: activeCashier.id,
+          queuedAt: new Date(now.getTime() - 25 * 60 * 1000), // 25 menit lalu
+          createdAt: new Date(now.getTime() - 25 * 60 * 1000),
+        },
+      });
+
+      // Tiket 2: Status WASHING (Sedang Dicuci oleh Washer 1)
+      const ticketWashing = await prisma.washTicket.create({
+        data: {
+          ticketNumber: `TKT-${dateStr}-${String(bIndex * 10 + 2).padStart(3, "0")}`,
+          licensePlate: createdCustomers[1].vehicle.licensePlate,
+          vehicleCategory: createdCustomers[1].vehicle.category,
+          servicePackageId: createdPackages[1].id,
+          servicePrice: createdPackages[1].price,
+          subtotalServices: createdPackages[1].price,
+          totalAmount: createdPackages[1].price,
+          status: TicketStatus.WASHING,
+          paymentStatus: PaymentStatus.UNPAID,
+          vehicleId: createdCustomers[1].vehicle.id,
+          customerId: createdCustomers[1].customer.id,
+          outletId: outlet.id,
+          createdById: activeCashier.id,
+          queuedAt: new Date(now.getTime() - 35 * 60 * 1000),
+          washingStartedAt: new Date(now.getTime() - 15 * 60 * 1000),
+          createdAt: new Date(now.getTime() - 35 * 60 * 1000),
+        },
+      });
+      // Washer 1 klaim tiket
+      await prisma.ticketWasher.create({
+        data: {
+          ticketId: ticketWashing.id,
+          employeeId: washerRecords[0].employee.id,
+          commissionAmount: Number(createdPackages[1].defaultCommission),
+        },
+      });
+
+      // Tiket 3: Status READY (Selesai Cuci, Siap Ambil / Bayar)
+      if (createdCustomers.length >= 3) {
+        const ticketReady = await prisma.washTicket.create({
+          data: {
+            ticketNumber: `TKT-${dateStr}-${String(bIndex * 10 + 3).padStart(3, "0")}`,
+            licensePlate: createdCustomers[2].vehicle.licensePlate,
+            vehicleCategory: createdCustomers[2].vehicle.category,
+            servicePackageId: createdPackages[0].id,
+            servicePrice: createdPackages[0].price,
+            subtotalServices: createdPackages[0].price,
+            totalAmount: createdPackages[0].price,
+            status: TicketStatus.READY,
+            paymentStatus: PaymentStatus.UNPAID,
+            vehicleId: createdCustomers[2].vehicle.id,
+            customerId: createdCustomers[2].customer.id,
+            outletId: outlet.id,
+            createdById: activeCashier.id,
+            queuedAt: new Date(now.getTime() - 50 * 60 * 1000),
+            washingStartedAt: new Date(now.getTime() - 40 * 60 * 1000),
+            dryingStartedAt: new Date(now.getTime() - 20 * 60 * 1000),
+            readyAt: new Date(now.getTime() - 10 * 60 * 1000),
+            createdAt: new Date(now.getTime() - 50 * 60 * 1000),
+          },
+        });
+        await prisma.ticketWasher.create({
+          data: {
+            ticketId: ticketReady.id,
+            employeeId: washerRecords[1].employee.id,
+            commissionAmount: Number(createdPackages[0].defaultCommission),
+          },
+        });
+      }
+
+      // Tiket 4: Status COMPLETED (Sudah Bayar Lunas, Komisi Tercatat)
+      // Buat kendaraan dan customer untuk tiket 4
+      let completedCust = await prisma.customer.findUnique({
+        where: { phone: "081299998888" },
+      });
+      if (!completedCust) {
+        completedCust = await prisma.customer.create({
+          data: {
+            fullName: "Pak Hendra Mulyadi",
+            phone: "081299998888",
+            loyaltyPoints: 3,
+            totalVisits: 5,
+          },
+        });
+      }
+
+      let completedVeh = await prisma.vehicle.findUnique({
+        where: { licensePlate: `DR ${9000 + bIndex} LK` },
+      });
+      if (!completedVeh) {
+        completedVeh = await prisma.vehicle.create({
+          data: {
+            licensePlate: `DR ${9000 + bIndex} LK`,
+            brand: "Honda",
+            model: "BR-V",
+            category: VehicleCategory.MOBIL_SEDANG,
+            customerId: completedCust.id,
+          },
+        });
+      }
+
+      const retailSubtotal =
+        createdRetails.length > 0 ? Number(createdRetails[0].sellingPrice) : 0;
+      const totalAmount = Number(createdPackages[0].price) + retailSubtotal;
+
+      const ticketCompleted = await prisma.washTicket.create({
+        data: {
+          ticketNumber: `TKT-${dateStr}-${String(bIndex * 10 + 4).padStart(3, "0")}`,
+          licensePlate: completedVeh.licensePlate,
+          vehicleCategory: completedVeh.category,
+          servicePackageId: createdPackages[0].id,
+          servicePrice: createdPackages[0].price,
+          subtotalServices: createdPackages[0].price,
+          subtotalRetail: retailSubtotal,
+          totalAmount: totalAmount,
+          paidAmount: totalAmount,
+          status: TicketStatus.COMPLETED,
+          paymentStatus: PaymentStatus.PAID,
+          vehicleId: completedVeh.id,
+          customerId: completedCust.id,
+          outletId: outlet.id,
+          createdById: activeCashier.id,
+          queuedAt: new Date(now.getTime() - 130 * 60 * 1000),
+          washingStartedAt: new Date(now.getTime() - 120 * 60 * 1000),
+          dryingStartedAt: new Date(now.getTime() - 90 * 60 * 1000),
+          readyAt: new Date(now.getTime() - 70 * 60 * 1000),
+          completedAt: new Date(now.getTime() - 60 * 60 * 1000),
+          createdAt: new Date(now.getTime() - 130 * 60 * 1000),
+        },
+      });
+
+      // Washer 1 & Washer 2 tandem (Bagi komisi 50:50)
+      const halfCommission = Number(createdPackages[0].defaultCommission) / 2;
+      await prisma.ticketWasher.createMany({
+        data: [
+          {
+            ticketId: ticketCompleted.id,
+            employeeId: washerRecords[0].employee.id,
+            commissionAmount: halfCommission,
+            isPaidToWasher: true,
+            paidAt: new Date(now.getTime() - 30 * 60 * 1000),
+          },
+          {
+            ticketId: ticketCompleted.id,
+            employeeId: washerRecords[1].employee.id,
+            commissionAmount: halfCommission,
+            isPaidToWasher: true,
+            paidAt: new Date(now.getTime() - 30 * 60 * 1000),
+          },
+        ],
+      });
+
+      // Tambah item ritel di kasir (misal beli parfum mobil)
+      if (createdRetails.length > 0) {
+        await prisma.ticketRetailItem.create({
+          data: {
+            ticketId: ticketCompleted.id,
+            retailProductId: createdRetails[0].id,
+            quantity: 1,
+            unitPrice: createdRetails[0].sellingPrice,
+            subtotal: createdRetails[0].sellingPrice,
+          },
+        });
+      }
+
+      // Catat Pembayaran Kasir (Cash)
       await prisma.payment.create({
         data: {
-          ticketId: histTicket.id,
-          outletId: outletMataram.id,
-          cashierId: cashierMorning.id,
-          method: t.paymentMethod,
+          ticketId: ticketCompleted.id,
+          outletId: outlet.id,
+          cashierId: activeCashier.id,
+          method: PaymentMethod.CASH,
           status: PaymentStatus.PAID,
-          totalAmount,
-          paidAt: completedTime,
+          totalAmount: totalAmount,
+          cashGiven: totalAmount + 10000,
+          changeGiven: 10000,
+          paidAt: new Date(now.getTime() - 60 * 60 * 1000),
+        },
+      });
+
+      // Catat Log WhatsApp Struk Digital
+      await prisma.whatsAppLog.create({
+        data: {
+          recipientPhone: completedCust.phone,
+          messageType: "DIGITAL_RECEIPT",
+          status: WhatsAppDeliveryStatus.SENT,
+          payloadJson: {
+            ticketNumber: ticketCompleted.ticketNumber,
+            totalAmount: totalAmount,
+          },
+          ticketId: ticketCompleted.id,
+          sentAt: new Date(now.getTime() - 59 * 60 * 1000),
         },
       });
     }
-  }
 
-  // 16. DATA CABANG KEDUA (OUTLET REMBIGA) - DEMO MULTI-OUTLET SWITCHER
-  console.log("🏢 16. Membuat Data Antrean Berjalan di Cabang Rembiga...");
-  const sPkgRembiga = await prisma.servicePackage.findFirst({
-    where: { outletId: outletRembiga.id },
-  });
-
-  if (sPkgRembiga) {
-    const ticketRembiga1 = await prisma.washTicket.create({
+    // J. Audit Log Registrasi Cabang
+    await prisma.auditLog.create({
       data: {
-        ticketNumber: `RBG-${dateStr}-001`,
-        outletId: outletRembiga.id,
-        createdById: cashierRembiga.id,
-        licensePlate: "DR 8899 XY",
-        vehicleCategory: VehicleCategory.MOTOR_BESAR,
-        servicePackageId: sPkgRembiga.id,
-        servicePrice: sPkgRembiga.price,
-        status: TicketStatus.WASHING,
-        initialNotes: "Cuci motor express di Rembiga",
-        washingStartedAt: new Date(now.getTime() - 15 * 60 * 1000),
-        subtotalServices: sPkgRembiga.price,
-        subtotalRetail: 0,
-        totalAmount: sPkgRembiga.price,
-        paymentStatus: PaymentStatus.UNPAID,
-      },
-    });
-
-    await prisma.ticketWasher.create({
-      data: {
-        ticketId: ticketRembiga1.id,
-        employeeId: washerRembiga1.id,
-        commissionAmount: sPkgRembiga.defaultCommission,
-        isPaidToWasher: false,
-      },
-    });
-  }
-
-  // 17. LOG WHATSAPP NOTIFIKASI
-  console.log("📲 17. Membuat Log Notifikasi WhatsApp Gateway...");
-  await prisma.whatsAppLog.create({
-    data: {
-      ticketId: ticketReady1.id,
-      recipientPhone: customer1.phone,
-      messageType: "STATUS_READY",
-      status: WhatsAppDeliveryStatus.DELIVERED,
-      sentAt: new Date(now.getTime() - 5 * 60 * 1000),
-    },
-  });
-
-  await prisma.whatsAppLog.create({
-    data: {
-      ticketId: ticketCompletedToday1.id,
-      recipientPhone: customer4.phone,
-      messageType: "RECEIPT",
-      status: WhatsAppDeliveryStatus.READ,
-      sentAt: new Date(now.getTime() - 28 * 60 * 1000),
-    },
-  });
-
-  await prisma.whatsAppLog.create({
-    data: {
-      ticketId: ticketDrying.id,
-      recipientPhone: customer5.phone,
-      messageType: "PROMO",
-      status: WhatsAppDeliveryStatus.SENT,
-      sentAt: new Date(now.getTime() - 15 * 60 * 1000),
-    },
-  });
-
-  // 18. MASTER TEMPLATE SHIFT & ROSTER JADWAL KERJA KARYAWAN (WORKSHIFT & SHIFTASSIGNMENT)
-  console.log(
-    "⏰ 18. Membuat Master Template Shift & Penugasan Roster Jadwal..."
-  );
-
-  // Master Template Shift: Cabang Pusat Mataram
-  const shiftPagiMataram = await prisma.workShift.create({
-    data: {
-      outletId: outletMataram.id,
-      name: "Shift Pagi (Buka)",
-      startTime: "07:30",
-      endTime: "15:30",
-      description: "Persiapan buka lapak cuci & pembersihan awal",
-      color: "emerald",
-      isActive: true,
-    },
-  });
-
-  const shiftSiangMataram = await prisma.workShift.create({
-    data: {
-      outletId: outletMataram.id,
-      name: "Shift Siang (Peak)",
-      startTime: "11:00",
-      endTime: "18:30",
-      description: "Jam sibuk antrean kendaraan siang hari",
-      color: "blue",
-      isActive: true,
-    },
-  });
-
-  const shiftSoreMataram = await prisma.workShift.create({
-    data: {
-      outletId: outletMataram.id,
-      name: "Shift Sore (Tutup)",
-      startTime: "13:30",
-      endTime: "21:30",
-      description: "Pembersihan pit cuci & serah terima kasir tutup buku",
-      color: "amber",
-      isActive: true,
-    },
-  });
-
-  const shiftLemburMataram = await prisma.workShift.create({
-    data: {
-      outletId: outletMataram.id,
-      name: "Shift Lembur Weekend",
-      startTime: "16:00",
-      endTime: "22:00",
-      description: "Kapasitas penuh malam minggu & detailing",
-      color: "purple",
-      isActive: true,
-    },
-  });
-
-  // Master Template Shift: Cabang Rembiga Express
-  const shiftPagiRembiga = await prisma.workShift.create({
-    data: {
-      outletId: outletRembiga.id,
-      name: "Shift Pagi Express",
-      startTime: "08:00",
-      endTime: "16:00",
-      description: "Operasional pagi jalur express",
-      color: "blue",
-      isActive: true,
-    },
-  });
-
-  const shiftSoreRembiga = await prisma.workShift.create({
-    data: {
-      outletId: outletRembiga.id,
-      name: "Shift Sore Express",
-      startTime: "13:00",
-      endTime: "21:00",
-      description: "Operasional sore dan closing express",
-      color: "emerald",
-      isActive: true,
-    },
-  });
-
-  // Master Template Shift: Cabang Senggigi Detailing
-  await prisma.workShift.create({
-    data: {
-      outletId: outletSenggigi.id,
-      name: "Shift Detailing Reguler",
-      startTime: "08:30",
-      endTime: "17:00",
-      description: "Auto detailing, nano ceramic coating & salon mobil",
-      color: "blue",
-      isActive: true,
-    },
-  });
-
-  // Penugasan Roster Shift Harian (5 Hari: H-2, H-1, HARI INI, H+1, H+2)
-  const rosterDays = [-2, -1, 0, 1, 2];
-
-  for (const offset of rosterDays) {
-    const d = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + offset
-    );
-    const dateStrOnly = d.toISOString().split("T")[0];
-    const dateObj = new Date(dateStrOnly + "T00:00:00.000Z");
-
-    if (offset === 0) {
-      // HARI INI (Mataram Pusat)
-      await prisma.shiftAssignment.createMany({
-        data: [
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftPagiMataram.id,
-            employeeId: empCashierMorning.id,
-            date: dateObj,
-            notes: "Kasir utama shift pagi",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftPagiMataram.id,
-            employeeId: washer1.id,
-            date: dateObj,
-            notes: "Leader bay hidrolik 1 & 2",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftPagiMataram.id,
-            employeeId: washer2.id,
-            date: dateObj,
-            notes: "Washer bay hidrolik 3 & 4",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSiangMataram.id,
-            employeeId: empManagerMataram.id,
-            date: dateObj,
-            notes: "Supervisi operasional & cek stok",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSiangMataram.id,
-            employeeId: washer3.id,
-            date: dateObj,
-            notes: "Spesialis detailing & bodi",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSiangMataram.id,
-            employeeId: washer4.id,
-            date: dateObj,
-            notes: "Washer cuci cepat",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSoreMataram.id,
-            employeeId: empCashierAfternoon.id,
-            date: dateObj,
-            notes: "Kasir shift sore & rekonsiliasi kas laci",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSoreMataram.id,
-            employeeId: washer5.id,
-            date: dateObj,
-            notes: "Washer shift malam & semir ban",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSoreMataram.id,
-            employeeId: washer6.id,
-            date: dateObj,
-            notes: "Washer bay hidrolik sore",
-          },
-        ],
-      });
-
-      // HARI INI (Rembiga Express)
-      await prisma.shiftAssignment.createMany({
-        data: [
-          {
-            outletId: outletRembiga.id,
-            shiftId: shiftPagiRembiga.id,
-            employeeId: empCashierRembiga.id,
-            date: dateObj,
-            notes: "Kasir express pagi",
-          },
-          {
-            outletId: outletRembiga.id,
-            shiftId: shiftPagiRembiga.id,
-            employeeId: washerRembiga1.id,
-            date: dateObj,
-            notes: "Washer jalur express pagi",
-          },
-          {
-            outletId: outletRembiga.id,
-            shiftId: shiftSoreRembiga.id,
-            employeeId: empManagerRembiga.id,
-            date: dateObj,
-            notes: "Supervisi operasional Rembiga",
-          },
-          {
-            outletId: outletRembiga.id,
-            shiftId: shiftSoreRembiga.id,
-            employeeId: washerRembiga2.id,
-            date: dateObj,
-            notes: "Washer jalur express sore",
-          },
-        ],
-      });
-    } else {
-      // Hari kemarin / besok (Mataram Pusat)
-      await prisma.shiftAssignment.createMany({
-        data: [
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftPagiMataram.id,
-            employeeId: empCashierMorning.id,
-            date: dateObj,
-            notes: "Shift reguler pagi",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftPagiMataram.id,
-            employeeId: offset % 2 === 0 ? washer1.id : washer2.id,
-            date: dateObj,
-            notes: "Penanggung jawab pit",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftPagiMataram.id,
-            employeeId: offset % 2 === 0 ? washer3.id : washer4.id,
-            date: dateObj,
-            notes: "Washer cuci pagi",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSoreMataram.id,
-            employeeId: empCashierAfternoon.id,
-            date: dateObj,
-            notes: "Shift reguler sore & closing",
-          },
-          {
-            outletId: outletMataram.id,
-            shiftId: shiftSoreMataram.id,
-            employeeId: offset % 2 === 0 ? washer5.id : washer6.id,
-            date: dateObj,
-            notes: "Washer closing sore",
-          },
-        ],
-      });
-    }
-  }
-
-  // 19. MEMBUAT JEJAK AUDIT SISTEM LENGKAP (AUDIT TRAIL)
-  console.log("🛡️ 19. Membuat Jejak Audit Keamanan Sistem (Audit Trail)...");
-
-  await prisma.auditLog.createMany({
-    data: [
-      {
-        outletId: outletMataram.id,
-        actorId: cashierMorning.id,
-        actorRole: "CASHIER",
-        action: "TICKET_CREATED",
-        entityType: "WashTicket",
-        entityId: ticketReady1.id,
-        metadata: {
-          ticketNumber: ticketReady1.ticketNumber,
-          plate: ticketReady1.licensePlate,
-          package: sMobilKecil.name,
-          price: Number(sMobilKecil.price),
-        },
-        createdAt: new Date(now.getTime() - 40 * 60 * 1000),
-      },
-      {
-        outletId: outletMataram.id,
-        actorId: cashierMorning.id,
-        actorRole: "CASHIER",
-        action: "PAYMENT_RECEIVED",
-        entityType: "Payment",
-        entityId: ticketCompletedToday1.id,
-        metadata: {
-          ticketNumber: ticketCompletedToday1.ticketNumber,
-          method: "QRIS",
-          amount: Number(ticketCompletedToday1.totalAmount),
-          status: "PAID",
-        },
-        createdAt: new Date(now.getTime() - 25 * 60 * 1000),
-      },
-      {
-        outletId: outletMataram.id,
-        actorId: cashierMorning.id,
-        actorRole: "CASHIER",
-        action: "TICKET_CANCELLED",
-        entityType: "WashTicket",
-        entityId: ticketCancelled.id,
-        metadata: {
-          ticketNumber: ticketCancelled.ticketNumber,
-          plate: ticketCancelled.licensePlate,
-          reason: "Pelanggan terburu-buru ada rapat mendadak",
-        },
-        createdAt: new Date(now.getTime() - 90 * 60 * 1000),
-      },
-      {
-        outletId: outletMataram.id,
-        actorId: managerUser.id,
-        actorRole: "MANAGER",
-        action: "SHIFT_ASSIGNED",
-        entityType: "ShiftAssignment",
-        entityId: outletMataram.id,
-        metadata: {
-          targetDate: now.toISOString().split("T")[0],
-          totalStaffAssigned: 9,
-          note: "Penugasan jadwal reguler tim Mataram Pusat",
-        },
-        createdAt: new Date(now.getTime() - 6 * 60 * 60 * 1000),
-      },
-      {
-        outletId: outletMataram.id,
-        actorId: ownerUser.id,
-        actorRole: "OWNER",
-        action: "PRICE_CHANGED",
-        entityType: "ServicePackage",
-        entityId: sMobilSedang.id,
-        metadata: {
-          serviceName: sMobilSedang.name,
-          oldPrice: 45000,
-          newPrice: 50000,
-          reason: "Penyesuaian biaya bahan baku salju & listrik hidrolik",
-        },
-        createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-      },
-      {
-        outletId: outletMataram.id,
-        actorId: ownerUser.id,
-        actorRole: "OWNER",
-        action: "COMMISSION_PAID",
-        entityType: "TicketWasher",
-        entityId: washer1.id,
-        metadata: {
-          washerName: washer1.fullName,
-          amount: 250000,
-          period: "Pencairan Komisi Mingguan Periode 1",
-          totalVehicles: 21,
-        },
-        createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-      },
-      {
-        outletId: outletMataram.id,
-        actorId: ownerUser.id,
-        actorRole: "OWNER",
-        action: "WHATSAPP_CONFIGURED",
+        action: "BRANCH_SEEDED",
+        actorId: superadminUser.id,
+        actorRole: "SUPERADMIN",
         entityType: "Outlet",
-        entityId: outletMataram.id,
+        entityId: outlet.id,
         metadata: {
-          gateway: "SumoPod WA Gateway",
-          senderNumber: "6281912345678",
-          status: "CONNECTED",
+          details: `Cabang ${config.name} berhasil dibuat dengan status lisensi ${config.subStatus}.`,
         },
-        createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
+        outletId: outlet.id,
       },
-    ],
-  });
+    });
+  }
 
   console.log("\n=========================================================");
-  console.log(
-    "🎉 SEEDING DATA TERBARU KINCLONGIN BERHASIL DENGAN SEMUA MODUL!"
-  );
+  console.log("✅ SEEDING DATA BERHASIL DILAKUKAN 100%!");
   console.log("=========================================================");
-  console.log(`
-  📊 Ringkasan Data Master & Transaksi yang Berhasil Dibuat:
-  -----------------------------------------------------------------------
-  1. Multi-Cabang Outlet : 3 Cabang
-                           - Kinclongin Cabang Pusat Mataram (Aktif)
-                           - Kinclongin Express Rembiga (Aktif)
-                           - Kinclongin Auto Spa & Detailing Senggigi (Aktif)
-
-  2. Akun Pengguna Demo  : Akun Lengkap (Password universal: 123456)
-                           - OWNER / ADMIN:
-                             • owner@kinclongin.com / admin@kinclongin.com (Pak H. Ridwan / Admin Pusat)
-                           - MANAGER:
-                             • danu.manager@kinclongin.com (Danu Prakoso)
-                             • manager@kinclongin.com (Manager Operasional)
-                             • danu.operasional@kinclongin.com (Danu Operasional)
-                             • manager.rembiga@kinclongin.com (Rian Saputra - Cabang Rembiga)
-                             • manager.senggigi@kinclongin.com (Bayu Nugroho - Cabang Senggigi)
-                           - CASHIER:
-                             • kasir.pagi@kinclongin.com (Siti Rahma - Shift Pagi Mataram)
-                             • kasir.sore@kinclongin.com (Putri Anggraeni - Shift Sore Mataram)
-                             • kasir@kinclongin.com (Kasir Kinclongin Pusat)
-                             • kasir.mataram@kinclongin.com (Kasir Cabang Mataram)
-                             • kasir.rembiga@kinclongin.com (Dina Marlina - Cabang Rembiga)
-                           - WASHER (PIN Tablet):
-                             • agus.washer@kinclongin.com (Agus Santoso, PIN: 1234)
-                             • budi.washer@kinclongin.com (Budi Pratama, PIN: 5678)
-                             • rian.washer@kinclongin.com (Rian Hidayat, PIN: 9999)
-                             • ilham.washer@kinclongin.com (Ilham Saputra, PIN: 2026)
-                             • fajar.washer@kinclongin.com (Fajar Ramadhan, PIN: 1122)
-                             • zaki.washer@kinclongin.com (Zaki Firmansyah, PIN: 4488)
-                           - STATUS  : mantan.kasir@kinclongin.com (SUSPENDED)
-
-  3. Karyawan & Roster   : 12 Karyawan Terdaftar (6 Washes, 3 Cashiers, 3 Managers)
-                           - 7 Template Shift (Pagi, Siang, Sore, Lembur di 3 Outlet)
-                           - 40+ Roster Penugasan Shift Harian (H-2 s/d H+2)
-                           - Statistik Roster Hari Ini: 9 Staf Bertugas di Cabang Pusat
-
-  4. Paket Layanan Cuci  : 17 Layanan Lengkap (7 Kategori Kendaraan)
-                           - MOTOR_KECIL, MOTOR_BESAR, MOTOR_MOGE
-                           - MOBIL_KECIL, MOBIL_SEDANG, MOBIL_BESAR
-                           - KENDARAAN_LAIN (Pick-up, Truk Engkel)
-                           - Paket Promo Arsip (isActive: false)
-
-  5. Ritel & Stok Kasir  : 9 Produk Ritel & Minuman
-                           - Normal Stock (Kopi Aren, Air Mineral, Teh, Singkong, Microfiber)
-                           - Low Stock Alert (Parfum Mobil, Wiper Fluid) -> Tampil Badge Merah/Kuning
-                           - Out of Stock (Phone Holder Magnetik Dashboard: 0) -> Badge Habis
-                           - Non-Aktif (Bantal Leher: isActive false)
-
-  6. Bahan Baku Cuci     : 5 Formula Operasional (Shampo, Semir, Degreaser, Dressing, Fogging)
-
-  7. Member Pelanggan    : 10 Pelanggan & 11 Kendaraan Terkunci:
-                           • Ibu Linda Permata (DR 1001 AB) -> KUNJUNGAN KE-10 (SIAP CUCI 10X GRATIS!)
-                           • Hendra Wijaya     (DR 1888 XY) -> Kunjungan ke-9 (Sisa 1x lagi!)
-                           • Budi Setiawan     (Multi-Unit) -> Fortuner (5x), XMAX (2x) Terpisah Aman
-                           • dr. Farhan Malik  (DR 88 EV)   -> VIP Poin Banyak (85 Poin) & Member Aktif
-                           • Ibu Ratna Dewi    (DR 2222 KL) -> Member Bulanan Unlimited Aktif
-                           • Dedi Kurniawan    (DR 5432 KL) -> Motor NMax (3x Kunjungan)
-                           • Rudi Hartono      (DR 4567 TY) -> Pick-up Niaga (6x Kunjungan)
-                           • Kevin Sanjaya     (DR 9999 ZX) -> Moge Ninja ZX (4x Kunjungan)
-                           • Ahmad Zaki        (DR 1234 BZ) -> Walk-in Baru (1x Kunjungan)
-                           • Siti Nurhaliza    (DR 5555 YC) -> Yaris Cross (2x Kunjungan)
-
-  8. Customer Membership : 5 Contoh Lengkap:
-                           - ACTIVE (Kuota Berjalan: Sisa 2 dari 4)
-                           - ACTIVE (Unlimited Express Motor: Kuota 999)
-                           - ACTIVE (Kuota Menipis: Sisa 1 dari 5)
-                           - EXPIRED (Kedaluwarsa bulan lalu)
-                           - CANCELLED (Dibatalkan pelanggan)
-
-  9. Kanban Papan Antrean: 7 Tiket Berjalan Hari Ini (Semua Status):
-                           - READY     : DR 1001 AB (Siap Klaim Promo Cuci 10x di Kasir)
-                           - READY     : DR 2222 KL (Penggunaan Kuota Member Unlimited)
-                           - DRYING    : DR 5432 KL (NMax sedang dilap + pesan kopi dingin)
-                           - WASHING   : DR 1888 XY (TANDEM WASHER: Agus & Budi bagi komisi)
-                           - WASHING   : DR 4567 TY (SOLO WASHER: Rian di pick-up)
-                           - QUEUED    : DR 9999 ZX (Moge Ninja di antrean)
-                           - QUEUED    : DR 7777 WQ (Fortuner di antrean)
-                           - CANCELLED : DR 9876 XX (Dibatalkan dengan Audit Log)
-
-  10. Transaksi Selesai  : 3 Selesai Hari Ini + 30+ Tiket Historis 6 Hari Terakhir
-                           (Grafik Tren 7 Hari, Jam Sibuk, dan Komposisi Omset Otomatis Penuh)
-
-  11. Audit Trail Trail  : 7 Jejak Log Keamanan & Perubahan Sistem
-  -----------------------------------------------------------------------
-  `);
+  console.log("👑 1. SUPERADMIN PLATFORM PROVIDER:");
+  console.log("   - Email   : superadmin@kinclongin.com");
+  console.log("   - Password: 123456");
+  console.log(
+    "   - Akses   : /dashboard/admin/subscriptions (Approval Lisensi 50k)"
+  );
+  console.log("\n🏢 2. OWNER 1 (H. Ridwan Santoso - AutoClean Group):");
+  console.log("   - Email   : ridwan.owner@autoclean.com");
+  console.log("   - Password: 123456");
+  console.log("   - Cabang 1: AutoClean Express Mataram (ACTIVE)");
+  console.log("   - Cabang 2: AutoClean Detailing Rembiga (ACTIVE)");
+  console.log("\n🏢 3. OWNER 2 (Hj. Dewi Anggraeni - Kilap Star Group):");
+  console.log("   - Email   : dewi.owner@kilapglossy.com");
+  console.log("   - Password: 123456");
+  console.log("   - Cabang 3: Kilap Glossy Ampenan (ACTIVE)");
+  console.log(
+    "   - Cabang 4: Star Wash & Detailing Narmada (GRACE PERIOD + 1 PENDING 50K PROOF)"
+  );
+  console.log("\n👥 4. STAF DEMO UTAMA (AutoClean Express Mataram):");
+  console.log("   - Manajer : danu.manager@autoclean.com (123456)");
+  console.log("   - Kasir   : siti.kasir@autoclean.com (123456)");
+  console.log("   - Washer  : agus.washer@autoclean.com (PIN Kiosk: 1234)");
+  console.log("=========================================================\n");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Terjadi kesalahan fatal saat seeding:", e);
+    console.error("❌ Error saat menjalankan seed:", e);
     process.exit(1);
   })
   .finally(async () => {

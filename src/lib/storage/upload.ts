@@ -19,7 +19,7 @@ export const UPLOAD_CONSTRAINTS = {
     isPrivate: false,
   },
   PAYMENT_PROOF: {
-    maxSize: 5 * 1024 * 1024, // 5MB untuk bukti transfer langganan SaaS atau kasir
+    maxSize: 5 * 1024 * 1024, // 5MB untuk bukti transfer langganan lisensi atau kasir
     allowedMimeTypes: [
       "image/jpeg",
       "image/png",

@@ -18,7 +18,7 @@ export default async function WhatsAppSettingsPage() {
     redirect("/sign-in");
   }
 
-  // Khusus Peran OWNER (Superadmin)
+  // Khusus Peran OWNER Bisnis
   if (user.role !== UserRole.OWNER) {
     redirect("/dashboard");
   }

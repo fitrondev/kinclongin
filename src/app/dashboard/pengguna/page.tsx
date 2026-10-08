@@ -7,9 +7,9 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = {
-  title: "Manajemen Akun & Role | Kinclongin",
+  title: "Staf & Karyawan Cabang | Kinclongin POS",
   description:
-    "Kelola hak akses pengguna, pembuatan akun kasir, manajer, tukang cuci, dan pengaturan PIN Kiosk cabang.",
+    "Kelola akun staf cabang: Kasir POS, PIN Kiosk pekerja cuci, dan akun manajer operasional.",
 };
 
 export default async function DashboardPenggunaPage() {

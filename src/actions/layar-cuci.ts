@@ -121,6 +121,23 @@ export async function claimTicketAction(
       };
     }
 
+    // Proteksi IDOR: Pastikan seluruh washer yang diklaim terdaftar di cabang outlet tiket ini
+    const validEmployees = await prisma.employee.findMany({
+      where: {
+        id: { in: washerEmployeeIds },
+        outletId: ticket.outletId,
+        isActive: true,
+      },
+    });
+
+    if (validEmployees.length !== washerEmployeeIds.length) {
+      return {
+        success: false,
+        error:
+          "Satu atau lebih pekerja cuci tidak terdaftar aktif di cabang tiket ini.",
+      };
+    }
+
     // Ambil nilai komisi default dari paket layanan
     const totalCommission = Number(ticket.servicePackage.defaultCommission);
     const washerCount = washerEmployeeIds.length;

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { formatRupiah } from "@/lib/formatters";
 
 export interface CashierDrawerCardsProps {
+  openingCashFloat?: number;
   todayCashInDrawer: number;
   todayNonCash: number;
   todayQris: number;
@@ -12,9 +13,12 @@ export interface CashierDrawerCardsProps {
   todayTransactionsCount: number;
   todayCreatedTicketsCount: number;
   todayMembershipsCount: number;
+  onOpenReconciliation?: () => void;
+  onOpenEditFloat?: () => void;
 }
 
 export function CashierDrawerCards({
+  openingCashFloat = 0,
   todayCashInDrawer,
   todayNonCash,
   todayQris,
@@ -23,14 +27,18 @@ export function CashierDrawerCards({
   todayTransactionsCount,
   todayCreatedTicketsCount,
   todayMembershipsCount,
+  onOpenReconciliation,
+  onOpenEditFloat,
 }: CashierDrawerCardsProps) {
+  const totalPhysicalExpected = openingCashFloat + todayCashInDrawer;
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {/* Card 1: Uang Tunai di Laci Kasir */}
       <Card className="min-w-0 border-emerald-500/30 bg-emerald-500/5 shadow-2xs">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <span className="text-xs font-bold text-emerald-700 uppercase dark:text-emerald-400">
-            Kas Tunai di Laci (Fisik)
+            Kas Fisik di Laci (Seharusnya)
           </span>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
             <Wallet className="h-4 w-4" />
@@ -38,11 +46,29 @@ export function CashierDrawerCards({
         </CardHeader>
         <CardContent>
           <div className="truncate text-xl font-black tracking-tight text-emerald-600 sm:text-2xl dark:text-emerald-400">
-            {formatRupiah(todayCashInDrawer)}
+            {formatRupiah(totalPhysicalExpected)}
           </div>
-          <p className="text-muted-foreground mt-1 text-[11px]">
-            Wajib cocok dengan fisik laci saat closing/handover shift
-          </p>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-1 text-[11px]">
+            <span className="text-muted-foreground truncate">
+              Modal:{" "}
+              <strong className="text-foreground">
+                {formatRupiah(openingCashFloat)}
+              </strong>{" "}
+              • Tunai:{" "}
+              <strong className="text-foreground">
+                {formatRupiah(todayCashInDrawer)}
+              </strong>
+            </span>
+            {onOpenEditFloat && (
+              <button
+                type="button"
+                onClick={onOpenEditFloat}
+                className="text-primary font-bold hover:underline"
+              >
+                Set Modal
+              </button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

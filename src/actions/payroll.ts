@@ -61,6 +61,19 @@ export async function getPayrollSummaryAction(
       };
     }
 
+    const isOwner = user.ownedOutlets?.some((o) => o.id === targetOutletId);
+    if (
+      targetOutletId &&
+      user.outletId &&
+      targetOutletId !== user.outletId &&
+      !isOwner
+    ) {
+      return {
+        success: false,
+        error: "Akses ditolak: Anda tidak memiliki akses ke cabang ini.",
+      };
+    }
+
     const outletId = targetOutletId || user.outletId;
     if (!outletId) {
       return { success: false, error: "Cabang outlet tidak teridentifikasi." };
@@ -185,13 +198,38 @@ export async function markCommissionsPaidAction(
       return { success: false, error: "Tidak ada data komisi yang dipilih." };
     }
 
-    const updated = await prisma.ticketWasher.updateMany({
+    const userOutletId = user.outletId;
+    const ownedOutletIds = user.ownedOutlets?.map((o) => o.id) || [];
+    const allowedOutletIds = Array.from(
+      new Set([userOutletId, ...ownedOutletIds].filter(Boolean))
+    ) as string[];
+
+    const validItems = await prisma.ticketWasher.findMany({
       where: {
         id: { in: ticketWasherIds },
+        ticket: { outletId: { in: allowedOutletIds } },
+        paidAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (validItems.length === 0) {
+      return {
+        success: false,
+        error: "Tidak ada komisi yang valid di cabang Anda untuk dicairkan.",
+      };
+    }
+
+    const validIds = validItems.map((item) => item.id);
+
+    const updated = await prisma.ticketWasher.updateMany({
+      where: {
+        id: { in: validIds },
         paidAt: null,
       },
       data: {
         paidAt: new Date(),
+        isPaidToWasher: true,
       },
     });
 

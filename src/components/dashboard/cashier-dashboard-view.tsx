@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 
 import {
+  Calculator,
   CreditCard,
   Droplets,
   LayoutGrid,
@@ -19,6 +20,7 @@ import { Card } from "@/components/ui/card";
 import type { ReceiptData } from "@/lib/printer/escpos";
 
 import { CashierDrawerCards } from "./cashier/cashier-drawer-cards";
+import { CashierReconciliationDialog } from "./cashier/cashier-reconciliation-dialog";
 import {
   type CashierPaymentItem,
   PaymentHistoryTable,
@@ -36,8 +38,13 @@ export interface CashierDashboardViewProps {
   outletName: string;
   outletAddress: string;
   outletPhone: string;
+  outletSlogan?: string | null;
+  outletReceiptHeader?: string | null;
+  outletReceiptFooter?: string | null;
+  outletContactPhone?: string | null;
   outletId: string;
   shiftName: string;
+  openingCashFloat?: number;
   todayCashInDrawer: number;
   todayNonCash: number;
   todayQris: number;
@@ -55,8 +62,13 @@ export function CashierDashboardView({
   outletName,
   outletAddress,
   outletPhone,
+  outletSlogan,
+  outletReceiptHeader,
+  outletReceiptFooter,
+  outletContactPhone,
   outletId,
   shiftName,
+  openingCashFloat = 0,
   todayCashInDrawer,
   todayNonCash,
   todayQris,
@@ -72,6 +84,10 @@ export function CashierDashboardView({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMethodFilter, setSelectedMethodFilter] =
     useState<string>("ALL");
+
+  // State Rekonsiliasi & Modal Awal
+  const [openingFloat, setOpeningFloat] = useState(openingCashFloat);
+  const [reconciliationModalOpen, setReconciliationModalOpen] = useState(false);
 
   // Receipt Modal State
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
@@ -104,6 +120,10 @@ export function CashierDashboardView({
       outletName,
       outletAddress: outletAddress || "Alamat Cabang Kinclongin",
       outletPhone: outletPhone || "081234567890",
+      slogan: outletSlogan,
+      receiptHeader: outletReceiptHeader,
+      receiptFooter: outletReceiptFooter,
+      contactPhone: outletContactPhone,
       ticketNumber: payment.ticketNumber,
       dateStr: new Date(payment.paidAt).toLocaleDateString("id-ID", {
         day: "2-digit",
@@ -163,6 +183,16 @@ export function CashierDashboardView({
         {/* Quick Actions Header */}
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <Button
+            onClick={() => setReconciliationModalOpen(true)}
+            size="lg"
+            variant="outline"
+            className="h-10 w-full justify-center gap-2 border-emerald-500/30 bg-emerald-500/10 font-bold text-emerald-700 shadow-xs hover:bg-emerald-500/20 sm:h-11 sm:w-auto dark:text-emerald-300"
+          >
+            <Calculator className="h-4 w-4" />
+            <span>Tutup Shift & Rekonsiliasi</span>
+          </Button>
+
+          <Button
             asChild
             size="lg"
             className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 w-full justify-center gap-2 font-bold shadow-md sm:h-11 sm:w-auto"
@@ -189,6 +219,7 @@ export function CashierDashboardView({
 
       {/* 2. 4 Stat Cards: Kas di Laci & Kinerja Shift Hari Ini */}
       <CashierDrawerCards
+        openingCashFloat={openingFloat}
         todayCashInDrawer={todayCashInDrawer}
         todayNonCash={todayNonCash}
         todayQris={todayQris}
@@ -197,6 +228,8 @@ export function CashierDashboardView({
         todayTransactionsCount={todayTransactionsCount}
         todayCreatedTicketsCount={todayCreatedTicketsCount}
         todayMembershipsCount={todayMembershipsCount}
+        onOpenReconciliation={() => setReconciliationModalOpen(true)}
+        onOpenEditFloat={() => setReconciliationModalOpen(true)}
       />
 
       {/* 3. Action Hub Bar */}
@@ -265,6 +298,22 @@ export function CashierDashboardView({
           ticketId={selectedTicketId}
         />
       ) : null}
+
+      {/* 7. Dialog Rekonsiliasi Shift & Modal Kasir */}
+      <CashierReconciliationDialog
+        open={reconciliationModalOpen}
+        onOpenChange={setReconciliationModalOpen}
+        outletId={outletId}
+        outletName={outletName}
+        cashierName={cashierName}
+        shiftName={shiftName}
+        openingCashFloat={openingFloat}
+        cashCollected={todayCashInDrawer}
+        qrisCollected={todayQris}
+        transferCollected={todayTransfer}
+        transactionsCount={todayTransactionsCount}
+        onOpeningFloatUpdated={(val) => setOpeningFloat(val)}
+      />
     </div>
   );
 }

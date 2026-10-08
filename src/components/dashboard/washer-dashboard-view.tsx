@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 import Link from "next/link";
 
 import {
@@ -11,12 +13,14 @@ import {
   Droplets,
   KeyRound,
   LayoutGrid,
+  Search,
   ShieldCheck,
   Sparkles,
   Tablet,
   TrendingUp,
   UserCheck,
   Users,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +32,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -80,10 +85,35 @@ export function WasherDashboardView({
   totalAllTimeCount,
   recentJobs,
 }: WasherDashboardViewProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<
+    "ALL" | "SOLO" | "TANDEM" | "UNPAID" | "PAID"
+  >("ALL");
+
   const formattedRate =
     commissionType === "PERCENTAGE"
       ? `${commissionRate}% per transaksi`
       : `${formatRupiah(commissionRate)} / unit kendaraan`;
+
+  const filteredJobs = useMemo(() => {
+    return recentJobs.filter((job) => {
+      const matchSearch =
+        job.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchSearch) return false;
+
+      if (typeFilter === "SOLO") return !job.isTandem;
+      if (typeFilter === "TANDEM") return job.isTandem;
+      if (typeFilter === "UNPAID") return !job.isPaidToWasher;
+      if (typeFilter === "PAID") return job.isPaidToWasher;
+      return true;
+    });
+  }, [recentJobs, searchQuery, typeFilter]);
+
+  const filteredCommissionTotal = useMemo(() => {
+    return filteredJobs.reduce((sum, job) => sum + job.commissionAmount, 0);
+  }, [filteredJobs]);
 
   return (
     <div className="space-y-6">
@@ -283,7 +313,7 @@ export function WasherDashboardView({
             asChild
             size="sm"
             variant="outline"
-            className="h-8 w-full justify-center gap-1 text-xs font-bold sm:w-auto"
+            className="h-9 w-full justify-center gap-1.5 text-xs font-bold sm:w-auto"
           >
             <Link href="/layar-cuci">
               <span>Ambil Job di Layar Cuci</span>
@@ -292,16 +322,130 @@ export function WasherDashboardView({
           </Button>
         </CardHeader>
 
+        {/* Search & Filter Toolbar */}
+        <div className="bg-muted/20 space-y-3 border-t border-b p-4">
+          <div className="flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari plat nomor, paket layanan, atau nomor tiket..."
+                className="bg-background h-10 pr-9 pl-9 text-xs sm:text-sm"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setTypeFilter("ALL")}
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
+                  typeFilter === "ALL"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Semua ({recentJobs.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTypeFilter("SOLO")}
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
+                  typeFilter === "SOLO"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Solo ({recentJobs.filter((j) => !j.isTandem).length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTypeFilter("TANDEM")}
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
+                  typeFilter === "TANDEM"
+                    ? "bg-blue-600 text-white shadow-2xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Tandem ({recentJobs.filter((j) => j.isTandem).length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTypeFilter("UNPAID")}
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
+                  typeFilter === "UNPAID"
+                    ? "bg-amber-600 text-white shadow-2xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Belum Cair ({recentJobs.filter((j) => !j.isPaidToWasher).length}
+                )
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTypeFilter("PAID")}
+                className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
+                  typeFilter === "PAID"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Cair ({recentJobs.filter((j) => j.isPaidToWasher).length})
+              </button>
+            </div>
+          </div>
+
+          <div className="text-muted-foreground flex items-center justify-between pt-1 text-xs">
+            <span>
+              Menampilkan <strong>{filteredJobs.length}</strong> dari{" "}
+              {recentJobs.length} pekerjaan
+            </span>
+            <span>
+              Total Komisi Tampil:{" "}
+              <strong className="text-foreground font-mono font-bold">
+                {formatRupiah(filteredCommissionTotal)}
+              </strong>
+            </span>
+          </div>
+        </div>
+
         <CardContent className="p-0">
-          {recentJobs.length === 0 ? (
+          {filteredJobs.length === 0 ? (
             <div className="flex h-48 flex-col items-center justify-center p-6 text-center">
               <Car className="text-muted-foreground/40 mb-2 h-10 w-10" />
               <p className="text-foreground text-sm font-bold">
-                Belum Ada Riwayat Pekerjaan
+                {searchQuery || typeFilter !== "ALL"
+                  ? "Tidak Ada Pekerjaan yang Sesuai Filter"
+                  : "Belum Ada Riwayat Pekerjaan"}
               </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
-                Klaim pengerjaan kendaraan di Layar Cuci untuk mulai
-                mengumpulkan komisi.
+                {searchQuery || typeFilter !== "ALL" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setTypeFilter("ALL");
+                    }}
+                    className="text-primary font-bold hover:underline"
+                  >
+                    Reset Filter Pencarian
+                  </button>
+                ) : (
+                  "Klaim pengerjaan kendaraan di Layar Cuci untuk mulai mengumpulkan komisi."
+                )}
               </p>
             </div>
           ) : (
@@ -330,7 +474,7 @@ export function WasherDashboardView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentJobs.map((job) => {
+                  {filteredJobs.map((job) => {
                     const dateObj =
                       typeof job.assignedAt === "string"
                         ? new Date(job.assignedAt)

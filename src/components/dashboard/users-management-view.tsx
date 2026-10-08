@@ -165,7 +165,7 @@ export function UsersManagementView({
         fullName: createFullName,
         email: createEmail,
         password: createPassword,
-        role: createRole,
+        role: createRole as "MANAGER" | "CASHIER" | "WASHER",
         status: UserStatus.ACTIVE,
         phone: createPhone || undefined,
         pinCode: createPinCode || undefined,
@@ -200,7 +200,7 @@ export function UsersManagementView({
     startTransition(async () => {
       const res = await updateUserRoleAction({
         userId: roleModalUser.id,
-        role: targetNewRole,
+        role: targetNewRole as "MANAGER" | "CASHIER" | "WASHER",
       });
 
       if (!res.success) {
@@ -342,7 +342,7 @@ export function UsersManagementView({
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
             <h1 className="text-foreground text-lg font-black tracking-tight wrap-break-word sm:text-2xl md:text-3xl">
-              Manajemen Akun & Role
+              Manajemen Staf & Karyawan Cabang
             </h1>
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge
@@ -359,13 +359,13 @@ export function UsersManagementView({
                     : "border-blue-500/20 bg-blue-500/10 text-blue-600"
                 }`}
               >
-                {isOwner ? "Owner (Superadmin)" : "Manajer Cabang"}
+                {isOwner ? "Owner (Pemilik Bisnis)" : "Manajer Cabang"}
               </Badge>
             </div>
           </div>
           <p className="text-muted-foreground text-xs leading-relaxed sm:text-sm">
-            Kendali hak akses pengguna, pembuatan akun staf baru, pengaturan PIN
-            Kiosk dan peran operasional kasir serta tim cuci.
+            Kelola staf cabang, pembuatan akun kasir baru, pengaturan PIN Kiosk
+            tablet untuk pekerja cuci, dan supervisi manajer cabang.
           </p>
         </div>
 

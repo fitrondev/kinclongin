@@ -46,7 +46,7 @@ const createAccountSchema = z.object({
   fullName: z.string().min(2, "Nama lengkap minimal 2 karakter"),
   email: z.string().email("Format email tidak valid"),
   password: z.string().min(6, "Password minimal 6 karakter"),
-  role: z.enum(["OWNER", "MANAGER", "CASHIER", "WASHER"]),
+  role: z.enum(["MANAGER", "CASHIER", "WASHER"]),
   status: z
     .enum(["ACTIVE", "INACTIVE", "SUSPENDED"])
     .optional()
@@ -64,7 +64,7 @@ export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 
 const updateUserRoleSchema = z.object({
   userId: z.string().min(1, "User ID wajib diisi"),
-  role: z.enum(["OWNER", "MANAGER", "CASHIER", "WASHER"]),
+  role: z.enum(["MANAGER", "CASHIER", "WASHER"]),
 });
 
 export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
@@ -260,15 +260,6 @@ export async function createAccountAction(
       commissionRate,
     } = parsed.data;
 
-    // Batasan Keamanan: Manajer DILARANG membuat akun OWNER
-    if (!isOwner && role === "OWNER") {
-      return {
-        success: false,
-        error:
-          "Manajer cabang tidak berhak membuat akun dengan peran Pemilik (Owner).",
-      };
-    }
-
     // Cek apakah email sudah terdaftar
     const existing = await prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
@@ -303,13 +294,11 @@ export async function createAccountAction(
     const passwordHash = await bcrypt.hash(password, 10);
 
     const prismaRole =
-      role === "OWNER"
-        ? UserRole.OWNER
-        : role === "MANAGER"
-          ? UserRole.MANAGER
-          : role === "WASHER"
-            ? UserRole.WASHER
-            : UserRole.CASHIER;
+      role === "MANAGER"
+        ? UserRole.MANAGER
+        : role === "WASHER"
+          ? UserRole.WASHER
+          : UserRole.CASHIER;
 
     const prismaStatus =
       status === "SUSPENDED"
@@ -424,6 +413,18 @@ export async function updateUserRoleAction(
       return { success: false, error: "Akun pengguna tidak ditemukan." };
     }
 
+    // Akun Owner dan Superadmin tidak boleh dimodifikasi dari panel staf cabang
+    if (
+      targetUser.role === UserRole.OWNER ||
+      targetUser.role === UserRole.SUPERADMIN
+    ) {
+      return {
+        success: false,
+        error:
+          "Akun Pemilik (Owner) dan Superadmin tidak dapat dimodifikasi dari panel staf cabang.",
+      };
+    }
+
     // Batasan untuk Manajer:
     if (!isOwner) {
       // 1. Harus berada di cabang yang sama
@@ -434,45 +435,21 @@ export async function updateUserRoleAction(
             "Anda hanya memiliki wewenang untuk staf di cabang Anda sendiri.",
         };
       }
-      // 2. Tidak boleh mengubah peran akun OWNER
-      if (targetUser.role === UserRole.OWNER) {
-        return {
-          success: false,
-          error: "Manajer cabang tidak dapat mengubah peran akun Owner.",
-        };
-      }
-      // 3. Tidak boleh mengubah peran sesama MANAGER
+      // 2. Tidak boleh mengubah peran sesama MANAGER
       if (targetUser.role === UserRole.MANAGER) {
         return {
           success: false,
           error: "Manajer cabang tidak dapat mengubah peran sesama Manajer.",
         };
       }
-      // 4. Tidak boleh mempromosikan menjadi OWNER
-      if (role === "OWNER") {
-        return {
-          success: false,
-          error: "Manajer cabang tidak dapat menetapkan peran Owner.",
-        };
-      }
-    } else {
-      // Owner tidak boleh mengubah peran akun OWNER
-      if (targetUser.role === UserRole.OWNER) {
-        return {
-          success: false,
-          error: "Hanya Owner utama yang dapat mengelola sesama akun Owner.",
-        };
-      }
     }
 
     const newPrismaRole =
-      role === "OWNER"
-        ? UserRole.OWNER
-        : role === "MANAGER"
-          ? UserRole.MANAGER
-          : role === "WASHER"
-            ? UserRole.WASHER
-            : UserRole.CASHIER;
+      role === "MANAGER"
+        ? UserRole.MANAGER
+        : role === "WASHER"
+          ? UserRole.WASHER
+          : UserRole.CASHIER;
 
     // Update User
     await prisma.user.update({
@@ -942,6 +919,18 @@ export async function deleteUserAction(
       return { success: false, error: "Akun pengguna tidak ditemukan." };
     }
 
+    // Akun Owner dan Superadmin tidak dapat dihapus dari panel staf cabang
+    if (
+      targetUser.role === UserRole.OWNER ||
+      targetUser.role === UserRole.SUPERADMIN
+    ) {
+      return {
+        success: false,
+        error:
+          "Akun Pemilik (Owner) dan Superadmin tidak dapat dihapus dari panel staf cabang.",
+      };
+    }
+
     // Batasan untuk Manajer:
     if (!isOwner) {
       if (targetUser.outletId !== currentUser.outletId) {
@@ -951,24 +940,10 @@ export async function deleteUserAction(
             "Anda hanya memiliki wewenang untuk staf di cabang Anda sendiri.",
         };
       }
-      if (targetUser.role === UserRole.OWNER) {
-        return {
-          success: false,
-          error: "Akun Pemilik (Owner) tidak dapat dihapus.",
-        };
-      }
       if (targetUser.role === UserRole.MANAGER) {
         return {
           success: false,
           error: "Manajer cabang tidak dapat menghapus akun sesama Manajer.",
-        };
-      }
-    } else {
-      // Tidak boleh menghapus akun OWNER
-      if (targetUser.role === UserRole.OWNER) {
-        return {
-          success: false,
-          error: "Akun Pemilik (Owner) tidak dapat dihapus dari sistem.",
         };
       }
     }
