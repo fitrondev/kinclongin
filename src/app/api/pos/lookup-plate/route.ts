@@ -48,6 +48,27 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Cek apakah kendaraan terdaftar dalam Unlimited Wash Club aktif
+    const now = new Date();
+    const activeWashClub = await prisma.washClubSubscription.findFirst({
+      where: {
+        vehicleId: vehicle.id,
+        isActive: true,
+        expiresAt: { gte: now },
+      },
+      orderBy: { expiresAt: "desc" },
+    });
+
+    const washClubDaysRemaining = activeWashClub
+      ? Math.max(
+          0,
+          Math.ceil(
+            (activeWashClub.expiresAt.getTime() - now.getTime()) /
+              (24 * 60 * 60 * 1000)
+          )
+        )
+      : 0;
+
     return NextResponse.json({
       found: true,
       vehicle: {
@@ -82,6 +103,16 @@ export async function GET(req: NextRequest) {
             totalQuota: activeMembership.totalQuota,
             endDate: activeMembership.endDate,
             discountPercent: activeMembership.discountPercent,
+          }
+        : null,
+      washClub: activeWashClub
+        ? {
+            id: activeWashClub.id,
+            planName: activeWashClub.planName,
+            priceMonthly: Number(activeWashClub.priceMonthly),
+            expiresAt: activeWashClub.expiresAt.toISOString(),
+            qrPassCode: activeWashClub.qrPassCode,
+            daysRemaining: washClubDaysRemaining,
           }
         : null,
       lastService: lastTicket

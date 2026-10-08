@@ -9,14 +9,11 @@ import {
   Loader2,
   Sparkles,
   UserCheck,
-  UserPlus,
   Users,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { claimTicketAction, verifyWasherPinAction } from "@/actions/layar-cuci";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

@@ -6,22 +6,21 @@ import Image from "next/image";
 import Link from "next/link";
 
 import {
-  AlertTriangle,
   ArrowRight,
-  Car,
+  Ban,
   CheckCircle,
   Clock,
   CreditCard,
   Droplets,
   Eye,
   Loader2,
-  Sparkles,
   UserCheck,
   Wind,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { advanceTicketStatusAction } from "@/actions/pos";
+import { VoidTicketModal } from "@/components/pos/void-ticket-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +49,7 @@ export interface KanbanTicket {
     estimatedMinutes: number;
     price: number | { toNumber?: () => number };
   };
+  totalAmount?: number;
   customer?: {
     fullName: string;
     phone: string;
@@ -82,6 +82,7 @@ interface TicketCardProps {
 export function TicketCard({ ticket, onStatusChanged }: TicketCardProps) {
   const [isPending, startTransition] = useTransition();
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
 
   // Parse inspection photos JSON safely
@@ -189,14 +190,26 @@ export function TicketCard({ ticket, onStatusChanged }: TicketCardProps) {
             <h3 className="text-foreground font-mono text-xl font-black tracking-wider">
               {ticket.licensePlate}
             </h3>
-            <button
-              type="button"
-              onClick={() => setShowDetailDialog(true)}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted rounded p-1 transition-colors"
-              title="Lihat detail tiket"
-            >
-              <Eye className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              {ticket.status !== "COMPLETED" && (
+                <button
+                  type="button"
+                  onClick={() => setShowVoidModal(true)}
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded p-1 transition-colors"
+                  title="Batalkan tiket (VOID)"
+                >
+                  <Ban className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowDetailDialog(true)}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted rounded p-1 transition-colors"
+                title="Lihat detail tiket"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {vehicleSubtitle && (
@@ -414,6 +427,24 @@ export function TicketCard({ ticket, onStatusChanged }: TicketCardProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <VoidTicketModal
+        open={showVoidModal}
+        onOpenChange={setShowVoidModal}
+        ticket={{
+          id: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          licensePlate: ticket.licensePlate,
+          serviceName: ticket.servicePackage.name,
+          totalAmount:
+            ticket.totalAmount ??
+            (typeof ticket.servicePackage.price === "number"
+              ? ticket.servicePackage.price
+              : Number(ticket.servicePackage.price) || 0),
+          status: ticket.status,
+        }}
+        onSuccess={() => onStatusChanged?.()}
+      />
     </>
   );
 }

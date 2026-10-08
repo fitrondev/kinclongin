@@ -6,10 +6,22 @@ import { prisma } from "@/lib/db/prisma";
 export interface CreateAuditLogParams {
   actorId: string;
   actorRole: string;
-  action: string; // e.g. "JOB_APPROVE", "JOB_REJECT", "COMPANY_VERIFY", "REPORT_RESOLVE", "USER_ROLE_UPDATE", "USER_SUSPEND"
+  action: string;
   entityType:
-    "Job" | "Company" | "User" | "Report" | "CompanyVerification" | "System";
+    | "Job"
+    | "Company"
+    | "User"
+    | "Report"
+    | "CompanyVerification"
+    | "System"
+    | "WashTicket"
+    | "WorkShift"
+    | "WashClubSubscription"
+    | "CashMovement"
+    | "RetailProduct"
+    | string;
   entityId: string;
+  outletId?: string;
   metadata?: Record<string, unknown>;
 }
 

@@ -47,6 +47,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useStorageUpload } from "@/hooks/use-storage-upload";
@@ -66,6 +74,12 @@ export interface OutletDetailItem {
   isCurrent: boolean;
   totalEmployees: number;
   totalTicketsThisMonth: number;
+  taxEnabled?: boolean;
+  taxRate?: number;
+  taxType?: "INCLUSIVE" | "EXCLUSIVE";
+  taxLabel?: string;
+  qrisSurchargeBearer?: "OUTLET" | "CUSTOMER";
+  qrisSurchargeRate?: number;
 }
 
 interface OutletManagementViewProps {
@@ -92,6 +106,22 @@ export function OutletManagementView({
   const [contactPhone, setContactPhone] = useState(
     currentOutlet.contactPhone || currentOutlet.phone || ""
   );
+  // Pajak Daerah (PB1) & Surcharge QRIS (Pilar 7)
+  const [taxEnabled, setTaxEnabled] = useState(
+    currentOutlet.taxEnabled ?? false
+  );
+  const [taxRate, setTaxRate] = useState(String(currentOutlet.taxRate ?? 10));
+  const [taxType, setTaxType] = useState<"INCLUSIVE" | "EXCLUSIVE">(
+    currentOutlet.taxType || "EXCLUSIVE"
+  );
+  const [taxLabel, setTaxLabel] = useState(currentOutlet.taxLabel || "PB1");
+  const [qrisSurchargeBearer, setQrisSurchargeBearer] = useState<
+    "OUTLET" | "CUSTOMER"
+  >(currentOutlet.qrisSurchargeBearer || "OUTLET");
+  const [qrisSurchargeRate, setQrisSurchargeRate] = useState(
+    String(currentOutlet.qrisSurchargeRate ?? 0.7)
+  );
+
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Hook Upload Logo S3
@@ -145,6 +175,12 @@ export function OutletManagementView({
         receiptHeader: receiptHeader.trim() || undefined,
         receiptFooter: receiptFooter.trim() || undefined,
         contactPhone: contactPhone.trim() || undefined,
+        taxEnabled,
+        taxRate: Number(taxRate) || 0,
+        taxType,
+        taxLabel: taxLabel.trim() || "PB1",
+        qrisSurchargeBearer,
+        qrisSurchargeRate: Number(qrisSurchargeRate) || 0,
       });
 
       if (!res.success) {
@@ -564,6 +600,166 @@ export function OutletManagementView({
                         placeholder="Contoh: Barang berharga harap diamankan. Terima kasih atas kunjungan Anda!"
                         className="h-10 rounded-xl text-xs"
                       />
+                    </div>
+                  </div>
+
+                  {/* Konfigurasi Pajak (PB1) & Surcharge Merchant QRIS (Pilar 7) */}
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <h3 className="text-foreground flex items-center gap-1.5 text-xs font-bold">
+                          <Crown className="h-3.5 w-3.5 text-amber-500" />
+                          <span>
+                            Pajak Restoran / Daerah (PB1 / Pajak Jasa Cuci)
+                          </span>
+                        </h3>
+                        <p className="text-muted-foreground text-[11px]">
+                          Aktifkan jika cabang telah dikukuhkan PKP atau
+                          memungut pajak daerah 10%.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={taxEnabled}
+                        onCheckedChange={setTaxEnabled}
+                        title={
+                          taxEnabled ? "Nonaktifkan Pajak" : "Aktifkan Pajak"
+                        }
+                      />
+                    </div>
+
+                    {taxEnabled && (
+                      <div className="bg-muted/30 grid grid-cols-1 gap-3 rounded-xl border p-3.5 sm:grid-cols-3">
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="taxRate"
+                            className="text-xs font-semibold"
+                          >
+                            Tarif Pajak (%)
+                          </Label>
+                          <Input
+                            id="taxRate"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={taxRate}
+                            onChange={(e) => setTaxRate(e.target.value)}
+                            className="h-10 rounded-xl text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="taxType"
+                            className="text-xs font-semibold"
+                          >
+                            Model Perhitungan Pajak
+                          </Label>
+                          <Select
+                            value={taxType}
+                            onValueChange={(val: "INCLUSIVE" | "EXCLUSIVE") =>
+                              setTaxType(val)
+                            }
+                          >
+                            <SelectTrigger
+                              id="taxType"
+                              className="h-10 rounded-xl text-xs"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="EXCLUSIVE">
+                                Eksklusif (+ Ditambahkan ke Total)
+                              </SelectItem>
+                              <SelectItem value="INCLUSIVE">
+                                Inklusif (Sudah Termasuk di Harga)
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="taxLabel"
+                            className="text-xs font-semibold"
+                          >
+                            Label Pajak di Struk
+                          </Label>
+                          <Input
+                            id="taxLabel"
+                            value={taxLabel}
+                            onChange={(e) => setTaxLabel(e.target.value)}
+                            placeholder="PB1 / PPN Daerah"
+                            className="h-10 rounded-xl text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Surcharge MDR QRIS */}
+                    <div className="bg-muted/20 space-y-3 rounded-xl border p-3.5">
+                      <div className="space-y-0.5">
+                        <Label className="text-foreground text-xs font-bold">
+                          Biaya Transaksi Non-Tunai / MDR QRIS
+                        </Label>
+                        <p className="text-muted-foreground text-[11px]">
+                          Pilih apakah biaya MDR QRIS (standar 0.7%) ditanggung
+                          operasional cabang atau dibebankan ke nota pelanggan.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="qrisBearer"
+                            className="text-xs font-semibold"
+                          >
+                            Beban Biaya MDR QRIS
+                          </Label>
+                          <Select
+                            value={qrisSurchargeBearer}
+                            onValueChange={(val: "OUTLET" | "CUSTOMER") =>
+                              setQrisSurchargeBearer(val)
+                            }
+                          >
+                            <SelectTrigger
+                              id="qrisBearer"
+                              className="h-10 rounded-xl text-xs"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="OUTLET">
+                                Ditanggung Cabang (Tidak Menambah Nota)
+                              </SelectItem>
+                              <SelectItem value="CUSTOMER">
+                                Dibebankan ke Pelanggan (+ Nota)
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="qrisRate"
+                            className="text-xs font-semibold"
+                          >
+                            Tarif MDR (%)
+                          </Label>
+                          <Input
+                            id="qrisRate"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="10"
+                            value={qrisSurchargeRate}
+                            onChange={(e) =>
+                              setQrisSurchargeRate(e.target.value)
+                            }
+                            className="h-10 rounded-xl text-xs"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

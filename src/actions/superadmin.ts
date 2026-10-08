@@ -796,13 +796,18 @@ export async function getNationalTransactionsAction(params?: {
       prisma.washTicket.groupBy({
         by: ["status"],
         _count: { id: true },
-        where: params?.outletId && params.outletId !== "ALL" ? { outletId: params.outletId } : {},
+        where:
+          params?.outletId && params.outletId !== "ALL"
+            ? { outletId: params.outletId }
+            : {},
       }),
       prisma.washTicket.aggregate({
         _sum: { totalAmount: true },
         where: {
           paymentStatus: PaymentStatus.PAID,
-          ...(params?.outletId && params.outletId !== "ALL" ? { outletId: params.outletId } : {}),
+          ...(params?.outletId && params.outletId !== "ALL"
+            ? { outletId: params.outletId }
+            : {}),
         },
       }),
     ]);
@@ -820,12 +825,17 @@ export async function getNationalTransactionsAction(params?: {
       readyCount: countMap[TicketStatus.READY] || 0,
       completedCount: countMap[TicketStatus.COMPLETED] || 0,
       cancelledCount: countMap[TicketStatus.CANCELLED] || 0,
-      paidCount: tickets.filter((t) => t.paymentStatus === PaymentStatus.PAID).length,
-      unpaidCount: tickets.filter((t) => t.paymentStatus === PaymentStatus.UNPAID).length,
+      paidCount: tickets.filter((t) => t.paymentStatus === PaymentStatus.PAID)
+        .length,
+      unpaidCount: tickets.filter(
+        (t) => t.paymentStatus === PaymentStatus.UNPAID
+      ).length,
     };
 
     const items: NationalTransactionItem[] = tickets.map((t) => {
-      const photos = Array.isArray(t.inspectionPhotos) ? t.inspectionPhotos : [];
+      const photos = Array.isArray(t.inspectionPhotos)
+        ? t.inspectionPhotos
+        : [];
       return {
         id: t.id,
         ticketNumber: t.ticketNumber,
@@ -954,8 +964,8 @@ export async function getPlatformWhatsAppLogsAction(params?: {
 
     const formattedLogs: PlatformWhatsAppLogItem[] = logs.map((l) => ({
       id: l.id,
-      ticketNumber: l.ticket.ticketNumber,
-      outletName: l.ticket.outlet.name,
+      ticketNumber: l.ticket?.ticketNumber ?? "-",
+      outletName: l.ticket?.outlet.name ?? "-",
       recipientPhone: l.recipientPhone,
       messageType: l.messageType,
       status: l.status,
@@ -1056,7 +1066,7 @@ export async function getPlatformStorageStatsAction(): Promise<
       totalSubProofs +
       totalOutletsLogoCount +
       totalPosPaymentProofs;
-    const estimatedStorageMb = Math.round((estimatedFiles * 0.4) * 10) / 10;
+    const estimatedStorageMb = Math.round(estimatedFiles * 0.4 * 10) / 10;
 
     const recentMediaUploads: PlatformStorageStats["recentMediaUploads"] = [];
 
@@ -1101,7 +1111,8 @@ export async function getPlatformStorageStatsAction(): Promise<
 
     // Urutkan media terbaru
     recentMediaUploads.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
     return {
@@ -1145,7 +1156,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOBIL_KECIL,
     defaultPrice: 35000,
     commissionWasher: 8000,
-    description: "Cuci sampo salju pH balance, semir ban, & vacuum interior ringan.",
+    description:
+      "Cuci sampo salju pH balance, semir ban, & vacuum interior ringan.",
     recommendedDurationMinutes: 25,
   },
   {
@@ -1153,7 +1165,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOBIL_SEDANG,
     defaultPrice: 50000,
     commissionWasher: 12000,
-    description: "Angkat hidrolik X, semprot lumpur kolong chasis, sampo salju, semir ban & vacuum.",
+    description:
+      "Angkat hidrolik X, semprot lumpur kolong chasis, sampo salju, semir ban & vacuum.",
     recommendedDurationMinutes: 35,
   },
   {
@@ -1161,7 +1174,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOBIL_BESAR,
     defaultPrice: 65000,
     commissionWasher: 15000,
-    description: "Cuci hidrolik SUV/MPV besar, semprot kolong, semir ban, interior vacuum & fogging.",
+    description:
+      "Cuci hidrolik SUV/MPV besar, semprot kolong, semir ban, interior vacuum & fogging.",
     recommendedDurationMinutes: 45,
   },
   {
@@ -1169,7 +1183,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOTOR_KECIL,
     defaultPrice: 15000,
     commissionWasher: 4000,
-    description: "Sampo salju tebal, sikat velg rantai, lap microfiber kanebo & semir ban.",
+    description:
+      "Sampo salju tebal, sikat velg rantai, lap microfiber kanebo & semir ban.",
     recommendedDurationMinutes: 15,
   },
   {
@@ -1177,7 +1192,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOTOR_BESAR,
     defaultPrice: 20000,
     commissionWasher: 5000,
-    description: "Cuci detail bodi, ruang kolong spakbor, sikat knalpot & semir silikon bodi kasar.",
+    description:
+      "Cuci detail bodi, ruang kolong spakbor, sikat knalpot & semir silikon bodi kasar.",
     recommendedDurationMinutes: 20,
   },
   {
@@ -1185,7 +1201,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOTOR_MOGE,
     defaultPrice: 35000,
     commissionWasher: 10000,
-    description: "Perawatan rantai chain lube, sampo gloss, pembersihan radiator & waxing ringan.",
+    description:
+      "Perawatan rantai chain lube, sampo gloss, pembersihan radiator & waxing ringan.",
     recommendedDurationMinutes: 30,
   },
   {
@@ -1193,7 +1210,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOBIL_SEDANG,
     defaultPrice: 75000,
     commissionWasher: 20000,
-    description: "Compound pembersih kerak air dan jamur kaca agar pandangan jernih saat hujan.",
+    description:
+      "Compound pembersih kerak air dan jamur kaca agar pandangan jernih saat hujan.",
     recommendedDurationMinutes: 40,
   },
   {
@@ -1201,7 +1219,8 @@ const DEFAULT_PLATFORM_SERVICE_TEMPLATES: ServicePackageTemplate[] = [
     category: VehicleCategory.MOBIL_SEDANG,
     defaultPrice: 120000,
     commissionWasher: 35000,
-    description: "Pelapisan sealent hydrophobic kilap basah (wet look) tahan air & debu.",
+    description:
+      "Pelapisan sealent hydrophobic kilap basah (wet look) tahan air & debu.",
     recommendedDurationMinutes: 60,
   },
 ];

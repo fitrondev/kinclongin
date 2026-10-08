@@ -24,6 +24,7 @@ import {
   LayoutGrid,
   Megaphone,
   MessageSquare,
+  Percent,
   PlusCircle,
   Receipt,
   Search,
@@ -233,7 +234,9 @@ export function DashboardSidebar({
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
-                      isActive={pathname.startsWith("/dashboard/admin/settings")}
+                      isActive={pathname.startsWith(
+                        "/dashboard/admin/settings"
+                      )}
                       tooltip="Pengaturan Rekening & Sewa Platform"
                       className={
                         pathname.startsWith("/dashboard/admin/settings")
@@ -406,7 +409,9 @@ export function DashboardSidebar({
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
-                      isActive={pathname.startsWith("/dashboard/admin/whatsapp")}
+                      isActive={pathname.startsWith(
+                        "/dashboard/admin/whatsapp"
+                      )}
                       tooltip="Log WhatsApp Gateway Platform"
                       className={
                         pathname.startsWith("/dashboard/admin/whatsapp")
@@ -908,6 +913,27 @@ export function DashboardSidebar({
                           <Link href="/dashboard/pengaturan/cabang">
                             <Building2 className="h-4 w-4 text-cyan-500" />
                             <span>Kelola Cabang</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      {/* Mesin Diskon & Happy Hour */}
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname.startsWith(
+                            "/dashboard/pengaturan/promosi"
+                          )}
+                          tooltip="Diskon & Happy Hour Otomatis"
+                          className={
+                            pathname.startsWith("/dashboard/pengaturan/promosi")
+                              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold"
+                              : ""
+                          }
+                        >
+                          <Link href="/dashboard/pengaturan/promosi">
+                            <Percent className="h-4 w-4 text-amber-500" />
+                            <span>Diskon & Happy Hour</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>

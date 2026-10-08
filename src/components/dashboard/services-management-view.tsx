@@ -26,6 +26,7 @@ import { DeleteServiceDialog } from "./services/delete-service-dialog";
 import { ServiceCardItem } from "./services/service-card-item";
 import { CATEGORY_INFO } from "./services/service-constants";
 import { ServicePackageDialog } from "./services/service-package-dialog";
+import { ServiceRecipeDialog } from "./services/service-recipe-dialog";
 import { ServiceStatsCards } from "./services/service-stats-cards";
 
 export { CATEGORY_INFO };
@@ -70,6 +71,11 @@ export function ServicesManagementView({
 
   // State Confirm Delete
   const [deleteTarget, setDeleteTarget] = useState<ServicePackageItem | null>(
+    null
+  );
+
+  // State Resep Bahan Kimia (COGS)
+  const [recipeTarget, setRecipeTarget] = useState<ServicePackageItem | null>(
     null
   );
 
@@ -362,10 +368,18 @@ export function ServicesManagementView({
               onEdit={handleOpenEdit}
               onDelete={(target) => setDeleteTarget(target)}
               onToggleStatus={handleToggleStatus}
+              onConfigureRecipe={(target) => setRecipeTarget(target)}
             />
           ))}
         </div>
       )}
+
+      {/* Dialog Resep Bahan Kimia (COGS) */}
+      <ServiceRecipeDialog
+        pkg={recipeTarget}
+        isOpen={Boolean(recipeTarget)}
+        onClose={() => setRecipeTarget(null)}
+      />
 
       {/* 5. Dialog Form Tambah / Edit */}
       <ServicePackageDialog

@@ -37,7 +37,8 @@ interface SuperadminSettingsViewProps {
 export function SuperadminSettingsView({
   initialSettings,
 }: SuperadminSettingsViewProps) {
-  const [settings, setSettings] = useState<PlatformSettingsData>(initialSettings);
+  const [settings, setSettings] =
+    useState<PlatformSettingsData>(initialSettings);
   const [isPending, startTransition] = useTransition();
 
   const handleBankChange = (
@@ -103,8 +104,8 @@ export function SuperadminSettingsView({
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
-            Atur rekening bank resmi penerima transfer sewa Rp 50.000/bulan, masa
-            tenggang (grace period), dan nomor kontak resmi Customer Care.
+            Atur rekening bank resmi penerima transfer sewa Rp 50.000/bulan,
+            masa tenggang (grace period), dan nomor kontak resmi Customer Care.
           </p>
         </div>
 
@@ -128,7 +129,8 @@ export function SuperadminSettingsView({
                   Rekening Bank Penerima Sewa Software
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Rekening ini tampil di form pembayaran sewa lisensi cabang Rp 50.000/bulan milik Owner.
+                  Rekening ini tampil di form pembayaran sewa lisensi cabang Rp
+                  50.000/bulan milik Owner.
                 </CardDescription>
               </div>
               <Button
@@ -146,16 +148,16 @@ export function SuperadminSettingsView({
             {settings.bankAccounts.map((b, idx) => (
               <div
                 key={idx}
-                className="space-y-3 rounded-xl border bg-muted/20 p-3.5"
+                className="bg-muted/20 space-y-3 rounded-xl border p-3.5"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">
+                  <span className="text-foreground text-xs font-bold">
                     Rekening #{idx + 1}
                   </span>
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                    className="text-destructive hover:bg-destructive/10 h-7 w-7"
                     onClick={() => handleRemoveBank(idx)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -216,7 +218,8 @@ export function SuperadminSettingsView({
                 Biaya Lisensi & Kebijakan Masa Tenggang
               </CardTitle>
               <CardDescription className="text-xs">
-                Ketentuan tarif sewa flat per cabang dan batas toleransi jatuh tempo.
+                Ketentuan tarif sewa flat per cabang dan batas toleransi jatuh
+                tempo.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-4">
@@ -236,7 +239,10 @@ export function SuperadminSettingsView({
                     }
                     className="h-9 text-xs font-bold"
                   />
-                  <Badge variant="outline" className="h-9 px-3 text-xs font-bold">
+                  <Badge
+                    variant="outline"
+                    className="h-9 px-3 text-xs font-bold"
+                  >
                     {formatRupiah(settings.monthlyRentalPrice)} / bln
                   </Badge>
                 </div>
@@ -258,7 +264,8 @@ export function SuperadminSettingsView({
                   className="mt-1 h-9 text-xs font-bold"
                 />
                 <p className="text-muted-foreground mt-1 text-[11px]">
-                  Cabang tetap bisa menggunakan POS selama masa tenggang sebelum sistem mengunci akses input tiket baru.
+                  Cabang tetap bisa menggunakan POS selama masa tenggang sebelum
+                  sistem mengunci akses input tiket baru.
                 </p>
               </div>
             </CardContent>
@@ -314,4 +321,3 @@ export function SuperadminSettingsView({
     </div>
   );
 }
-

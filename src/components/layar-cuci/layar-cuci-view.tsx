@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Clock,
   Droplets,
-  Layers,
   RefreshCw,
   Sparkles,
   Wind,
@@ -22,8 +21,8 @@ import { LayarCuciHeader } from "@/components/layar-cuci/layar-cuci-header";
 import { PinModal } from "@/components/layar-cuci/pin-modal";
 import { RekapShiftModal } from "@/components/layar-cuci/rekap-shift-modal";
 import { OfflineIndicator } from "@/components/pos/offline-indicator";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTicketRealtime } from "@/hooks/use-ticket-realtime";
 
 interface LayarCuciViewProps {
   initialTickets: LayarCuciItem[];
@@ -50,11 +49,20 @@ export function LayarCuciView({
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Auto refresh data setiap 15 detik di area basah agar tablet selalu sinkron
+  // Real-time Push Antrean via Server-Sent Events (Pilar 5)
+  // Menjamin tablet area cuci selalu sinkron secara instan saat kasir memasukkan kendaraan baru
+  useTicketRealtime({
+    outletId,
+    onEvent: () => {
+      router.refresh();
+    },
+  });
+
+  // Fallback refresh data berkala di area basah jika koneksi jaringan tidak stabil
   useEffect(() => {
     const interval = setInterval(() => {
       router.refresh();
-    }, 15000);
+    }, 20000);
     return () => clearInterval(interval);
   }, [router]);
 

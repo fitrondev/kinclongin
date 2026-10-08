@@ -58,8 +58,8 @@ export function SuperadminMediaView({ stats }: SuperadminMediaViewProps) {
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
-            Pantau pemakaian media foto baret kendaraan sebelum cuci, bukti bayar POS,
-            bukti transfer sewa cabang Rp 50.000, dan logo tenant.
+            Pantau pemakaian media foto baret kendaraan sebelum cuci, bukti
+            bayar POS, bukti transfer sewa cabang Rp 50.000, dan logo tenant.
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ export function SuperadminMediaView({ stats }: SuperadminMediaViewProps) {
         </CardHeader>
         <CardContent className="p-4">
           {stats.recentMediaUploads.length === 0 ? (
-            <div className="py-10 text-center text-xs text-muted-foreground">
+            <div className="text-muted-foreground py-10 text-center text-xs">
               Belum ada file media yang terunggah ke penyimpanan cloud.
             </div>
           ) : (
@@ -148,9 +148,9 @@ export function SuperadminMediaView({ stats }: SuperadminMediaViewProps) {
               {stats.recentMediaUploads.map((item) => (
                 <div
                   key={item.id}
-                  className="group relative flex flex-col overflow-hidden rounded-xl border bg-muted/20 transition-all hover:shadow-xs"
+                  className="group bg-muted/20 relative flex flex-col overflow-hidden rounded-xl border transition-all hover:shadow-xs"
                 >
-                  <div className="relative aspect-video w-full overflow-hidden bg-muted">
+                  <div className="bg-muted relative aspect-video w-full overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.url}
@@ -191,18 +191,18 @@ export function SuperadminMediaView({ stats }: SuperadminMediaViewProps) {
                       >
                         {item.type}
                       </Badge>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-muted-foreground text-[10px]">
                         {new Date(item.createdAt).toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
                         })}
                       </span>
                     </div>
-                    <div className="mt-1 truncate text-xs font-bold text-foreground">
+                    <div className="text-foreground mt-1 truncate text-xs font-bold">
                       {item.label}
                     </div>
                     {item.outletName && (
-                      <div className="text-[10px] text-muted-foreground truncate">
+                      <div className="text-muted-foreground truncate text-[10px]">
                         {item.outletName}
                       </div>
                     )}
@@ -240,7 +240,12 @@ export function SuperadminMediaView({ stats }: SuperadminMediaViewProps) {
                 />
               </div>
               <div className="flex justify-end">
-                <Button asChild size="sm" variant="outline" className="text-xs font-bold">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="text-xs font-bold"
+                >
                   <a
                     href={previewMedia.url}
                     target="_blank"
@@ -259,4 +264,3 @@ export function SuperadminMediaView({ stats }: SuperadminMediaViewProps) {
     </div>
   );
 }
-

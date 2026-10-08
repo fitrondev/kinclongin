@@ -30,7 +30,9 @@ export function PlatformBroadcastBanner({
     const dismissedKey = `broadcast_dismissed_${broadcast.id}`;
     const isDismissed = sessionStorage.getItem(dismissedKey);
     if (!isDismissed) {
-      setDismissed(false);
+      queueMicrotask(() => {
+        setDismissed(false);
+      });
     }
   }, [broadcast]);
 

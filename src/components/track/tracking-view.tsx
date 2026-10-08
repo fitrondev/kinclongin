@@ -3,17 +3,13 @@
 import { useEffect, useState } from "react";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
-  Car,
   CheckCircle2,
   Clock,
   Droplets,
-  ExternalLink,
   MessageCircle,
-  Phone,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -25,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TicketStatus } from "@/generated/prisma/enums";
-import { formatLicensePlate, formatRupiah } from "@/lib/formatters";
+import { formatLicensePlate } from "@/lib/formatters";
 
 export interface TrackingData {
   id: string;

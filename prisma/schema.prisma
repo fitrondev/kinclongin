@@ -74,6 +74,26 @@ enum MovementType {
   ADJUSTMENT_OPNAME // Penyesuaian fisik opname
 }
 
+enum CashMovementType {
+  PAID_IN // Kas Masuk (modal tambahan, titipan, dll.)
+  PAID_OUT // Kas Keluar operasional (beli es, galon, bensin, setor bank)
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum TaxType {
+  INCLUSIVE
+  EXCLUSIVE
+}
+
+enum SurchargeBearer {
+  OUTLET
+  CUSTOMER
+}
+
 enum WhatsAppDeliveryStatus {
   PENDING
   SENT
@@ -122,6 +142,14 @@ model Outlet {
   subscriptionExpiresAt DateTime?
   subscriptionStatus    SubscriptionStatus @default(ACTIVE)
 
+  // Konfigurasi Pajak (PB1) & MDR QRIS
+  taxEnabled          Boolean         @default(false)
+  taxRate             Decimal         @default(10.0) @db.Decimal(5, 2)
+  taxType             TaxType         @default(EXCLUSIVE)
+  taxLabel            String          @default("PB1")
+  qrisSurchargeBearer SurchargeBearer @default(OUTLET)
+  qrisSurchargeRate   Decimal         @default(0.7) @db.Decimal(5, 2)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -140,6 +168,9 @@ model Outlet {
   workShifts           WorkShift[]
   shiftAssignments     ShiftAssignment[]
   subscriptionPayments TenantSubscriptionPayment[]
+  cashMovements        CashMovement[]
+  promotions           PromotionRule[]
+  washClubSubscriptions WashClubSubscription[]
 
   @@index([ownerId])
   @@index([isActive])
@@ -154,6 +185,7 @@ model User {
   role         UserRole   @default(CASHIER)
   status       UserStatus @default(ACTIVE)
   outletId     String?
+  pinCode      String? // 4-6 digit PIN terenkripsi untuk supervisor override & terminal
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -165,6 +197,8 @@ model User {
   handledPayments            Payment[]            @relation("CashierPayments")
   handledCustomerMemberships CustomerMembership[] @relation("CashierMemberships")
   auditLogs                  AuditLog[]           @relation("ActorAuditLogs")
+  cashMovements              CashMovement[]       @relation("CashierCashMovements")
+  authorizedVoids            WashTicket[]         @relation("VoidAuthorizer")
 
   @@index([role])
   @@index([outletId])
@@ -210,10 +244,11 @@ model Customer {
   updatedAt     DateTime @updatedAt
 
   // Relasi
-  vehicles    Vehicle[]
-  washTickets WashTicket[]
-  memberships CustomerMembership[]
-  loyaltyLogs CustomerLoyaltyLog[]
+  vehicles              Vehicle[]
+  washTickets           WashTicket[]
+  memberships           CustomerMembership[]
+  loyaltyLogs           CustomerLoyaltyLog[]
+  washClubSubscriptions WashClubSubscription[]
 
   @@index([phone])
 }
@@ -231,8 +266,9 @@ model Vehicle {
   updatedAt    DateTime        @updatedAt
 
   // Relasi
-  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  washTickets WashTicket[]
+  customer              Customer?              @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  washTickets           WashTicket[]
+  washClubSubscriptions WashClubSubscription[]
 
   @@index([licensePlate])
   @@index([category])
@@ -257,8 +293,9 @@ model ServicePackage {
   updatedAt         DateTime        @updatedAt
 
   // Relasi
-  outlet      Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  outlet      Outlet              @relation(fields: [outletId], references: [id], onDelete: Cascade)
   washTickets WashTicket[]
+  recipeItems ServiceRecipeItem[]
 
   @@index([outletId, vehicleCategory, isActive])
 }
@@ -278,8 +315,9 @@ model WashTicket {
   vehicleCategory  VehicleCategory
   servicePackageId String
   servicePrice     Decimal         @db.Decimal(10, 2)
-  membershipId     String?
-  isMembershipWash Boolean         @default(false)
+  membershipId             String?
+  washClubSubscriptionId   String?
+  isMembershipWash         Boolean         @default(false)
 
   status           TicketStatus @default(QUEUED)
   initialNotes     String? // Catatan kondisi: "Baret spion kiri"
@@ -296,9 +334,17 @@ model WashTicket {
   subtotalServices Decimal       @default(0) @db.Decimal(10, 2)
   subtotalRetail   Decimal       @default(0) @db.Decimal(10, 2)
   discountAmount   Decimal       @default(0) @db.Decimal(10, 2)
+  taxAmount        Decimal       @default(0) @db.Decimal(10, 2)
+  surchargeAmount  Decimal       @default(0) @db.Decimal(10, 2)
   totalAmount      Decimal       @db.Decimal(10, 2)
   paidAmount       Decimal       @default(0) @db.Decimal(10, 2)
+  cogsAmount       Decimal       @default(0) @db.Decimal(10, 2) // Total HPP modal bahan kimia cuci
   paymentStatus    PaymentStatus @default(UNPAID)
+
+  // Otorisasi Void / Pembatalan
+  voidReason       String?       // "HUJAN_DERAS", "ANTREAN_TERLALU_LAMA", "SALAH_INPUT_KASIR", dll.
+  voidedAt         DateTime?
+  voidedById       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -312,12 +358,15 @@ model WashTicket {
   washers        TicketWasher[]
   retailItems    TicketRetailItem[]
   payment        Payment?
-  membership     CustomerMembership?  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
-  loyaltyLogs    CustomerLoyaltyLog[]
-  whatsAppLogs   WhatsAppLog[]
+  membership             CustomerMembership?   @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  washClubSubscription   WashClubSubscription? @relation(fields: [washClubSubscriptionId], references: [id], onDelete: SetNull)
+  loyaltyLogs            CustomerLoyaltyLog[]
+  whatsAppLogs           WhatsAppLog[]
+  voidedBy               User?                 @relation("VoidAuthorizer", fields: [voidedById], references: [id], onDelete: SetNull)
 
   @@index([outletId, status])
   @@index([licensePlate])
+  @@index([washClubSubscriptionId])
   @@index([createdAt])
 }
 
@@ -388,14 +437,16 @@ model OperationalSupply {
   unit              String // "Liter", "Botol", "Lembar"
   stock             Decimal  @default(0) @db.Decimal(10, 2)
   minStockAlert     Decimal  @default(5) @db.Decimal(10, 2)
+  costPerUnit       Decimal? @default(0) @db.Decimal(10, 2) // Harga beli modal per unit
   usagePerCarWash   Decimal  @default(0.1) @db.Decimal(10, 3) // Pemakaian per mobil (0.1 Liter)
   usagePerMotorWash Decimal  @default(0.04) @db.Decimal(10, 3) // Pemakaian per motor (0.04 Liter)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   // Relasi
-  outlet         Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  outlet         Outlet              @relation(fields: [outletId], references: [id], onDelete: Cascade)
   stockMovements StockMovement[]
+  recipeItems    ServiceRecipeItem[]
 
   @@index([outletId])
 }
@@ -431,6 +482,8 @@ model Payment {
   method          PaymentMethod
   status          PaymentStatus @default(PAID)
   totalAmount     Decimal       @db.Decimal(10, 2)
+  taxAmount       Decimal?      @default(0) @db.Decimal(10, 2)
+  surchargeAmount Decimal?      @default(0) @db.Decimal(10, 2)
   cashGiven       Decimal?      @db.Decimal(10, 2)
   changeGiven     Decimal?      @db.Decimal(10, 2)
   referenceNumber String? // Nomor referensi QRIS / Transfer
@@ -464,16 +517,16 @@ model CustomerLoyaltyLog {
 
 model WhatsAppLog {
   id             String                 @id @default(cuid())
-  ticketId       String
+  ticketId       String?
   recipientPhone String
-  messageType    String // "RECEIPT", "STATUS_READY", "PROMO"
+  messageType    String // "RECEIPT", "STATUS_READY", "PROMO", "WASH_CLUB_PASS", "CRM_REENGAGEMENT"
   status         WhatsAppDeliveryStatus @default(PENDING)
   payloadJson    Json?
   externalId     String?
   sentAt         DateTime               @default(now())
 
   // Relasi
-  ticket WashTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket WashTicket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@index([ticketId])
   @@index([recipientPhone])
@@ -605,3 +658,108 @@ model TenantSubscriptionPayment {
   @@index([outletId, status])
   @@index([createdAt])
 }
+
+// -------------------------------------------------------------
+// 11. MANAJEMEN KAS LACI KASIR (PETTY CASH IN / OUT)
+// -------------------------------------------------------------
+
+model CashMovement {
+  id         String           @id @default(cuid())
+  outletId   String
+  cashierId  String
+  type       CashMovementType // PAID_IN | PAID_OUT
+  category   String           // "OPERASIONAL", "BAHAN_CUCI", "SETOR_BANK", "MODAL_TAMBAHAN", "KONSUMSI", "LAINNYA"
+  amount     Decimal          @db.Decimal(10, 2)
+  notes      String
+  receiptUrl String?          @db.Text
+  createdAt  DateTime         @default(now())
+
+  // Relasi
+  outlet  Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  cashier User   @relation("CashierCashMovements", fields: [cashierId], references: [id])
+
+  @@index([outletId, createdAt])
+  @@index([cashierId, createdAt])
+}
+
+// -------------------------------------------------------------
+// 12. MESIN DISKON, HAPPY HOUR & PROMOSI
+// -------------------------------------------------------------
+
+model PromotionRule {
+  id             String       @id @default(cuid())
+  outletId       String
+  name           String       // Contoh: "Happy Hour Jam Sepi Pagi", "Promo Komunitas"
+  code           String?      // Kode voucher unik jika manual (opsional)
+  discountType   DiscountType @default(PERCENTAGE)
+  discountValue  Decimal      @db.Decimal(10, 2) // Nilai diskon (contoh: 20 (%) atau 15000 (Rp))
+  minOrderAmount Decimal?     @db.Decimal(10, 2)
+  daysOfWeek     Json?        // Array hari aktif: ["MON", "TUE", "WED", "THU"]
+  startHour      String?      // "08:00"
+  endHour        String?      // "11:00"
+  startDate      DateTime?
+  endDate        DateTime?
+  isActive       Boolean      @default(true)
+  description    String?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relasi
+  outlet         Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@index([outletId, isActive])
+}
+
+// -------------------------------------------------------------
+// 13. RESEP BAHAN HABIS PAKAI & KALKULASI HPP (COGS)
+// -------------------------------------------------------------
+
+model ServiceRecipeItem {
+  id                  String            @id @default(cuid())
+  servicePackageId    String
+  operationalSupplyId String
+  volumeUsage         Decimal           @db.Decimal(10, 3) // Volume pemakaian per cuci (contoh: 0.100 Liter)
+  unit                String            // "Liter", "ml", "Botol"
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  // Relasi
+  servicePackage      ServicePackage    @relation(fields: [servicePackageId], references: [id], onDelete: Cascade)
+  operationalSupply   OperationalSupply @relation(fields: [operationalSupplyId], references: [id], onDelete: Cascade)
+
+  @@index([servicePackageId])
+  @@index([operationalSupplyId])
+}
+
+// -------------------------------------------------------------
+// 14. MODEL LANGGANAN UNLIMITED WASH CLUB BULANAN (RECURRING MEMBERSHIP)
+// -------------------------------------------------------------
+
+model WashClubSubscription {
+  id           String    @id @default(cuid())
+  outletId     String
+  vehicleId    String
+  customerId   String
+  planName     String    // Contoh: "Unlimited Wash Club Mobil", "Unlimited Wash Club Motor"
+  priceMonthly Decimal   @db.Decimal(10, 2)
+  startDate    DateTime  @default(now())
+  expiresAt    DateTime
+  isActive     Boolean   @default(true)
+  qrPassCode   String    @unique // Kode digital pass untuk verifikasi instant di loket
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relasi
+  outlet    Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  vehicle   Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  customer  Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tickets   WashTicket[]
+
+  @@index([outletId, isActive])
+  @@index([vehicleId, isActive])
+  @@index([customerId])
+}
+

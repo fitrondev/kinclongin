@@ -1,19 +1,28 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import confetti from "canvas-confetti";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles, Tag } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  broadcastCdsCartAction,
+  broadcastCdsIdleAction,
+  broadcastCdsPaymentSuccessAction,
+  broadcastCdsQrisAction,
+} from "@/actions/cds";
 import { checkoutTicketAction } from "@/actions/pos";
 import { ReceiptDialog } from "@/components/receipt/receipt-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { formatRupiah } from "@/lib/formatters";
+import { calculateDiscounts } from "@/lib/pos/discount-engine";
 import type { ReceiptData } from "@/lib/printer/escpos";
 
 import { CheckoutLoyaltyBanner } from "./checkout/checkout-loyalty-banner";
@@ -59,6 +68,12 @@ export interface CheckoutTicketData {
     receiptHeader?: string | null;
     receiptFooter?: string | null;
     contactPhone?: string | null;
+    taxEnabled?: boolean;
+    taxRate?: number;
+    taxType?: "INCLUSIVE" | "EXCLUSIVE";
+    taxLabel?: string;
+    qrisSurchargeBearer?: "OUTLET" | "CUSTOMER";
+    qrisSurchargeRate?: number;
   };
 }
 
@@ -76,12 +91,14 @@ interface CheckoutViewProps {
   ticket: CheckoutTicketData;
   retailProducts: RetailProductItem[];
   cashierName: string;
+  promotions?: import("@/lib/pos/discount-engine").PromotionRuleItem[];
 }
 
 export function CheckoutView({
   ticket,
   retailProducts,
   cashierName,
+  promotions = [],
 }: CheckoutViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -95,9 +112,12 @@ export function CheckoutView({
   >("CASH");
   const [cashGiven, setCashGiven] = useState<number>(0);
   const [referenceNumber, setReferenceNumber] = useState("");
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [redeemPoints, setRedeemPoints] = useState<number>(0);
   const [registerMembershipNow, setRegisterMembershipNow] = useState(false);
+
+  // Kupon & Promosi (Pilar 6)
+  const [couponCodeInput, setCouponCodeInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
   // Modal struk setelah sukses bayar
   const [receiptDialogData, setReceiptDialogData] =
@@ -118,10 +138,57 @@ export function CheckoutView({
       origin: { y: 0.6 },
     });
     setIsFreeWashClaimed(true);
-    setDiscountAmount(ticket.servicePrice);
     toast.success(
       `Reward Cuci 10x Gratis 1x aktif untuk plat ${ticket.licensePlate}! Biaya jasa cuci menjadi Rp 0.`
     );
+  };
+
+  // Evaluasi Diskon Promosi & Happy Hour Otomatis (Pilar 6)
+  const promoEvaluation = useMemo(() => {
+    return calculateDiscounts(ticket.servicePrice, promotions, {
+      couponCode: appliedCoupon || undefined,
+      now: new Date(),
+    });
+  }, [ticket.servicePrice, promotions, appliedCoupon]);
+
+  const activePromoDiscount = isFreeWashClaimed
+    ? ticket.servicePrice
+    : promoEvaluation.totalDiscount;
+
+  const appliedPromoName = isFreeWashClaimed
+    ? "Cuci 10x Gratis 1x"
+    : promoEvaluation.applicableDiscounts.map((d) => d.name).join(", ") ||
+      undefined;
+
+  const handleApplyCoupon = () => {
+    if (!couponCodeInput.trim()) {
+      setAppliedCoupon(null);
+      return;
+    }
+    const clean = couponCodeInput.trim().toUpperCase();
+    const testResult = calculateDiscounts(ticket.servicePrice, promotions, {
+      couponCode: clean,
+      now: new Date(),
+    });
+    const foundCouponPromo = testResult.applicableDiscounts.find(
+      (d) => d.code?.toUpperCase() === clean
+    );
+    if (!foundCouponPromo) {
+      toast.error(`Kupon '${clean}' tidak valid atau belum memenuhi syarat.`);
+      return;
+    }
+    setAppliedCoupon(clean);
+    toast.success(
+      `Kupon '${clean}' aktif! Potongan ${formatRupiah(
+        foundCouponPromo.calculatedDiscount
+      )} diterapkan.`
+    );
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCodeInput("");
+    toast.info("Kupon promosi dilepas.");
   };
 
   // Kalkulasi Keuangan
@@ -135,12 +202,38 @@ export function CheckoutView({
   }, [cart, retailProducts]);
 
   const pointsDiscount = Math.floor(redeemPoints / 10) * 1000;
-  const effectiveDiscount = discountAmount + pointsDiscount;
+  const effectiveDiscount = activePromoDiscount + pointsDiscount;
   const membershipFee = registerMembershipNow ? 50000 : 0;
-  const grandTotal = Math.max(
+  const baseSubtotal = Math.max(
     0,
     servicePrice + retailTotal + membershipFee - effectiveDiscount
   );
+
+  // Surcharge MDR QRIS (Pilar 7)
+  let surchargeAmount = 0;
+  if (
+    paymentMethod === "QRIS" &&
+    ticket.outlet.qrisSurchargeBearer === "CUSTOMER"
+  ) {
+    const mdrRate = ticket.outlet.qrisSurchargeRate ?? 0.7;
+    surchargeAmount = Math.round((baseSubtotal * mdrRate) / 100);
+  }
+
+  // Pajak Daerah / PB1 (Pilar 7)
+  let taxAmount = 0;
+  if (ticket.outlet.taxEnabled) {
+    const taxRate = ticket.outlet.taxRate ?? 10;
+    if (ticket.outlet.taxType === "EXCLUSIVE") {
+      taxAmount = Math.round((baseSubtotal * taxRate) / 100);
+    } else {
+      taxAmount = Math.round(baseSubtotal - baseSubtotal / (1 + taxRate / 100));
+    }
+  }
+
+  const grandTotal =
+    ticket.outlet.taxEnabled && ticket.outlet.taxType === "EXCLUSIVE"
+      ? baseSubtotal + taxAmount + surchargeAmount
+      : baseSubtotal + surchargeAmount;
 
   const changeGiven =
     paymentMethod === "CASH" && cashGiven > grandTotal
@@ -174,6 +267,76 @@ export function CheckoutView({
     }
   };
 
+  // Sinkronisasi Real-Time ke Layar Hadap Tamu (Customer Display Screen)
+  useEffect(() => {
+    if (paymentMethod === "QRIS") {
+      void broadcastCdsQrisAction({
+        outletId: ticket.outlet.id,
+        ticketNumber: ticket.ticketNumber,
+        licensePlate: ticket.licensePlate,
+        totalAmount: grandTotal,
+      });
+      return;
+    }
+
+    const liveItems: import("@/lib/realtime/events").CdsCartItem[] = [
+      {
+        name: ticket.servicePackage.name,
+        quantity: 1,
+        price: ticket.servicePrice,
+      },
+    ];
+
+    Object.entries(cart).forEach(([productId, qty]) => {
+      const prod = retailProducts.find((p) => p.id === productId);
+      if (prod && qty > 0) {
+        liveItems.push({
+          name: prod.name,
+          quantity: qty,
+          price: prod.sellingPrice,
+        });
+      }
+    });
+
+    if (registerMembershipNow) {
+      liveItems.push({
+        name: "Membership Resmi (1 Tahun)",
+        quantity: 1,
+        price: 50000,
+      });
+    }
+
+    void broadcastCdsCartAction({
+      outletId: ticket.outlet.id,
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      licensePlate: ticket.licensePlate,
+      customerName: ticket.customer?.fullName,
+      items: liveItems,
+      subtotal: baseSubtotal + effectiveDiscount,
+      discount: effectiveDiscount,
+      tax: taxAmount,
+      totalAmount: grandTotal,
+      paymentMethod,
+    });
+  }, [
+    ticket.outlet.id,
+    ticket.id,
+    ticket.ticketNumber,
+    ticket.licensePlate,
+    ticket.customer?.fullName,
+    ticket.servicePackage.name,
+    ticket.servicePrice,
+    cart,
+    retailProducts,
+    registerMembershipNow,
+    baseSubtotal,
+    effectiveDiscount,
+    taxAmount,
+    grandTotal,
+    paymentMethod,
+  ]);
+
   const handleProcessCheckout = () => {
     if (paymentMethod === "CASH" && cashGiven < grandTotal) {
       toast.error("Nominal uang tunai kurang dari total tagihan.");
@@ -197,7 +360,7 @@ export function CheckoutView({
         cashGiven: paymentMethod === "CASH" ? cashGiven : undefined,
         referenceNumber: referenceNumber || undefined,
         retailItems: itemsPayload,
-        discountAmount,
+        discountAmount: activePromoDiscount,
         redeemPoints,
         registerMembership: registerMembershipNow,
       });
@@ -208,6 +371,14 @@ export function CheckoutView({
       }
 
       toast.success("Pembayaran berhasil diselesaikan & struk dicatat!");
+
+      // Broadcast animasi pembayaran sukses ke Customer Display Screen
+      void broadcastCdsPaymentSuccessAction({
+        outletId: ticket.outlet.id,
+        ticketNumber: ticket.ticketNumber,
+        licensePlate: ticket.licensePlate,
+        totalAmount: grandTotal,
+      });
 
       const itemsForReceipt = Object.entries(cart).map(([productId, qty]) => {
         const prod = retailProducts.find((p) => p.id === productId)!;
@@ -264,6 +435,11 @@ export function CheckoutView({
         retailItems: itemsForReceipt,
         subtotal: servicePrice + retailTotal,
         discount: effectiveDiscount,
+        promoName: appliedPromoName,
+        taxAmount,
+        taxLabel: ticket.outlet.taxLabel || "PB1",
+        taxType: ticket.outlet.taxType,
+        surchargeAmount,
         total: grandTotal,
         paymentMethod,
         cashGiven:
@@ -288,7 +464,12 @@ export function CheckoutView({
           size="icon"
           className="h-10 w-10 rounded-xl"
         >
-          <Link href="/pos/antrean">
+          <Link
+            href="/pos/antrean"
+            onClick={() => {
+              void broadcastCdsIdleAction(ticket.outlet.id);
+            }}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -370,8 +551,77 @@ export function CheckoutView({
           />
         </div>
 
-        {/* Kolom Kanan (5 Kolom): Total Tagihan & Opsi Pembayaran */}
+        {/* Kolom Kanan (5 Kolom): Total Tagihan, Promosi & Opsi Pembayaran */}
         <div className="space-y-5 lg:col-span-5">
+          {/* Card Kupon & Promosi Happy Hour (Pilar 6) */}
+          <Card className="border shadow-xs">
+            <CardContent className="space-y-3 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-foreground flex items-center gap-1.5 text-xs font-bold">
+                  <Tag className="h-4 w-4 text-amber-500" />
+                  <span>Kupon Diskon & Happy Hour</span>
+                </span>
+                {appliedPromoName ? (
+                  <Badge
+                    variant="secondary"
+                    className="bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400"
+                  >
+                    Aktif
+                  </Badge>
+                ) : null}
+              </div>
+
+              {/* Banner jika ada promosi otomatis / Happy Hour aktif */}
+              {promoEvaluation.applicableDiscounts.map((promo) => (
+                <div
+                  key={promo.ruleId}
+                  className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-900 dark:text-amber-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
+                    <span className="font-semibold">{promo.name}</span>
+                  </div>
+                  <strong className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    -{formatRupiah(promo.calculatedDiscount)}
+                  </strong>
+                </div>
+              ))}
+
+              {/* Input Voucher Manual */}
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  placeholder="Kode voucher (misal: KOMUNITAS10K)"
+                  value={couponCodeInput}
+                  onChange={(e) =>
+                    setCouponCodeInput(e.target.value.toUpperCase())
+                  }
+                  disabled={Boolean(appliedCoupon)}
+                  className="h-9 text-xs uppercase"
+                />
+                {appliedCoupon ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveCoupon}
+                    className="text-destructive hover:bg-destructive/10 h-9 text-xs"
+                  >
+                    Hapus
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleApplyCoupon}
+                    className="h-9 text-xs font-bold"
+                  >
+                    Terapkan
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           <OrderSummaryCard
             servicePrice={servicePrice}
             retailTotal={retailTotal}
@@ -379,6 +629,11 @@ export function CheckoutView({
             effectiveDiscount={effectiveDiscount}
             grandTotal={grandTotal}
             hasCustomer={Boolean(ticket.customer)}
+            promoName={appliedPromoName}
+            taxAmount={taxAmount}
+            taxLabel={ticket.outlet.taxLabel || "PB1"}
+            taxType={ticket.outlet.taxType}
+            surchargeAmount={surchargeAmount}
           />
 
           <Card className="border shadow-xs">
@@ -407,6 +662,7 @@ export function CheckoutView({
           open={Boolean(receiptDialogData)}
           onOpenChange={(v) => {
             if (!v) {
+              void broadcastCdsIdleAction(ticket.outlet.id);
               setReceiptDialogData(null);
               router.push("/pos/antrean");
             }

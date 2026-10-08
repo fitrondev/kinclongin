@@ -108,14 +108,42 @@ export default async function POSBayarPage({
       receiptHeader: ticket.outlet.receiptHeader,
       receiptFooter: ticket.outlet.receiptFooter,
       contactPhone: ticket.outlet.contactPhone,
+      taxEnabled: ticket.outlet.taxEnabled,
+      taxRate: Number(ticket.outlet.taxRate),
+      taxType: ticket.outlet.taxType,
+      taxLabel: ticket.outlet.taxLabel,
+      qrisSurchargeBearer: ticket.outlet.qrisSurchargeBearer,
+      qrisSurchargeRate: Number(ticket.outlet.qrisSurchargeRate),
     },
   };
+
+  // Ambil promosi aktif untuk cabang ini
+  const rawPromos = await prisma.promotionRule.findMany({
+    where: { outletId: ticket.outletId, isActive: true },
+  });
+
+  const promotions = rawPromos.map((p) => ({
+    id: p.id,
+    name: p.name,
+    code: p.code,
+    discountType: p.discountType,
+    discountValue: Number(p.discountValue),
+    minOrderAmount: p.minOrderAmount ? Number(p.minOrderAmount) : null,
+    daysOfWeek: p.daysOfWeek as string[] | null,
+    startHour: p.startHour,
+    endHour: p.endHour,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    isActive: p.isActive,
+    description: p.description,
+  }));
 
   return (
     <CheckoutView
       ticket={checkoutData}
       retailProducts={retailProducts}
       cashierName={user.fullName}
+      promotions={promotions}
     />
   );
 }

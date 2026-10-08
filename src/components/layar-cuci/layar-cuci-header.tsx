@@ -9,12 +9,9 @@ import Link from "next/link";
 import {
   Clock,
   Coins,
-  History,
   LayoutGrid,
   Maximize2,
   Minimize2,
-  Sparkles,
-  Tablet,
 } from "lucide-react";
 
 import { UserButton } from "@/components/auth/user-button";

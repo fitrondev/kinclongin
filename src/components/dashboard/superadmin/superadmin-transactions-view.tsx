@@ -165,8 +165,8 @@ export function SuperadminTransactionsView({
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
-            Pantau arus transaksi tiket cuci, pengerjaan washer, dan pembayaran di
-            seluruh cabang mitra se-Indonesia secara terpusat.
+            Pantau arus transaksi tiket cuci, pengerjaan washer, dan pembayaran
+            di seluruh cabang mitra se-Indonesia secara terpusat.
           </p>
         </div>
       </div>
@@ -278,7 +278,9 @@ export function SuperadminTransactionsView({
                   <SelectValue placeholder="Pilih Cabang" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">Semua Cabang ({outlets.length})</SelectItem>
+                  <SelectItem value="ALL">
+                    Semua Cabang ({outlets.length})
+                  </SelectItem>
                   {outlets.map((o) => (
                     <SelectItem key={o.id} value={o.id}>
                       {o.name}
@@ -294,10 +296,16 @@ export function SuperadminTransactionsView({
                 <SelectContent>
                   <SelectItem value="ALL">Semua Status</SelectItem>
                   <SelectItem value={TicketStatus.QUEUED}>Antre</SelectItem>
-                  <SelectItem value={TicketStatus.WASHING}>Sedang Cuci</SelectItem>
+                  <SelectItem value={TicketStatus.WASHING}>
+                    Sedang Cuci
+                  </SelectItem>
                   <SelectItem value={TicketStatus.READY}>Siap Ambil</SelectItem>
-                  <SelectItem value={TicketStatus.COMPLETED}>Selesai</SelectItem>
-                  <SelectItem value={TicketStatus.CANCELLED}>Dibatalkan</SelectItem>
+                  <SelectItem value={TicketStatus.COMPLETED}>
+                    Selesai
+                  </SelectItem>
+                  <SelectItem value={TicketStatus.CANCELLED}>
+                    Dibatalkan
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -314,7 +322,8 @@ export function SuperadminTransactionsView({
                 Log Tiket Cuci Realtime
               </CardTitle>
               <CardDescription className="text-xs">
-                Menampilkan {filteredItems.length} transaksi cuci kendaraan terkini.
+                Menampilkan {filteredItems.length} transaksi cuci kendaraan
+                terkini.
               </CardDescription>
             </div>
           </div>
@@ -324,14 +333,30 @@ export function SuperadminTransactionsView({
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead className="text-xs font-bold uppercase">No. Tiket & Waktu</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Cabang Outlet</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Plat & Kendaraan</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Layanan & Harga</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Washer Bertugas</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Status Cuci</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Pembayaran</TableHead>
-                  <TableHead className="text-right text-xs font-bold uppercase">Aksi</TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    No. Tiket & Waktu
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Cabang Outlet
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Plat & Kendaraan
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Layanan & Harga
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Washer Bertugas
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Status Cuci
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Pembayaran
+                  </TableHead>
+                  <TableHead className="text-right text-xs font-bold uppercase">
+                    Aksi
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -348,13 +373,16 @@ export function SuperadminTransactionsView({
                   filteredItems.map((item) => (
                     <TableRow key={item.id} className="hover:bg-muted/30">
                       <TableCell className="text-xs">
-                        <div className="font-mono font-bold">{item.ticketNumber}</div>
+                        <div className="font-mono font-bold">
+                          {item.ticketNumber}
+                        </div>
                         <div className="text-muted-foreground text-[10px]">
                           {new Date(item.queuedAt).toLocaleTimeString("id-ID", {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}{" "}
-                          · {new Date(item.queuedAt).toLocaleDateString("id-ID", {
+                          ·{" "}
+                          {new Date(item.queuedAt).toLocaleDateString("id-ID", {
                             day: "numeric",
                             month: "short",
                           })}
@@ -369,7 +397,9 @@ export function SuperadminTransactionsView({
                       </TableCell>
 
                       <TableCell className="text-xs">
-                        <div className="font-mono font-black">{item.licensePlate}</div>
+                        <div className="font-mono font-black">
+                          {item.licensePlate}
+                        </div>
                         <div className="text-muted-foreground text-[10px]">
                           {item.customerName || "Walk-in"}
                           {item.inspectionPhotosCount > 0 && (
@@ -463,7 +493,8 @@ export function SuperadminTransactionsView({
               <span>Detail Tiket #{selectedTicket?.ticketNumber}</span>
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Informasi lengkap pengerjaan cuci di cabang {selectedTicket?.outletName}
+              Informasi lengkap pengerjaan cuci di cabang{" "}
+              {selectedTicket?.outletName}
             </DialogDescription>
           </DialogHeader>
 
@@ -482,13 +513,17 @@ export function SuperadminTransactionsView({
                   <span className="text-muted-foreground block text-[10px] uppercase">
                     Kategori Kendaraan
                   </span>
-                  <span className="font-bold">{selectedTicket.vehicleCategory}</span>
+                  <span className="font-bold">
+                    {selectedTicket.vehicleCategory}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[10px] uppercase">
                     Paket Layanan
                   </span>
-                  <span className="font-bold">{selectedTicket.serviceName}</span>
+                  <span className="font-bold">
+                    {selectedTicket.serviceName}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[10px] uppercase">
@@ -510,7 +545,9 @@ export function SuperadminTransactionsView({
                 </div>
                 <div className="flex justify-between border-b pb-1.5">
                   <span className="text-muted-foreground">Kasir Pembuat:</span>
-                  <span className="font-bold">{selectedTicket.creatorName}</span>
+                  <span className="font-bold">
+                    {selectedTicket.creatorName}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b pb-1.5">
                   <span className="text-muted-foreground">Tim Washer:</span>
@@ -528,14 +565,20 @@ export function SuperadminTransactionsView({
                 </div>
                 {selectedTicket.completedAt && (
                   <div className="flex justify-between border-b pb-1.5">
-                    <span className="text-muted-foreground">Waktu Selesai:</span>
+                    <span className="text-muted-foreground">
+                      Waktu Selesai:
+                    </span>
                     <span className="font-bold">
-                      {new Date(selectedTicket.completedAt).toLocaleString("id-ID")}
+                      {new Date(selectedTicket.completedAt).toLocaleString(
+                        "id-ID"
+                      )}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between pb-1.5">
-                  <span className="text-muted-foreground">Foto Kondisi Awal:</span>
+                  <span className="text-muted-foreground">
+                    Foto Kondisi Awal:
+                  </span>
                   <span className="font-bold">
                     {selectedTicket.inspectionPhotosCount} foto di SumoPod S3
                   </span>
@@ -548,4 +591,3 @@ export function SuperadminTransactionsView({
     </div>
   );
 }
-

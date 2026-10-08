@@ -69,8 +69,7 @@ export function SuperadminWhatsAppView({
         log.ticketNumber.toLowerCase().includes(search.toLowerCase()) ||
         log.outletName.toLowerCase().includes(search.toLowerCase());
 
-      const matchStatus =
-        statusFilter === "ALL" || log.status === statusFilter;
+      const matchStatus = statusFilter === "ALL" || log.status === statusFilter;
 
       return matchSearch && matchStatus;
     });
@@ -129,8 +128,8 @@ export function SuperadminWhatsAppView({
             </Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm">
-            Pantau seluruh lalu lintas notifikasi WhatsApp pesan struk digital & info
-            selesai cuci yang dikirimkan oleh cabang ke nomor pelanggan.
+            Pantau seluruh lalu lintas notifikasi WhatsApp pesan struk digital &
+            info selesai cuci yang dikirimkan oleh cabang ke nomor pelanggan.
           </p>
         </div>
       </div>
@@ -247,13 +246,27 @@ export function SuperadminWhatsAppView({
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead className="text-xs font-bold uppercase">Waktu Kirim</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Cabang Outlet</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Nomor Tiket</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Nomor HP Tujuan</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Tipe Pesan</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Status Pengiriman</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">External ID</TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Waktu Kirim
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Cabang Outlet
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Nomor Tiket
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Nomor HP Tujuan
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Tipe Pesan
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Status Pengiriman
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    External ID
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -306,4 +319,3 @@ export function SuperadminWhatsAppView({
     </div>
   );
 }
-

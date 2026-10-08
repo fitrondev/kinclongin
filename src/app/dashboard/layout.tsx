@@ -26,6 +26,10 @@ import {
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
+function getSevenDaysAgo(): Date {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -60,7 +64,7 @@ export default async function DashboardLayout({
     }
 
     // Ambil pengumuman broadcast aktif dari Superadmin (7 hari terakhir)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = getSevenDaysAgo();
     const latestBroadcastLog = await prisma.auditLog.findFirst({
       where: {
         action: "PLATFORM_BROADCAST_SENT",

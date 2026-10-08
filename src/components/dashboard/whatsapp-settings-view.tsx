@@ -5,17 +5,13 @@ import { useState } from "react";
 import {
   CheckCircle2,
   Crown,
-  ExternalLink,
   Info,
   Key,
   Loader2,
-  MessageSquare,
   Phone,
-  RefreshCw,
   Send,
   ShieldCheck,
   Smartphone,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 

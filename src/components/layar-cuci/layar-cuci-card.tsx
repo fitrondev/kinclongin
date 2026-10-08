@@ -4,16 +4,13 @@ import { useTransition } from "react";
 
 import {
   ArrowRight,
-  Car,
   CheckCircle,
   Clock,
-  Droplets,
   Loader2,
   RotateCcw,
   Sparkles,
   Timer,
   UserCheck,
-  Users,
   Wind,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,12 +18,7 @@ import { toast } from "sonner";
 import { advanceTicketStatusAction } from "@/actions/pos";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import type { TicketStatus } from "@/generated/prisma/enums";
 import {
   formatLicensePlate,

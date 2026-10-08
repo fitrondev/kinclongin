@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 
-import {
-  Car,
-  Clock,
-  Coins,
-  Layers,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
+import { Car, Clock, Coins, Layers, Sparkles, TrendingUp } from "lucide-react";
 
 import type { ServicePackageTemplate } from "@/actions/superadmin";
 import { Badge } from "@/components/ui/badge";
@@ -96,7 +89,7 @@ export function SuperadminCatalogView({
             <div className="text-[11px] font-bold tracking-wider text-emerald-700 uppercase dark:text-emerald-300">
               Layanan Terpopuler Nasional
             </div>
-            <div className="text-foreground mt-1 text-lg font-black truncate">
+            <div className="text-foreground mt-1 truncate text-lg font-black">
               {popularServicesAcrossTenants[0]?.name || "Cuci Salju Hidrolik"}
             </div>
             <div className="text-muted-foreground mt-0.5 text-[10px]">
@@ -121,38 +114,53 @@ export function SuperadminCatalogView({
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead className="text-xs font-bold uppercase">Nama Paket Layanan</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Kategori Kendaraan</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Tarif Acuan</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Komisi Washer</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Estimasi Waktu</TableHead>
-                  <TableHead className="text-xs font-bold uppercase">Deskripsi Pengerjaan</TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Nama Paket Layanan
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Kategori Kendaraan
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Tarif Acuan
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Komisi Washer
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Estimasi Waktu
+                  </TableHead>
+                  <TableHead className="text-xs font-bold uppercase">
+                    Deskripsi Pengerjaan
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {templates.map((pkg, idx) => (
                   <TableRow key={idx} className="hover:bg-muted/30">
-                    <TableCell className="text-xs font-bold text-foreground">
+                    <TableCell className="text-foreground text-xs font-bold">
                       {pkg.name}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-[10px] font-semibold">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-semibold"
+                      >
                         {pkg.category}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs font-black text-foreground">
+                    <TableCell className="text-foreground text-xs font-black">
                       {formatRupiah(pkg.defaultPrice)}
                     </TableCell>
                     <TableCell className="text-xs font-semibold text-emerald-600">
                       {formatRupiah(pkg.commissionWasher)}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-muted-foreground text-xs">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {pkg.recommendedDurationMinutes} menit
                       </span>
                     </TableCell>
-                    <TableCell className="max-w-xs text-xs text-muted-foreground">
+                    <TableCell className="text-muted-foreground max-w-xs text-xs">
                       {pkg.description}
                     </TableCell>
                   </TableRow>
@@ -170,7 +178,8 @@ export function SuperadminCatalogView({
             Tren Paket Layanan Terbanyak Digunakan Mitra
           </CardTitle>
           <CardDescription className="text-xs">
-            Frekuensi paket layanan yang paling sering dikonfigurasi oleh pemilik tempat cuci.
+            Frekuensi paket layanan yang paling sering dikonfigurasi oleh
+            pemilik tempat cuci.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4">
@@ -178,17 +187,20 @@ export function SuperadminCatalogView({
             {popularServicesAcrossTenants.map((item, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between rounded-xl border bg-muted/20 p-3"
+                className="bg-muted/20 flex items-center justify-between rounded-xl border p-3"
               >
                 <div className="min-w-0 pr-2">
-                  <div className="truncate text-xs font-bold text-foreground">
+                  <div className="text-foreground truncate text-xs font-bold">
                     {item.name}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-muted-foreground text-[10px]">
                     Diadopsi {item.count} cabang
                   </div>
                 </div>
-                <Badge variant="secondary" className="shrink-0 text-[10px] font-bold">
+                <Badge
+                  variant="secondary"
+                  className="shrink-0 text-[10px] font-bold"
+                >
                   #{idx + 1}
                 </Badge>
               </div>
@@ -199,4 +211,3 @@ export function SuperadminCatalogView({
     </div>
   );
 }
-

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { TicketStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
+import { broadcastTicketEvent } from "@/lib/realtime/events";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -181,6 +182,16 @@ export async function claimTicketAction(
     revalidatePath("/pos");
     revalidatePath("/dashboard");
     updateTag("dashboard-metrics");
+
+    broadcastTicketEvent({
+      type: "WASHER_ASSIGNED",
+      outletId: ticket.outletId,
+      ticketId,
+      ticketNumber: ticket.ticketNumber,
+      licensePlate: ticket.licensePlate,
+      newStatus: updated.status,
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       success: true,

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { z } from "zod";
 
-import { UserRole } from "@/generated/prisma/enums";
+import { SurchargeBearer, TaxType, UserRole } from "@/generated/prisma/enums";
 import { createAuditLog } from "@/lib/audit";
 import { isSuperadmin } from "@/lib/auth/rbac";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -270,6 +270,21 @@ export interface CashFlowSummary {
   outflowBreakdown: {
     materialExpenses: number;
     commissionsPaid: number;
+    pettyCashExpenses: number;
+  };
+  pnl: {
+    washRevenue: number;
+    retailRevenue: number;
+    totalRevenue: number;
+    cogsChemicals: number;
+    cogsRetail: number;
+    totalCogs: number;
+    washerCommissions: number;
+    pettyCashExpenses: number;
+    grossProfit: number;
+    grossMarginPercent: number;
+    netOperatingProfit: number;
+    netMarginPercent: number;
   };
   transactions: Array<{
     id: string;
@@ -410,8 +425,88 @@ export async function getCashFlowAction(params?: {
       });
     }
 
+    // 4. Ambil pengeluaran kas kecil (Petty Cash Paid Out)
+    const pettyCashMovements = await prisma.cashMovement.findMany({
+      where: {
+        outletId: user.outletId,
+        type: "PAID_OUT",
+        createdAt: { gte: sinceDate },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    let pettyCashExpenses = 0;
+    for (const cm of pettyCashMovements) {
+      const amt = Number(cm.amount);
+      pettyCashExpenses += amt;
+
+      outflowTransactions.push({
+        id: `OUT-PETTY-${cm.id}`,
+        date: cm.createdAt.toISOString(),
+        type: "OUTFLOW",
+        category: `Kas Kecil (${cm.category})`,
+        description: cm.notes,
+        amount: amt,
+        paymentMethod: "LACI KAS",
+      });
+    }
+
+    // 5. Kalkulasi P&L Laba Rugi Cabang
+    const completedTickets = await prisma.washTicket.findMany({
+      where: {
+        outletId: user.outletId,
+        status: "COMPLETED",
+        completedAt: { gte: sinceDate },
+      },
+      select: {
+        subtotalServices: true,
+        subtotalRetail: true,
+        cogsAmount: true,
+      },
+    });
+
+    let washRevenue = 0;
+    let retailRevenue = 0;
+    let cogsChemicals = 0;
+
+    for (const t of completedTickets) {
+      washRevenue += Number(t.subtotalServices || 0);
+      retailRevenue += Number(t.subtotalRetail || 0);
+      cogsChemicals += Number(t.cogsAmount || 0);
+    }
+
+    // HPP Barang Ritel
+    const retailItemsSold = await prisma.ticketRetailItem.findMany({
+      where: {
+        ticket: {
+          outletId: user.outletId,
+          status: "COMPLETED",
+          completedAt: { gte: sinceDate },
+        },
+      },
+      include: { product: { select: { costPrice: true } } },
+    });
+
+    let cogsRetail = 0;
+    for (const ri of retailItemsSold) {
+      const cost = Number(ri.product?.costPrice || 0);
+      cogsRetail += cost * ri.quantity;
+    }
+
+    const totalRevenue = washRevenue + retailRevenue;
+    const totalCogs = cogsChemicals + cogsRetail;
+    const grossProfit = totalRevenue - totalCogs;
+    const grossMarginPercent =
+      totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0;
+    const netOperatingProfit =
+      grossProfit - commissionsPaid - pettyCashExpenses;
+    const netMarginPercent =
+      totalRevenue > 0
+        ? Math.round((netOperatingProfit / totalRevenue) * 100)
+        : 0;
+
     const totalInflow = cashIn + qrisIn + bankTransferIn;
-    const totalOutflow = materialExpenses + commissionsPaid;
+    const totalOutflow = materialExpenses + commissionsPaid + pettyCashExpenses;
     const netCashFlow = totalInflow - totalOutflow;
 
     const allTransactions = [
@@ -426,7 +521,25 @@ export async function getCashFlowAction(params?: {
         totalOutflow,
         netCashFlow,
         cashBreakdown: { cashIn, qrisIn, bankTransferIn },
-        outflowBreakdown: { materialExpenses, commissionsPaid },
+        outflowBreakdown: {
+          materialExpenses,
+          commissionsPaid,
+          pettyCashExpenses,
+        },
+        pnl: {
+          washRevenue,
+          retailRevenue,
+          totalRevenue,
+          cogsChemicals,
+          cogsRetail,
+          totalCogs,
+          washerCommissions: commissionsPaid,
+          pettyCashExpenses,
+          grossProfit,
+          grossMarginPercent,
+          netOperatingProfit,
+          netMarginPercent,
+        },
         transactions: allTransactions.slice(0, 100),
       },
     };
@@ -469,6 +582,12 @@ const updateOutletProfileSchema = z.object({
     .max(25, "Nomor kontak CS maksimal 25 digit")
     .optional()
     .or(z.literal("")),
+  taxEnabled: z.boolean().optional(),
+  taxRate: z.number().min(0).max(100).optional(),
+  taxType: z.enum(["INCLUSIVE", "EXCLUSIVE"]).optional(),
+  taxLabel: z.string().max(20).optional(),
+  qrisSurchargeBearer: z.enum(["OUTLET", "CUSTOMER"]).optional(),
+  qrisSurchargeRate: z.number().min(0).max(10).optional(),
 });
 
 export type UpdateOutletProfileInput = z.infer<
@@ -506,6 +625,12 @@ export async function updateOutletProfileAction(
       receiptHeader,
       receiptFooter,
       contactPhone,
+      taxEnabled,
+      taxRate,
+      taxType,
+      taxLabel,
+      qrisSurchargeBearer,
+      qrisSurchargeRate,
     } = parsed.data;
 
     // Pastikan Owner ini adalah pemilik outlet tersebut
@@ -534,6 +659,14 @@ export async function updateOutletProfileAction(
         receiptHeader: receiptHeader || null,
         receiptFooter: receiptFooter || null,
         contactPhone: contactPhone || null,
+        ...(taxEnabled !== undefined ? { taxEnabled } : {}),
+        ...(taxRate !== undefined ? { taxRate } : {}),
+        ...(taxType !== undefined ? { taxType: taxType as TaxType } : {}),
+        ...(taxLabel !== undefined ? { taxLabel } : {}),
+        ...(qrisSurchargeBearer !== undefined
+          ? { qrisSurchargeBearer: qrisSurchargeBearer as SurchargeBearer }
+          : {}),
+        ...(qrisSurchargeRate !== undefined ? { qrisSurchargeRate } : {}),
       },
     });
 

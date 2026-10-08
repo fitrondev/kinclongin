@@ -108,6 +108,7 @@ export default async function DashboardPage() {
       pendingTickets,
       shiftAssignment,
       openingFloatLog,
+      todayCashMovements,
     ] = await Promise.all([
       // 1. Ambil pembayaran yang diproses kasir ini hari ini
       prisma.payment.findMany({
@@ -182,6 +183,13 @@ export default async function DashboardPage() {
         },
         orderBy: { createdAt: "desc" },
       }),
+      // 7. Ambil mutasi petty cash (Kas Masuk & Keluar) cabang hari ini
+      prisma.cashMovement.findMany({
+        where: {
+          outletId: outlet.id,
+          createdAt: { gte: todayStart },
+        },
+      }),
     ]);
 
     let openingCashFloat = 0;
@@ -210,6 +218,17 @@ export default async function DashboardPage() {
         todayQris += amount;
       } else if (p.method === "BANK_TRANSFER") {
         todayTransfer += amount;
+      }
+    }
+
+    let todayPaidIn = 0;
+    let todayPaidOut = 0;
+    for (const cm of todayCashMovements) {
+      const amt = Number(cm.amount);
+      if (cm.type === "PAID_IN") {
+        todayPaidIn += amt;
+      } else if (cm.type === "PAID_OUT") {
+        todayPaidOut += amt;
       }
     }
 
@@ -269,6 +288,8 @@ export default async function DashboardPage() {
         shiftName={shiftName}
         openingCashFloat={openingCashFloat}
         todayCashInDrawer={todayCashInDrawer}
+        todayPaidIn={todayPaidIn}
+        todayPaidOut={todayPaidOut}
         todayNonCash={todayNonCash}
         todayQris={todayQris}
         todayTransfer={todayTransfer}

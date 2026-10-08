@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
-import { CheckCircle2, CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { CheckCircle2, RefreshCw, Wifi, WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useNetworkStatus } from "@/lib/offline/sync-manager";
 
 export function OfflineIndicator() {
   const { isOnline, pendingCount, isSyncing, triggerSync } = useNetworkStatus();
-  const [isDismissed, setIsDismissed] = useState(false);
 
   // Register PWA Service Worker (hanya di production)
   useEffect(() => {

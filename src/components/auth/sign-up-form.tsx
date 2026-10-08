@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
@@ -279,6 +280,27 @@ export function SignUpForm() {
               </>
             )}
           </Button>
+
+          <div className="flex flex-col items-center gap-1.5 pt-1 text-center text-xs text-muted-foreground">
+            <p>
+              Sudah memiliki akun usaha?{" "}
+              <Link
+                href="/sign-in"
+                className="font-bold text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                Masuk di sini
+              </Link>
+            </p>
+            <p className="text-[11px]">
+              Ingin mencoba akun demo tanpa registrasi?{" "}
+              <Link
+                href="/demo/sign-in"
+                className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Buka Portal Demo 1-Klik
+              </Link>
+            </p>
+          </div>
         </CardFooter>
       </form>
     </Card>

@@ -4,10 +4,9 @@ import { useState } from "react";
 
 import Image from "next/image";
 
-import { Camera, Loader2, Trash2, UploadCloud } from "lucide-react";
+import { Camera, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { useStorageUpload } from "@/hooks/use-storage-upload";
 
 interface InspectionCameraProps {

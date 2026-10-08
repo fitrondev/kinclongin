@@ -63,6 +63,7 @@ export function POSHeader({
   const isManager = userRole === "MANAGER";
   const isWasher = userRole === "WASHER";
   const isCashier = userRole === "CASHIER";
+
   const totalActive = stats.queued + stats.washing + stats.drying + stats.ready;
 
   const isDaftarBaruActive =
@@ -234,6 +235,27 @@ export function POSHeader({
             <div className="hidden xl:block">
               <MembershipDialog outletId={outletId} />
             </div>
+          )}
+
+          {/* Tombol Customer Display Screen (CDS) */}
+          {!isWasher && outletId && (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="hidden h-10 gap-1.5 border-blue-500/30 bg-blue-500/5 font-bold text-blue-700 hover:bg-blue-500/10 lg:inline-flex dark:text-blue-300"
+              title="Buka Layar Hadap Tamu (CDS) di tab atau jendela tablet kedua"
+            >
+              <a
+                href={`/pos/customer-display?outletId=${outletId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Tablet className="h-4 w-4 text-blue-600" />
+                <span className="hidden xl:inline">Layar Tamu (CDS)</span>
+                <span className="xl:hidden">CDS</span>
+              </a>
+            </Button>
           )}
 
           {/* Navigasi Layar Cuci (Layar Desktop Besar) */}

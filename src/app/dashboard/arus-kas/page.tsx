@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { getCashFlowAction } from "@/actions/owner";
+import { type CashFlowSummary, getCashFlowAction } from "@/actions/owner";
 import { CashFlowView } from "@/components/dashboard/cash-flow-view";
 import { UserRole } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -37,7 +37,7 @@ export default async function CashFlowPage() {
   }
 
   const res = await getCashFlowAction({ rangeDays: 30 });
-  const initialData =
+  const initialData: CashFlowSummary =
     res.success && res.data
       ? res.data
       : {
@@ -45,7 +45,25 @@ export default async function CashFlowPage() {
           totalOutflow: 0,
           netCashFlow: 0,
           cashBreakdown: { cashIn: 0, qrisIn: 0, bankTransferIn: 0 },
-          outflowBreakdown: { materialExpenses: 0, commissionsPaid: 0 },
+          outflowBreakdown: {
+            materialExpenses: 0,
+            commissionsPaid: 0,
+            pettyCashExpenses: 0,
+          },
+          pnl: {
+            washRevenue: 0,
+            retailRevenue: 0,
+            totalRevenue: 0,
+            cogsChemicals: 0,
+            cogsRetail: 0,
+            totalCogs: 0,
+            washerCommissions: 0,
+            pettyCashExpenses: 0,
+            grossProfit: 0,
+            grossMarginPercent: 0,
+            netOperatingProfit: 0,
+            netMarginPercent: 0,
+          },
           transactions: [],
         };
 

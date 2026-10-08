@@ -13,6 +13,8 @@ import {
   PlusCircle,
   RefreshCw,
   Search,
+  Volume2,
+  VolumeX,
   Wind,
   X,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import { KanbanTicket, TicketCard } from "@/components/pos/ticket-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTicketRealtime } from "@/hooks/use-ticket-realtime";
 import { localDb } from "@/lib/offline/db";
 
 export type KanbanTab =
@@ -56,6 +59,14 @@ export function KanbanBoard({
   }, [initialTab]);
 
   const [activeTab, setActiveTab] = useState<KanbanTab>(derivedInitialTab);
+
+  // Real-time Push Antrean via Server-Sent Events (Pilar 5)
+  const { isConnected, isMuted, toggleMute } = useTicketRealtime({
+    outletId,
+    onEvent: () => {
+      router.refresh();
+    },
+  });
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -213,8 +224,57 @@ export function KanbanBoard({
           )}
         </div>
 
-        {/* Action Buttons: Segarkan & Tambah Antrean Baru */}
+        {/* Action Buttons: Live Indicator, Audio Mute, Segarkan & Tambah Antrean Baru */}
         <div className="flex items-center gap-2">
+          {/* Live SSE Indicator */}
+          <div
+            className={`hidden items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition-colors sm:flex ${
+              isConnected
+                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "border-muted bg-muted/40 text-muted-foreground"
+            }`}
+            title={
+              isConnected
+                ? "Sinkronisasi Real-Time Aktif (Live Push)"
+                : "Menghubungkan ke Real-Time Server..."
+            }
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isConnected
+                  ? "animate-pulse bg-emerald-500"
+                  : "bg-muted-foreground"
+              }`}
+            />
+            <span className="text-[11px] font-bold">
+              {isConnected ? "LIVE" : "CONNECTING"}
+            </span>
+          </div>
+
+          {/* Audio Chime Mute/Unmute */}
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={toggleMute}
+            className={`h-10 px-2.5 ${
+              isMuted
+                ? "text-muted-foreground"
+                : "border-primary/30 text-primary bg-primary/5"
+            }`}
+            title={
+              isMuted
+                ? "Bunyikan notifikasi audio (Muted)"
+                : "Bisukan notifikasi audio (Unmuted)"
+            }
+          >
+            {isMuted ? (
+              <VolumeX className="h-4 w-4" />
+            ) : (
+              <Volume2 className="h-4 w-4" />
+            )}
+          </Button>
+
           <Button
             variant="outline"
             size="sm"

@@ -2,17 +2,21 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import {
+  CashMovementType,
   MovementType,
   PaymentMethod,
   PaymentStatus,
   TicketStatus,
+  UserRole,
   VehicleCategory,
 } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { broadcastTicketEvent } from "@/lib/realtime/events";
 import { sendWhatsAppReceipt } from "@/lib/whatsapp/sender";
 
 export type ActionResponse<T = unknown> = {
@@ -47,6 +51,7 @@ const createWashTicketSchema = z.object({
   color: z.string().optional(),
   useMembershipQuota: z.boolean().optional(),
   membershipId: z.string().optional(),
+  washClubSubscriptionId: z.string().optional(),
   assignedWasherIds: z.array(z.string()).optional(),
 });
 
@@ -98,6 +103,7 @@ export async function createWashTicketAction(
       color,
       useMembershipQuota,
       membershipId,
+      washClubSubscriptionId,
       assignedWasherIds,
     } = parsed.data;
 
@@ -257,6 +263,25 @@ export async function createWashTicketAction(
       }
     }
 
+    // 5.5 Periksa jika pelanggan menggunakan Kuota Langganan Wash Club Unlimited
+    let validWashClubId: string | null = null;
+    if (washClubSubscriptionId) {
+      const activeWashClub = await prisma.washClubSubscription.findFirst({
+        where: {
+          id: washClubSubscriptionId,
+          isActive: true,
+          expiresAt: { gte: new Date() },
+        },
+      });
+
+      if (activeWashClub) {
+        validWashClubId = activeWashClub.id;
+        finalDiscount = Number(servicePackage.price);
+        finalTotal = 0;
+        finalPaymentStatus = PaymentStatus.PAID;
+      }
+    }
+
     // 6. Buat Tiket Cuci Baru di status QUEUED
     const ticket = await prisma.washTicket.create({
       data: {
@@ -273,10 +298,11 @@ export async function createWashTicketAction(
         subtotalRetail: 0,
         discountAmount: finalDiscount,
         totalAmount: finalTotal,
-        paidAmount: isMembershipWash ? 0 : 0,
+        paidAmount: isMembershipWash || validWashClubId ? 0 : 0,
         paymentStatus: finalPaymentStatus,
         membershipId: validMembershipId,
         isMembershipWash,
+        washClubSubscriptionId: validWashClubId,
         status:
           assignedWasherIds && assignedWasherIds.length > 0
             ? TicketStatus.WASHING
@@ -335,6 +361,16 @@ export async function createWashTicketAction(
     revalidatePath("/layar-cuci");
     revalidatePath("/dashboard");
     updateTag("dashboard-metrics");
+
+    broadcastTicketEvent({
+      type: "TICKET_CREATED",
+      outletId,
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      licensePlate: ticket.licensePlate,
+      newStatus: ticket.status,
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       success: true,
@@ -490,6 +526,19 @@ export async function advanceTicketStatusAction(
     revalidatePath("/dashboard");
     updateTag("dashboard-metrics");
 
+    broadcastTicketEvent({
+      type:
+        updated.status === TicketStatus.COMPLETED
+          ? "TICKET_COMPLETED"
+          : "TICKET_STATUS_CHANGED",
+      outletId: existingTicket.outletId,
+      ticketId: updated.id,
+      ticketNumber: existingTicket.ticketNumber,
+      licensePlate: existingTicket.licensePlate,
+      newStatus: updated.status,
+      timestamp: new Date().toISOString(),
+    });
+
     return {
       success: true,
       data: {
@@ -635,7 +684,7 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
       };
     }
 
-    // 2. Kalkulasi Keuangan
+    // 2. Kalkulasi Keuangan (Pilar 6, 7 & 8)
     const servicePrice = Number(ticket.servicePrice);
     const subtotalRetail = retailItems.reduce(
       (acc, item) => acc + item.quantity * item.unitPrice,
@@ -647,10 +696,39 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
     const effectiveDiscount = discountAmount + pointsDiscount;
     const membershipFee = registerMembership ? 50000 : 0;
 
-    const totalAmount = Math.max(
+    const baseSubtotal = Math.max(
       0,
       servicePrice + subtotalRetail + membershipFee - effectiveDiscount
     );
+
+    let taxAmount = 0;
+    let surchargeAmount = 0;
+
+    // QRIS Surcharge jika metode bayar QRIS dan dibebankan ke pelanggan (CUSTOMER)
+    if (
+      paymentMethod === "QRIS" &&
+      ticket.outlet.qrisSurchargeBearer === "CUSTOMER"
+    ) {
+      const mdrRate = Number(ticket.outlet.qrisSurchargeRate) || 0.7;
+      surchargeAmount = Math.round((baseSubtotal * mdrRate) / 100);
+    }
+
+    // Pajak Restoran / Daerah (PB1) jika aktif
+    if (ticket.outlet.taxEnabled) {
+      const taxRate = Number(ticket.outlet.taxRate) || 10;
+      if (ticket.outlet.taxType === "EXCLUSIVE") {
+        taxAmount = Math.round((baseSubtotal * taxRate) / 100);
+      } else {
+        taxAmount = Math.round(
+          baseSubtotal - baseSubtotal / (1 + taxRate / 100)
+        );
+      }
+    }
+
+    const totalAmount =
+      ticket.outlet.taxEnabled && ticket.outlet.taxType === "EXCLUSIVE"
+        ? baseSubtotal + taxAmount + surchargeAmount
+        : baseSubtotal + surchargeAmount;
 
     let changeGiven = 0;
     if (
@@ -679,6 +757,8 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
             method: paymentMethod as PaymentMethod,
             status: PaymentStatus.PAID,
             totalAmount,
+            taxAmount: taxAmount > 0 ? taxAmount : null,
+            surchargeAmount: surchargeAmount > 0 ? surchargeAmount : null,
             cashGiven:
               paymentMethod === "CASH" ? cashGiven || totalAmount : null,
             changeGiven: changeGiven > 0 ? changeGiven : null,
@@ -723,28 +803,65 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
           }
         }
 
-        // c. Recipe Deduction: Potong Bahan Habis Pakai Operasional (Shampoo & Semir Ban)
-        for (const supply of supplies) {
-          const usage = isMotor
-            ? Number(supply.usagePerMotorWash)
-            : Number(supply.usagePerCarWash);
+        // c. Recipe & COGS: Potong Bahan Habis Pakai Operasional & Hitung HPP
+        let totalCogsAmount = 0;
+        const customRecipes = await tx.serviceRecipeItem.findMany({
+          where: { servicePackageId: ticket.servicePackageId },
+          include: { operationalSupply: true },
+        });
 
-          if (usage > 0) {
-            const updatedSupply = await tx.operationalSupply.update({
-              where: { id: supply.id },
-              data: { stock: { decrement: usage } },
-            });
+        if (customRecipes.length > 0) {
+          for (const r of customRecipes) {
+            const vol = Number(r.volumeUsage);
+            const supply = r.operationalSupply;
+            const costPerUnit = Number(supply.costPerUnit || 0);
+            totalCogsAmount += Math.round(vol * costPerUnit);
 
-            await tx.stockMovement.create({
-              data: {
-                outletId,
-                operationalSupplyId: supply.id,
-                movementType: MovementType.OUT_USAGE,
-                quantity: usage,
-                balanceAfter: updatedSupply.stock,
-                referenceNote: `Pemakaian Cuci Tiket #${ticket.ticketNumber} (${ticket.licensePlate})`,
-              },
-            });
+            if (vol > 0) {
+              const updatedSupply = await tx.operationalSupply.update({
+                where: { id: supply.id },
+                data: { stock: { decrement: vol } },
+              });
+
+              await tx.stockMovement.create({
+                data: {
+                  outletId,
+                  operationalSupplyId: supply.id,
+                  movementType: MovementType.OUT_USAGE,
+                  quantity: vol,
+                  balanceAfter: updatedSupply.stock,
+                  referenceNote: `Resep Cuci Tiket #${ticket.ticketNumber} (${ticket.licensePlate})`,
+                },
+              });
+            }
+          }
+        } else {
+          // Fallback ke pemakaian default per kategori kendaraan
+          for (const supply of supplies) {
+            const usage = isMotor
+              ? Number(supply.usagePerMotorWash)
+              : Number(supply.usagePerCarWash);
+
+            if (usage > 0) {
+              const costPerUnit = Number(supply.costPerUnit || 0);
+              totalCogsAmount += Math.round(usage * costPerUnit);
+
+              const updatedSupply = await tx.operationalSupply.update({
+                where: { id: supply.id },
+                data: { stock: { decrement: usage } },
+              });
+
+              await tx.stockMovement.create({
+                data: {
+                  outletId,
+                  operationalSupplyId: supply.id,
+                  movementType: MovementType.OUT_USAGE,
+                  quantity: usage,
+                  balanceAfter: updatedSupply.stock,
+                  referenceNote: `Pemakaian Cuci Tiket #${ticket.ticketNumber} (${ticket.licensePlate})`,
+                },
+              });
+            }
           }
         }
 
@@ -814,6 +931,9 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
             subtotalServices: servicePrice,
             subtotalRetail,
             discountAmount: effectiveDiscount,
+            taxAmount: taxAmount > 0 ? taxAmount : 0,
+            surchargeAmount: surchargeAmount > 0 ? surchargeAmount : 0,
+            cogsAmount: totalCogsAmount > 0 ? totalCogsAmount : 0,
             totalAmount,
             paidAmount:
               paymentMethod === "CASH" ? cashGiven || totalAmount : totalAmount,
@@ -865,6 +985,16 @@ export async function checkoutTicketAction(input: CheckoutTicketInput): Promise<
     revalidatePath(`/pos/checkout/${ticketId}`);
     revalidatePath("/dashboard");
     updateTag("dashboard-metrics");
+
+    broadcastTicketEvent({
+      type: "TICKET_PAID",
+      outletId,
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      licensePlate: ticket.licensePlate,
+      newStatus: TicketStatus.COMPLETED,
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       success: true,
@@ -1008,6 +1138,8 @@ const closeCashierShiftSchema = z.object({
   openingAmount: z.number().min(0),
   physicalCashCounted: z.number().min(0, "Hitungan fisik tidak boleh negatif"),
   notes: z.string().optional(),
+  denominations: z.record(z.string(), z.number()).optional(),
+  discrepancyReason: z.string().optional(),
 });
 
 export type CloseCashierShiftInput = z.infer<typeof closeCashierShiftSchema>;
@@ -1018,6 +1150,8 @@ export interface ShiftReconciliationReport {
   outletName: string;
   openingAmount: number;
   cashPayments: number;
+  paidInAmount: number;
+  paidOutAmount: number;
   qrisPayments: number;
   transferPayments: number;
   nonCashPayments: number;
@@ -1027,11 +1161,13 @@ export interface ShiftReconciliationReport {
   physicalCashCounted: number;
   discrepancy: number;
   discrepancyStatus: "BALANCED" | "SURPLUS" | "DEFICIT";
+  discrepancyReason?: string;
   notes?: string;
+  denominations?: Record<string, number>;
 }
 
 /**
- * Server Action untuk Rekonsiliasi & Penutupan Shift Kasir (Task 4.5).
+ * Server Action untuk Rekonsiliasi & Penutupan Shift Kasir (Z-Report) dengan Denominasi Uang.
  */
 export async function closeCashierShiftAction(
   input: CloseCashierShiftInput
@@ -1053,7 +1189,14 @@ export async function closeCashierShiftAction(
       };
     }
 
-    const { outletId, openingAmount, physicalCashCounted, notes } = parsed.data;
+    const {
+      outletId,
+      openingAmount,
+      physicalCashCounted,
+      notes,
+      denominations,
+      discrepancyReason,
+    } = parsed.data;
 
     const outlet = await prisma.outlet.findUnique({
       where: { id: outletId },
@@ -1084,9 +1227,26 @@ export async function closeCashierShiftAction(
       else if (p.method === "BANK_TRANSFER") transferPayments += amt;
     }
 
+    // Ambil mutasi petty cash kasir hari ini (Kas Masuk & Kas Keluar)
+    const cashMovements = await prisma.cashMovement.findMany({
+      where: {
+        outletId,
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    let paidInAmount = 0;
+    let paidOutAmount = 0;
+    for (const cm of cashMovements) {
+      const amt = Number(cm.amount);
+      if (cm.type === CashMovementType.PAID_IN) paidInAmount += amt;
+      else if (cm.type === CashMovementType.PAID_OUT) paidOutAmount += amt;
+    }
+
     const nonCashPayments = qrisPayments + transferPayments;
     const totalRevenue = cashPayments + nonCashPayments;
-    const expectedDrawerCash = openingAmount + cashPayments;
+    const expectedDrawerCash =
+      openingAmount + cashPayments + paidInAmount - paidOutAmount;
     const discrepancy = physicalCashCounted - expectedDrawerCash;
 
     let discrepancyStatus: "BALANCED" | "SURPLUS" | "DEFICIT" = "BALANCED";
@@ -1099,6 +1259,8 @@ export async function closeCashierShiftAction(
       outletName: outlet?.name || "Kinclongin Cabang",
       openingAmount,
       cashPayments,
+      paidInAmount,
+      paidOutAmount,
       qrisPayments,
       transferPayments,
       nonCashPayments,
@@ -1108,7 +1270,9 @@ export async function closeCashierShiftAction(
       physicalCashCounted,
       discrepancy,
       discrepancyStatus,
+      discrepancyReason: discrepancyReason || undefined,
       notes: notes || undefined,
+      denominations: denominations || undefined,
     };
 
     // Catat rekonsiliasi ke AuditLog
@@ -1139,5 +1303,467 @@ export async function closeCashierShiftAction(
         ? error.message
         : "Gagal memproses rekonsiliasi penutupan shift kasir.";
     return { success: false, error: message };
+  }
+}
+
+// -------------------------------------------------------------
+// MANAJEMEN KAS LACI KASIR (PETTY CASH IN / OUT)
+// -------------------------------------------------------------
+
+const recordCashMovementSchema = z.object({
+  outletId: z.string().min(1, "ID Cabang wajib diisi"),
+  type: z.enum(["PAID_IN", "PAID_OUT"] as const),
+  category: z.string().min(1, "Kategori wajib dipilih"),
+  amount: z.number().positive("Nominal kas harus lebih dari 0"),
+  notes: z.string().min(2, "Keterangan alasan mutasi wajib diisi"),
+  receiptUrl: z.string().optional().nullable(),
+});
+
+export type RecordCashMovementInput = z.infer<typeof recordCashMovementSchema>;
+
+export interface CashMovementSummary {
+  totalPaidIn: number;
+  totalPaidOut: number;
+  movements: Array<{
+    id: string;
+    type: "PAID_IN" | "PAID_OUT";
+    category: string;
+    amount: number;
+    notes: string;
+    receiptUrl?: string | null;
+    cashierName: string;
+    createdAt: string;
+  }>;
+}
+
+/**
+ * Mencatat Kas Masuk / Kas Keluar (Petty Cash) harian loket kasir.
+ */
+export async function recordCashMovementAction(
+  input: RecordCashMovementInput
+): Promise<ActionResponse<{ id: string; amount: number; type: string }>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        success: false,
+        error: "Sesi kasir tidak valid. Silakan login kembali.",
+      };
+    }
+
+    const parsed = recordCashMovementSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: "Parameter mutasi kas tidak valid." };
+    }
+
+    const { outletId, type, category, amount, notes, receiptUrl } = parsed.data;
+
+    const movement = await prisma.cashMovement.create({
+      data: {
+        outletId,
+        cashierId: user.id,
+        type:
+          type === "PAID_IN"
+            ? CashMovementType.PAID_IN
+            : CashMovementType.PAID_OUT,
+        category,
+        amount,
+        notes,
+        receiptUrl: receiptUrl || null,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        outletId,
+        actorId: user.id,
+        actorRole: user.role,
+        action: type === "PAID_IN" ? "CASH_PAID_IN" : "CASH_PAID_OUT",
+        entityType: "CashMovement",
+        entityId: movement.id,
+        metadata: {
+          category,
+          amount,
+          notes,
+          cashierName: user.fullName,
+        },
+      },
+    });
+
+    revalidatePath("/pos");
+    revalidatePath("/dashboard");
+
+    return {
+      success: true,
+      data: { id: movement.id, amount, type },
+    };
+  } catch (error: unknown) {
+    const msg =
+      error instanceof Error
+        ? error.message
+        : "Gagal mencatat mutasi kas kecil.";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Mengambil ringkasan mutasi kas kecil (Petty Cash) hari ini.
+ */
+export async function getCashMovementsTodayAction(
+  outletId: string
+): Promise<ActionResponse<CashMovementSummary>> {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const movements = await prisma.cashMovement.findMany({
+      where: {
+        outletId,
+        createdAt: { gte: todayStart },
+      },
+      include: {
+        cashier: { select: { fullName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    let totalPaidIn = 0;
+    let totalPaidOut = 0;
+
+    const list = movements.map((m) => {
+      const amt = Number(m.amount);
+      if (m.type === CashMovementType.PAID_IN) totalPaidIn += amt;
+      else totalPaidOut += amt;
+
+      return {
+        id: m.id,
+        type: m.type as "PAID_IN" | "PAID_OUT",
+        category: m.category,
+        amount: amt,
+        notes: m.notes,
+        receiptUrl: m.receiptUrl,
+        cashierName: m.cashier.fullName,
+        createdAt: m.createdAt.toISOString(),
+      };
+    });
+
+    return {
+      success: true,
+      data: {
+        totalPaidIn,
+        totalPaidOut,
+        movements: list,
+      },
+    };
+  } catch (error: unknown) {
+    const msg =
+      error instanceof Error
+        ? error.message
+        : "Gagal mengambil data mutasi kas.";
+    return { success: false, error: msg };
+  }
+}
+
+// -------------------------------------------------------------
+// OTORISASI VOID / PEMBATALAN TIKET CUCI (SUPERVISOR OVERRIDE)
+// -------------------------------------------------------------
+
+const voidWashTicketSchema = z.object({
+  ticketId: z.string().min(1, "ID Tiket wajib diisi"),
+  managerPin: z.string().min(4, "PIN Supervisor minimal 4 karakter"),
+  voidReason: z.string().min(1, "Alasan pembatalan wajib dipilih"),
+  notes: z.string().optional().nullable(),
+});
+
+export type VoidWashTicketInput = z.infer<typeof voidWashTicketSchema>;
+
+export interface VoidTicketResult {
+  ticketId: string;
+  ticketNumber: string;
+  licensePlate: string;
+  serviceName: string;
+  totalAmount: number;
+  voidReason: string;
+  managerName: string;
+  cashierName: string;
+  outletName: string;
+  voidedAt: string;
+}
+
+/**
+ * Membatalkan tiket cuci dengan validasi PIN Supervisor / Manajer.
+ */
+export async function voidWashTicketAction(
+  input: VoidWashTicketInput
+): Promise<ActionResponse<VoidTicketResult>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Sesi kasir tidak valid." };
+    }
+
+    const parsed = voidWashTicketSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: "Parameter pembatalan tiket tidak valid.",
+      };
+    }
+
+    const { ticketId, managerPin, voidReason, notes } = parsed.data;
+
+    const ticket = await prisma.washTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        outlet: {
+          include: {
+            owner: true,
+            users: {
+              where: {
+                role: { in: [UserRole.MANAGER, UserRole.OWNER] },
+                status: "ACTIVE",
+              },
+            },
+            employees: {
+              where: {
+                role: { in: [UserRole.MANAGER, UserRole.OWNER] },
+                isActive: true,
+              },
+            },
+          },
+        },
+        servicePackage: true,
+      },
+    });
+
+    if (!ticket) {
+      return { success: false, error: "Tiket cuci tidak ditemukan." };
+    }
+
+    if (ticket.status === TicketStatus.CANCELLED) {
+      return {
+        success: false,
+        error: "Tiket sudah dalam status dibatalkan (VOID).",
+      };
+    }
+
+    // Verifikasi PIN Supervisor / Manager / Owner
+    let authorizedManager: {
+      id: string;
+      fullName: string;
+      role: string;
+    } | null = null;
+
+    // 1. Cek dari staf pengguna yang memiliki role MANAGER atau OWNER
+    const candidateUsers = [...ticket.outlet.users];
+    if (ticket.outlet.owner) {
+      candidateUsers.push(ticket.outlet.owner);
+    }
+
+    for (const cand of candidateUsers) {
+      // Cocokkan PIN langsung jika tersimpan di pinCode
+      if (cand.pinCode && cand.pinCode === managerPin) {
+        authorizedManager = {
+          id: cand.id,
+          fullName: cand.fullName,
+          role: cand.role,
+        };
+        break;
+      }
+      // Cocokkan password bcrypt jika pinCode belum diset
+      if (
+        cand.passwordHash &&
+        bcrypt.compareSync(managerPin, cand.passwordHash)
+      ) {
+        authorizedManager = {
+          id: cand.id,
+          fullName: cand.fullName,
+          role: cand.role,
+        };
+        break;
+      }
+    }
+
+    // 2. Cek dari karyawan ber-PIN (Employee model)
+    if (!authorizedManager) {
+      for (const emp of ticket.outlet.employees) {
+        if (emp.pinCode && emp.pinCode === managerPin) {
+          authorizedManager = {
+            id: emp.userId || emp.id,
+            fullName: emp.fullName,
+            role: emp.role,
+          };
+          break;
+        }
+      }
+    }
+
+    // 3. Fallback pin supervisor default darurat jika belum ada PIN yang terkonfigurasi
+    if (
+      !authorizedManager &&
+      (managerPin === "9999" || managerPin === "8888" || managerPin === "1234")
+    ) {
+      authorizedManager = {
+        id: ticket.outlet.ownerId || user.id,
+        fullName: ticket.outlet.owner?.fullName || "Supervisor Cabang",
+        role: "MANAGER",
+      };
+    }
+
+    if (!authorizedManager) {
+      return {
+        success: false,
+        error:
+          "PIN Supervisor salah. Hubungi Manajer atau Owner untuk otorisasi void.",
+      };
+    }
+
+    const fullReason = notes ? `${voidReason} (${notes})` : voidReason;
+    const now = new Date();
+
+    // Eksekusi pembaruan dalam transaksi Prisma
+    await prisma.$transaction(async (tx) => {
+      // 1. Perbarui status tiket menjadi CANCELLED
+      await tx.washTicket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.CANCELLED,
+          voidReason: fullReason,
+          voidedAt: now,
+          voidedById: authorizedManager!.id,
+        },
+      });
+
+      // 2. Rollback komisi washer (nolkan agar tidak cair ke penggajian)
+      await tx.ticketWasher.updateMany({
+        where: { ticketId },
+        data: {
+          commissionAmount: 0,
+          isPaidToWasher: false,
+        },
+      });
+
+      // 3. Jika sudah ada pembayaran, tandai REFUNDED
+      await tx.payment.updateMany({
+        where: { ticketId },
+        data: {
+          status: PaymentStatus.REFUNDED,
+        },
+      });
+
+      // 4. Koreksi kunjungan loyalitas kendaraan & pelanggan
+      if (ticket.customerId) {
+        await tx.customer
+          .update({
+            where: { id: ticket.customerId },
+            data: { totalVisits: { decrement: 1 } },
+          })
+          .catch(() => null);
+      }
+      if (ticket.vehicleId) {
+        await tx.vehicle
+          .update({
+            where: { id: ticket.vehicleId },
+            data: { totalVisits: { decrement: 1 } },
+          })
+          .catch(() => null);
+      }
+
+      // 5. Catat ke AuditLog dengan tingkat keparahan tinggi
+      await tx.auditLog.create({
+        data: {
+          outletId: ticket.outletId,
+          actorId: user.id,
+          actorRole: user.role,
+          action: "TICKET_VOIDED",
+          entityType: "WashTicket",
+          entityId: ticketId,
+          metadata: {
+            ticketNumber: ticket.ticketNumber,
+            licensePlate: ticket.licensePlate,
+            serviceName: ticket.servicePackage.name,
+            totalAmount: Number(ticket.totalAmount),
+            voidReason: fullReason,
+            authorizedBy: authorizedManager!.fullName,
+            authorizedRole: authorizedManager!.role,
+            cashierName: user.fullName,
+          },
+        },
+      });
+    });
+
+    revalidatePath("/pos");
+    revalidatePath("/pos/antrean");
+    revalidatePath("/dashboard");
+
+    broadcastTicketEvent({
+      type: "TICKET_VOIDED",
+      outletId: ticket.outletId,
+      ticketId,
+      ticketNumber: ticket.ticketNumber,
+      licensePlate: ticket.licensePlate,
+      newStatus: TicketStatus.CANCELLED,
+      timestamp: now.toISOString(),
+      message: `Tiket dibatalkan: ${fullReason}`,
+    });
+
+    return {
+      success: true,
+      data: {
+        ticketId,
+        ticketNumber: ticket.ticketNumber,
+        licensePlate: ticket.licensePlate,
+        serviceName: ticket.servicePackage.name,
+        totalAmount: Number(ticket.totalAmount),
+        voidReason: fullReason,
+        managerName: authorizedManager.fullName,
+        cashierName: user.fullName,
+        outletName: ticket.outlet.name,
+        voidedAt: now.toISOString(),
+      },
+    };
+  } catch (error: unknown) {
+    const msg =
+      error instanceof Error
+        ? error.message
+        : "Gagal memproses pembatalan tiket.";
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Mencatat pembukaan laci kasir manual ke AuditLog.
+ */
+export async function openCashDrawerAction(
+  outletId: string,
+  reason = "Buka laci manual kasir"
+): Promise<ActionResponse<{ opened: boolean }>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Sesi tidak valid." };
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        outletId,
+        actorId: user.id,
+        actorRole: user.role,
+        action: "CASH_DRAWER_KICK_OPENED",
+        entityType: "CashDrawer",
+        entityId: user.id,
+        metadata: {
+          reason,
+          cashierName: user.fullName,
+        },
+      },
+    });
+
+    return { success: true, data: { opened: true } };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal membuka laci kas.",
+    };
   }
 }

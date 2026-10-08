@@ -5,6 +5,7 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   const isPublicRoute =
+    pathname.startsWith("/demo") ||
     pathname.startsWith("/sign-in") ||
     pathname.startsWith("/sign-up") ||
     pathname.startsWith("/api/auth") ||
@@ -12,6 +13,7 @@ export default auth((req) => {
     pathname.startsWith("/track") ||
     pathname.startsWith("/lacak") ||
     pathname.startsWith("/layar-cuci") ||
+    pathname.startsWith("/pos/customer-display") ||
     pathname.startsWith("/api/storage/file");
 
   if (!isLoggedIn && !isPublicRoute) {

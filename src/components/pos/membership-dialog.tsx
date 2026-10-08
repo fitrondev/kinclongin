@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import {
   Banknote,
   Building2,
-  CheckCircle2,
   Coins,
   Crown,
   Gift,

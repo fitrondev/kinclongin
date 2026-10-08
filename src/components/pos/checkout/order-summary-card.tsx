@@ -10,6 +10,11 @@ export interface OrderSummaryCardProps {
   effectiveDiscount: number;
   grandTotal: number;
   hasCustomer: boolean;
+  promoName?: string;
+  taxAmount?: number;
+  taxLabel?: string;
+  taxType?: "INCLUSIVE" | "EXCLUSIVE";
+  surchargeAmount?: number;
 }
 
 export function OrderSummaryCard({
@@ -19,6 +24,11 @@ export function OrderSummaryCard({
   effectiveDiscount,
   grandTotal,
   hasCustomer,
+  promoName,
+  taxAmount,
+  taxLabel = "PB1",
+  taxType = "EXCLUSIVE",
+  surchargeAmount,
 }: OrderSummaryCardProps) {
   return (
     <Card className="border-primary/20 border-2 shadow-md">
@@ -55,8 +65,30 @@ export function OrderSummaryCard({
           ) : null}
           {effectiveDiscount > 0 ? (
             <div className="flex justify-between font-semibold text-emerald-600">
-              <span>Potongan Diskon / Poin</span>
+              <span>
+                {promoName ? `Diskon (${promoName})` : "Potongan Diskon / Poin"}
+              </span>
               <span>-{formatRupiah(effectiveDiscount)}</span>
+            </div>
+          ) : null}
+          {surchargeAmount && surchargeAmount > 0 ? (
+            <div className="text-foreground flex justify-between font-semibold">
+              <span>Biaya Transaksi (MDR QRIS)</span>
+              <span>+{formatRupiah(surchargeAmount)}</span>
+            </div>
+          ) : null}
+          {taxAmount && taxAmount > 0 ? (
+            <div className="text-foreground flex justify-between font-semibold">
+              <span>
+                {taxType === "INCLUSIVE"
+                  ? `*Termasuk Pajak (${taxLabel})`
+                  : `Pajak Daerah (${taxLabel})`}
+              </span>
+              <span>
+                {taxType === "INCLUSIVE"
+                  ? formatRupiah(taxAmount)
+                  : `+${formatRupiah(taxAmount)}`}
+              </span>
             </div>
           ) : null}
         </div>

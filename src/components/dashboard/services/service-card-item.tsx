@@ -1,4 +1,4 @@
-import { Car, Clock, Edit2, Trash2 } from "lucide-react";
+import { Beaker, Car, Clock, Edit2, Trash2 } from "lucide-react";
 
 import type { ServicePackageItem } from "@/actions/services";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ export interface ServiceCardItemProps {
   onEdit: (pkg: ServicePackageItem) => void;
   onDelete: (pkg: ServicePackageItem) => void;
   onToggleStatus: (pkg: ServicePackageItem) => void;
+  onConfigureRecipe?: (pkg: ServicePackageItem) => void;
 }
 
 export function ServiceCardItem({
@@ -32,6 +33,7 @@ export function ServiceCardItem({
   onEdit,
   onDelete,
   onToggleStatus,
+  onConfigureRecipe,
 }: ServiceCardItemProps) {
   const cat = CATEGORY_INFO[pkg.vehicleCategory];
   const CatIcon = cat?.icon || Car;
@@ -119,22 +121,35 @@ export function ServiceCardItem({
 
         {/* Tombol Aksi */}
         {isOwnerOrManager ? (
-          <div className="flex items-center gap-2 border-t pt-2">
+          <div className="flex items-center gap-1.5 border-t pt-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => onEdit(pkg)}
-              className="h-8 flex-1 gap-1.5 text-xs font-bold"
+              className="h-8 flex-1 gap-1 text-[11px] font-bold"
             >
               <Edit2 className="h-3 w-3" />
-              <span>Edit Tarif</span>
+              <span>Edit</span>
             </Button>
+
+            {onConfigureRecipe ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onConfigureRecipe(pkg)}
+                className="h-8 gap-1 bg-cyan-500/10 text-[11px] font-bold text-cyan-700 hover:bg-cyan-500/20 dark:text-cyan-300"
+                title="Atur takaran bahan kimia & kalkulasi HPP"
+              >
+                <Beaker className="h-3 w-3" />
+                <span>Resep HPP</span>
+              </Button>
+            ) : null}
 
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onDelete(pkg)}
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-2.5 text-xs"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-2 text-xs"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

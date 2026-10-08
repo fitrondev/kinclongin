@@ -149,6 +149,17 @@ export function WalkInForm({
   } | null>(null);
   const [useMembershipQuota, setUseMembershipQuota] = useState(false);
 
+  // Status Unlimited Wash Club
+  const [activeWashClub, setActiveWashClub] = useState<{
+    id: string;
+    planName: string;
+    priceMonthly: number;
+    expiresAt: string;
+    qrPassCode: string;
+    daysRemaining: number;
+  } | null>(null);
+  const [useWashClub, setUseWashClub] = useState(false);
+
   // Simpan master data layanan ke IndexedDB untuk cadangan offline
   useEffect(() => {
     if (servicePackages && servicePackages.length > 0) {
@@ -203,9 +214,17 @@ export function WalkInForm({
               visitsToReward: data.vehicle.visitsToReward ?? 0,
               lastServicePackageName: data.lastService?.servicePackageName,
             });
+            if (data.washClub) {
+              setActiveWashClub(data.washClub);
+              setUseWashClub(true);
+            } else {
+              setActiveWashClub(null);
+              setUseWashClub(false);
+            }
+
             if (data.membership) {
               setActiveMembership(data.membership);
-              setUseMembershipQuota(true);
+              setUseMembershipQuota(!data.washClub);
             } else {
               setActiveMembership(null);
               setUseMembershipQuota(false);
@@ -213,11 +232,15 @@ export function WalkInForm({
           } else {
             setActiveMembership(null);
             setUseMembershipQuota(false);
+            setActiveWashClub(null);
+            setUseWashClub(false);
           }
         } else {
           setRecognizedCustomer(null);
           setActiveMembership(null);
           setUseMembershipQuota(false);
+          setActiveWashClub(null);
+          setUseWashClub(false);
         }
       } catch {
         // Silently ignore lookup error
@@ -236,6 +259,8 @@ export function WalkInForm({
       setRecognizedCustomer(null);
       setActiveMembership(null);
       setUseMembershipQuota(false);
+      setActiveWashClub(null);
+      setUseWashClub(false);
     }
   };
 
@@ -244,11 +269,13 @@ export function WalkInForm({
       (s) => s.id === activeServiceId
     );
     const priceNum =
-      typeof selectedService?.price === "object" &&
-      selectedService?.price &&
-      "toNumber" in selectedService.price
-        ? (selectedService.price as { toNumber: () => number }).toNumber()
-        : Number(selectedService?.price || 0);
+      useWashClub && activeWashClub
+        ? 0
+        : typeof selectedService?.price === "object" &&
+            selectedService?.price &&
+            "toNumber" in selectedService.price
+          ? (selectedService.price as { toNumber: () => number }).toNumber()
+          : Number(selectedService?.price || 0);
 
     const offlineTicket = await saveOfflineTicket({
       outletId,
@@ -309,6 +336,8 @@ export function WalkInForm({
           color: color || undefined,
           useMembershipQuota: useMembershipQuota && !!activeMembership,
           membershipId: activeMembership?.id,
+          washClubSubscriptionId:
+            useWashClub && activeWashClub ? activeWashClub.id : undefined,
           assignedWasherIds:
             selectedWasherIds.length > 0 ? selectedWasherIds : undefined,
         });
@@ -408,6 +437,63 @@ export function WalkInForm({
                   </span>
                 )}
               </div>
+
+              {/* Banner Unlimited Wash Club (Langganan Cuci Bulanan) */}
+              {activeWashClub && (
+                <div className="mt-3 space-y-2 rounded-xl border border-yellow-500/50 bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/15 p-3.5 shadow-xs">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-sm ring-2 ring-yellow-400/30">
+                        <Crown className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black tracking-wide text-yellow-800 uppercase dark:text-yellow-300">
+                            MEMBER UNLIMITED WASH CLUB
+                          </span>
+                          <Badge className="border-yellow-500/40 bg-yellow-500/20 text-[10px] font-black text-yellow-800 dark:text-yellow-200">
+                            CUCI SEPUASNYA
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground mt-0.5 text-[11px]">
+                          Paket:{" "}
+                          <strong className="text-foreground">
+                            {activeWashClub.planName}
+                          </strong>{" "}
+                          • Sisa:{" "}
+                          <strong className="text-emerald-600 dark:text-emerald-400">
+                            {activeWashClub.daysRemaining} Hari
+                          </strong>{" "}
+                          (s/d{" "}
+                          {new Date(
+                            activeWashClub.expiresAt
+                          ).toLocaleDateString("id-ID")}
+                          )
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="self-start border-yellow-500/50 bg-yellow-500/20 font-mono text-xs font-bold text-yellow-800 sm:self-auto dark:text-yellow-200"
+                    >
+                      {activeWashClub.qrPassCode}
+                    </Badge>
+                  </div>
+
+                  <label className="flex cursor-pointer items-center gap-2 border-t border-yellow-500/20 pt-2">
+                    <input
+                      type="checkbox"
+                      checked={useWashClub}
+                      onChange={(e) => setUseWashClub(e.target.checked)}
+                      className="h-4 w-4 rounded border-yellow-400 text-yellow-600 accent-yellow-600 focus:ring-yellow-500"
+                    />
+                    <span className="text-foreground text-xs font-bold">
+                      Gunakan Hak Akses Unlimited Wash Club (Biaya Cuci Rp 0 -
+                      Tanpa Batas Kuota)
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* Banner Langganan Member Aktif */}
               {activeMembership && (

@@ -1,11 +1,21 @@
-import { Car, QrCode, Receipt, Wallet } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Car,
+  QrCode,
+  Receipt,
+  Wallet,
+} from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { formatRupiah } from "@/lib/formatters";
 
 export interface CashierDrawerCardsProps {
   openingCashFloat?: number;
   todayCashInDrawer: number;
+  todayPaidIn?: number;
+  todayPaidOut?: number;
   todayNonCash: number;
   todayQris: number;
   todayTransfer: number;
@@ -15,11 +25,14 @@ export interface CashierDrawerCardsProps {
   todayMembershipsCount: number;
   onOpenReconciliation?: () => void;
   onOpenEditFloat?: () => void;
+  onOpenCashMovement?: (type: "PAID_IN" | "PAID_OUT") => void;
 }
 
 export function CashierDrawerCards({
   openingCashFloat = 0,
   todayCashInDrawer,
+  todayPaidIn = 0,
+  todayPaidOut = 0,
   todayNonCash,
   todayQris,
   todayTransfer,
@@ -29,8 +42,10 @@ export function CashierDrawerCards({
   todayMembershipsCount,
   onOpenReconciliation,
   onOpenEditFloat,
+  onOpenCashMovement,
 }: CashierDrawerCardsProps) {
-  const totalPhysicalExpected = openingCashFloat + todayCashInDrawer;
+  const totalPhysicalExpected =
+    openingCashFloat + todayCashInDrawer + todayPaidIn - todayPaidOut;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -67,6 +82,41 @@ export function CashierDrawerCards({
               >
                 Set Modal
               </button>
+            )}
+          </div>
+
+          {/* Rincian Kas Masuk / Keluar (Petty Cash) */}
+          <div className="mt-2.5 flex items-center justify-between border-t border-emerald-500/20 pt-2 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <span className="font-semibold text-emerald-600">
+                +{formatRupiah(todayPaidIn)}
+              </span>
+              {" / "}
+              <span className="font-semibold text-rose-600">
+                -{formatRupiah(todayPaidOut)}
+              </span>
+            </span>
+            {onOpenCashMovement && (
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  className="h-6 border-emerald-500/30 px-1.5 text-[10px] font-bold text-emerald-600 hover:bg-emerald-500/10"
+                  onClick={() => onOpenCashMovement("PAID_IN")}
+                >
+                  <ArrowDownLeft className="mr-0.5 h-3 w-3" />+ Kas
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  className="h-6 border-rose-500/30 px-1.5 text-[10px] font-bold text-rose-600 hover:bg-rose-500/10"
+                  onClick={() => onOpenCashMovement("PAID_OUT")}
+                >
+                  <ArrowUpRight className="mr-0.5 h-3 w-3" />- Kas
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>

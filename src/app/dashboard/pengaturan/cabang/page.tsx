@@ -83,6 +83,12 @@ export default async function OutletManagementPage() {
         isCurrent: o.id === currentOutlet.id,
         totalEmployees: o._count.employees,
         totalTicketsThisMonth: ticketsCount,
+        taxEnabled: o.taxEnabled,
+        taxRate: Number(o.taxRate),
+        taxType: o.taxType,
+        taxLabel: o.taxLabel,
+        qrisSurchargeBearer: o.qrisSurchargeBearer,
+        qrisSurchargeRate: Number(o.qrisSurchargeRate),
       };
     })
   );
@@ -104,6 +110,12 @@ export default async function OutletManagementPage() {
     isCurrent: true,
     totalEmployees: 0,
     totalTicketsThisMonth: 0,
+    taxEnabled: currentOutlet.taxEnabled,
+    taxRate: Number(currentOutlet.taxRate),
+    taxType: currentOutlet.taxType,
+    taxLabel: currentOutlet.taxLabel,
+    qrisSurchargeBearer: currentOutlet.qrisSurchargeBearer,
+    qrisSurchargeRate: Number(currentOutlet.qrisSurchargeRate),
   };
 
   return (

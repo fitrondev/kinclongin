@@ -50,7 +50,11 @@ export function ReceiptDialog({
 
   const handleBluetoothPrint = async () => {
     setIsPrintingBt(true);
-    const res = await printReceiptViaBluetooth(receiptData, columnWidth);
+    const res = await printReceiptViaBluetooth(
+      receiptData,
+      columnWidth,
+      false
+    );
     setIsPrintingBt(false);
 
     if (res.success) {

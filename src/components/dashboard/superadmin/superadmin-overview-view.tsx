@@ -423,7 +423,8 @@ export function SuperadminOverviewView({
               Approval Sewa (50k)
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Verifikasi transfer bank/QRIS & approval perpanjangan masa aktif lisensi.
+              Verifikasi transfer bank/QRIS & approval perpanjangan masa aktif
+              lisensi.
             </p>
           </Link>
 
@@ -439,7 +440,8 @@ export function SuperadminOverviewView({
               Transaksi Cuci Nasional
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Feed tiket cuci live seluruh cabang di Indonesia, pantau status dan GMV.
+              Feed tiket cuci live seluruh cabang di Indonesia, pantau status
+              dan GMV.
             </p>
           </Link>
 
@@ -455,7 +457,8 @@ export function SuperadminOverviewView({
               Direktori Cabang & Tenant
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Seluruh outlet mitra, perpanjang manual, dan mode inspeksi (buka POS cabang).
+              Seluruh outlet mitra, perpanjang manual, dan mode inspeksi (buka
+              POS cabang).
             </p>
           </Link>
 
@@ -471,7 +474,8 @@ export function SuperadminOverviewView({
               WhatsApp Gateway Log
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Audit status notifikasi Fonnte & pengiriman struk digital ke pelanggan.
+              Audit status notifikasi Fonnte & pengiriman struk digital ke
+              pelanggan.
             </p>
           </Link>
 
@@ -487,7 +491,8 @@ export function SuperadminOverviewView({
               S3 Media & Storage Inspector
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Audit pemakaian SumoPod S3, galeri foto inspeksi cacat & bukti bayar.
+              Audit pemakaian SumoPod S3, galeri foto inspeksi cacat & bukti
+              bayar.
             </p>
           </Link>
 
@@ -503,7 +508,8 @@ export function SuperadminOverviewView({
               Master Template Katalog
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Standarisasi paket cuci mobil/motor dan benchmark harga acuan nasional.
+              Standarisasi paket cuci mobil/motor dan benchmark harga acuan
+              nasional.
             </p>
           </Link>
 
@@ -519,7 +525,8 @@ export function SuperadminOverviewView({
               Pengguna Global Platform
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Kelola status akun Owner, Manajer, Kasir, Washer, dan reset kredensial.
+              Kelola status akun Owner, Manajer, Kasir, Washer, dan reset
+              kredensial.
             </p>
           </Link>
 
@@ -535,7 +542,8 @@ export function SuperadminOverviewView({
               Rekening & Konfigurasi SaaS
             </h4>
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              Atur rekening bank tujuan pembayaran sewa 50k, QRIS, kontak bantuan CS.
+              Atur rekening bank tujuan pembayaran sewa 50k, QRIS, kontak
+              bantuan CS.
             </p>
           </Link>
         </div>

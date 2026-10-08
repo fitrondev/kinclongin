@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   Calculator,
@@ -11,8 +12,10 @@ import {
   LayoutGrid,
   PlusCircle,
   Sparkles,
+  Wallet,
 } from "lucide-react";
 
+import { CashMovementDialog } from "@/components/pos/cash-movement-dialog";
 import { ReceiptDialog } from "@/components/receipt/receipt-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +49,8 @@ export interface CashierDashboardViewProps {
   shiftName: string;
   openingCashFloat?: number;
   todayCashInDrawer: number;
+  todayPaidIn?: number;
+  todayPaidOut?: number;
   todayNonCash: number;
   todayQris: number;
   todayTransfer: number;
@@ -70,6 +75,8 @@ export function CashierDashboardView({
   shiftName,
   openingCashFloat = 0,
   todayCashInDrawer,
+  todayPaidIn = 0,
+  todayPaidOut = 0,
   todayNonCash,
   todayQris,
   todayTransfer,
@@ -80,14 +87,22 @@ export function CashierDashboardView({
   recentPayments,
   pendingPaymentTickets,
 }: CashierDashboardViewProps) {
+  const router = useRouter();
+
   // Search & Filter state for recent transactions
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMethodFilter, setSelectedMethodFilter] =
     useState<string>("ALL");
 
-  // State Rekonsiliasi & Modal Awal
+  // State Rekonsiliasi, Modal Awal & Petty Cash
   const [openingFloat, setOpeningFloat] = useState(openingCashFloat);
   const [reconciliationModalOpen, setReconciliationModalOpen] = useState(false);
+  const [cashMovementModalOpen, setCashMovementModalOpen] = useState(false);
+  const [cashMovementType, setCashMovementType] = useState<
+    "PAID_IN" | "PAID_OUT"
+  >("PAID_OUT");
+  const [paidInState, setPaidInState] = useState(todayPaidIn);
+  const [paidOutState, setPaidOutState] = useState(todayPaidOut);
 
   // Receipt Modal State
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
@@ -221,6 +236,8 @@ export function CashierDashboardView({
       <CashierDrawerCards
         openingCashFloat={openingFloat}
         todayCashInDrawer={todayCashInDrawer}
+        todayPaidIn={paidInState}
+        todayPaidOut={paidOutState}
         todayNonCash={todayNonCash}
         todayQris={todayQris}
         todayTransfer={todayTransfer}
@@ -230,6 +247,10 @@ export function CashierDashboardView({
         todayMembershipsCount={todayMembershipsCount}
         onOpenReconciliation={() => setReconciliationModalOpen(true)}
         onOpenEditFloat={() => setReconciliationModalOpen(true)}
+        onOpenCashMovement={(type) => {
+          setCashMovementType(type);
+          setCashMovementModalOpen(true);
+        }}
       />
 
       {/* 3. Action Hub Bar */}
@@ -309,10 +330,23 @@ export function CashierDashboardView({
         shiftName={shiftName}
         openingCashFloat={openingFloat}
         cashCollected={todayCashInDrawer}
+        todayPaidIn={paidInState}
+        todayPaidOut={paidOutState}
         qrisCollected={todayQris}
         transferCollected={todayTransfer}
         transactionsCount={todayTransactionsCount}
         onOpeningFloatUpdated={(val) => setOpeningFloat(val)}
+      />
+
+      {/* 8. Dialog Pencatatan Kas Masuk / Kas Keluar (Petty Cash) */}
+      <CashMovementDialog
+        open={cashMovementModalOpen}
+        onOpenChange={setCashMovementModalOpen}
+        outletId={outletId}
+        defaultType={cashMovementType}
+        onSuccess={() => {
+          router.refresh();
+        }}
       />
     </div>
   );

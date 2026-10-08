@@ -22,7 +22,8 @@ export default async function DashboardAdminCatalogPage() {
       category: VehicleCategory.MOBIL_KECIL,
       defaultPrice: 35000,
       commissionWasher: 8000,
-      description: "Cuci sampo salju pH balance, semir ban, & vacuum interior ringan.",
+      description:
+        "Cuci sampo salju pH balance, semir ban, & vacuum interior ringan.",
       recommendedDurationMinutes: 25,
     },
   ];
@@ -39,4 +40,3 @@ export default async function DashboardAdminCatalogPage() {
     </div>
   );
 }
-

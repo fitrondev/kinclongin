@@ -2,23 +2,12 @@
 
 import { useState, useTransition } from "react";
 
-import {
-  AlertCircle,
-  Car,
-  Coins,
-  Delete,
-  Loader2,
-  Sparkles,
-  Trophy,
-  UserCheck,
-  X,
-} from "lucide-react";
+import { AlertCircle, Car, Coins, Delete, Trophy } from "lucide-react";
 
 import {
   getWasherShiftSummaryAction,
   verifyWasherPinAction,
 } from "@/actions/layar-cuci";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
